@@ -1,0 +1,235 @@
+################################
+######## MODULES ########
+################################
+
+# anaconda
+# neurokit2 as nk
+# respirationtools
+# mne
+# neo
+
+################################
+######## GENERAL PARAMS ######## 
+################################
+
+enable_big_execute = True
+
+#sujet = 'CHEe'
+#sujet = 'GOBc'
+#sujet = 'MAZm'
+#sujet = 'MUGa' # ATTENTION, UNIQUEMENT FR_CV
+sujet = 'TREt'
+
+sujet_list = ['CHEe', 'GOBc', 'MAZm', 'MUGa', 'TREt']
+
+conditions_allsubjects = ['RD_CV', 'RD_FV', 'RD_SV', 'RD_AV', 'FR_CV', 'FR_MV']
+
+condition_diff = [['FV','SV']]
+
+band_prep_list = ['lf', 'hf']
+freq_band_list = [{'theta' : [2,10], 'alpha' : [8,14], 'beta' : [10,40], 'whole' : [2,50]}, {'l_gamma' : [50, 80], 'h_gamma' : [80, 120]}]
+
+
+
+
+########################################
+######## PATH DEFINITION ########
+########################################
+
+import socket
+import os
+import platform
+PC_OS = platform.system()
+PC_ID = socket.gethostname()
+
+if PC_ID == 'LAPTOP-EI7OSP7K':
+
+    PC_working = 'Jules_Home'
+    path_main_workdir = 'C:\\Users\\jules\\Desktop\\Codage Informatique\\Script_Python_iEEG_Lyon'
+    path_general = 'D:\\LPPR_CMO_PROJECT\\Lyon'
+
+if PC_ID == 'DESKTOP-3IJUK7R':
+
+    PC_working = 'Jules_Labo_Win'
+    path_main_workdir = 'C:\\Users\\jules\\Desktop\\Script_Python_iEEG_Lyon'
+    path_general = 'D:\\LPPR_CMO_PROJECT\\Lyon'
+
+if PC_ID == 'pc-jules':
+
+    PC_working = 'Jules_Labo_Linux'
+    path_main_workdir = '/home/jules/smb4k/CRNLDATA/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/Script_Python_iEEG_Lyon/'
+    path_general = '/home/jules/smb4k/CRNLDATA/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/'
+
+if PC_ID == 'nodeGPU':
+
+    PC_working = 'nodeGPU'
+    path_main_workdir = '/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/Script_Python_iEEG_Lyon'
+    path_general = '/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ'
+
+path_data = os.path.join(path_general, 'Data', 'iEEG', 'raw_data')
+path_prep = os.path.join(path_general, 'Analyses', 'iEEG', 'preprocessing')
+path_precompute = os.path.join(path_general, 'Analyses', 'iEEG', 'precompute') 
+path_results = os.path.join(path_general, 'Analyses', 'iEEG', 'results') 
+path_respfeatures = os.path.join(path_general, 'Analyses', 'iEEG', 'results') 
+path_anatomy = os.path.join(path_general, 'Analyses', 'iEEG', 'anatomy') 
+
+
+
+################################################
+######## ELECTRODES REMOVED BEFORE LOCA ######## 
+################################################
+
+electrodes_to_remove = {
+
+'CHEe' : [],
+'GOBc' : ['Bp'], # because the neurosurgeon didnt indicates the electrode's real size
+'MAZm' : [],
+'MUGa' : [],
+'TREt' : []
+
+}
+
+
+
+################################
+######## PREP INFO ######## 
+################################
+
+
+conditions_trig = {
+'RD_CV' : ['31', '32'], # RespiDriver Comfort Ventilation
+'RD_FV' : ['51', '52'], # RespiDriver Fast Ventilation  
+'RD_SV' : ['11', '12'], # RespiDriver Slow Ventilation
+'RD_AV' : ['61', '62'], # RespiDriver Ample Ventilation
+'FR_CV' : ['CV_start', 'CV_stop'], # FreeVentilation Comfort Ventilation
+'FR_MV' : ['MV_start', 'MV_stop'], # FreeVentilation Mouth Ventilation
+}
+
+
+aux_chan = {
+'CHEe' : {'nasal': 'p7+', 'ventral' : 'p8+', 'ECG' : 'ECG'}, # OK
+'GOBc' : {'nasal': 'p13+', 'ventral' : 'p14+', 'ECG' : 'ECG'}, # OK
+'MAZm' : {'nasal': 'p7+', 'ventral' : 'p8+', 'ECG' : 'ECG'}, # OK
+'MUGa' : {'nasal': 'p20+', 'ventral' : 'p19+', 'ECG' : 'ECG'}, # OK
+'TREt' : {'nasal': 'p19+', 'ventral' : 'p20+', 'ECG' : 'ECG1'}, # OK
+}
+
+
+################################
+######## ECG PARAMS ########
+################################ 
+
+sujet_ecg_adjust = {
+'CHEe' : 'inverse',
+'GOBc' : 'inverse',
+'MAZm' : 'inverse',
+'MUGa' : 'normal',
+'TREt' : 'normal',
+}
+
+
+hrv_metrics_short_name = ['HRV_RMSSD', 'HRV_MeanNN', 'HRV_SDNN', 'HRV_pNN50', 'HRV_LF', 'HRV_HF', 'HRV_SD1', 'HRV_SD2']
+
+
+
+
+################################
+######## PREP PARAMS ########
+################################ 
+
+prep_step_lf = {
+'mean_centered_detrend' : {'execute': True},
+'line_noise_removing' : {'execute': True},
+'high_pass' : {'execute': False, 'params' : {'l_freq' : None, 'h_freq': None}},
+'low_pass' : {'execute': True, 'params' : {'l_freq' : 0, 'h_freq': 45}},
+'average_reref' : {'execute': False},
+}
+
+prep_step_hf = {
+'mean_centered_detrend' : {'execute': True},
+'line_noise_removing' : {'execute': True},
+'high_pass' : {'execute': True, 'params' : {'l_freq' : 55, 'h_freq': None}},
+'low_pass' : {'execute': False, 'params' : {'l_freq' : 0, 'h_freq': 45}},
+'average_reref' : {'execute': False},
+}
+
+
+
+
+
+########################################
+######## PARAMS SURROGATES ########
+########################################
+
+#### stretch
+stretch_point_surrogates = 1000
+
+#### coh
+n_surrogates_coh = 500
+freq_surrogates = [0, 2]
+percentile_coh = .95
+
+#### cycle freq
+n_surrogates_cyclefreq = 500
+percentile_cyclefreq_up = .99
+percentile_cyclefreq_dw = .01
+
+
+
+
+
+
+
+################################
+######## PRECOMPUTE TF ########
+################################
+
+#### stretch
+stretch_point_TF = 1000
+
+#### TF & ITPC
+nfrex_hf = 50
+nfrex_lf = 50
+ncycle_list_lf = [7, 15]
+ncycle_list_hf = [20, 30]
+srate_dw = 10
+
+
+
+################################
+######## POWER ANALYSIS ########
+################################
+
+#### analysis
+coh_computation_interval = .02 #Hz around respi
+
+
+################################
+######## FC ANALYSIS ########
+################################
+
+#### band to remove
+freq_band_fc_analysis = {'theta' : [4, 8], 'alpha' : [9,12], 'beta' : [15,40], 'l_gamma' : [50, 80], 'h_gamma' : [80, 120]}
+
+
+
+########################################
+######## COMPUTATIONAL NOTES ######## 
+########################################
+
+#### CHEe
+# everyting ok
+
+#### GOBc
+# not ennough memory thus :
+# nfrex_hf = 50, before = 100
+
+#### MAZm
+#
+
+#### MUGa
+#
+
+#### TREt
+#
+
