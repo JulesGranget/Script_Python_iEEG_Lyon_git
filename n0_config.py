@@ -218,11 +218,10 @@ freq_band_fc_analysis = {'theta' : [4, 8], 'alpha' : [9,12], 'beta' : [15,40], '
 ########################################
 
 #### CHEe
-# everyting ok
+
 
 #### GOBc
-# not ennough memory thus :
-# nfrex_hf = 50, before = 100
+
 
 #### MAZm
 #
