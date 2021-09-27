@@ -18,7 +18,9 @@ enable_big_execute = True
 #sujet = 'GOBc'
 #sujet = 'MAZm'
 #sujet = 'MUGa' # ATTENTION, UNIQUEMENT FR_CV
-sujet = 'TREt'
+#sujet = 'TREt'
+
+sujet = 'DEBUG'
 
 sujet_list = ['CHEe', 'GOBc', 'MAZm', 'MUGa', 'TREt']
 
@@ -47,24 +49,28 @@ if PC_ID == 'LAPTOP-EI7OSP7K':
     PC_working = 'Jules_Home'
     path_main_workdir = 'C:\\Users\\jules\\Desktop\\Codage Informatique\\Script_Python_iEEG_Lyon'
     path_general = 'D:\\LPPR_CMO_PROJECT\\Lyon'
+    n_core = 2
 
 if PC_ID == 'DESKTOP-3IJUK7R':
 
     PC_working = 'Jules_Labo_Win'
     path_main_workdir = 'C:\\Users\\jules\\Desktop\\Script_Python_iEEG_Lyon'
     path_general = 'D:\\LPPR_CMO_PROJECT\\Lyon'
+    n_core = 2
 
 if PC_ID == 'pc-jules':
 
     PC_working = 'Jules_Labo_Linux'
     path_main_workdir = '/home/jules/smb4k/CRNLDATA/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/Script_Python_iEEG_Lyon/'
     path_general = '/home/jules/smb4k/CRNLDATA/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/'
+    n_core = 6
 
 if PC_ID == 'nodeGPU':
 
     PC_working = 'nodeGPU'
     path_main_workdir = '/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/Script_Python_iEEG_Lyon'
     path_general = '/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ'
+    n_core = 30
 
 path_data = os.path.join(path_general, 'Data', 'iEEG', 'raw_data')
 path_prep = os.path.join(path_general, 'Analyses', 'iEEG', 'preprocessing')
@@ -112,6 +118,9 @@ aux_chan = {
 'MAZm' : {'nasal': 'p7+', 'ventral' : 'p8+', 'ECG' : 'ECG'}, # OK
 'MUGa' : {'nasal': 'p20+', 'ventral' : 'p19+', 'ECG' : 'ECG'}, # OK
 'TREt' : {'nasal': 'p19+', 'ventral' : 'p20+', 'ECG' : 'ECG1'}, # OK
+
+'DEBUG' : {'nasal': 'p20+', 'ventral' : 'p19+', 'ECG' : 'ECG'}, # OK
+
 }
 
 
@@ -165,12 +174,12 @@ prep_step_hf = {
 stretch_point_surrogates = 1000
 
 #### coh
-n_surrogates_coh = 500
+n_surrogates_coh = 100
 freq_surrogates = [0, 2]
 percentile_coh = .95
 
 #### cycle freq
-n_surrogates_cyclefreq = 500
+n_surrogates_cyclefreq = 100
 percentile_cyclefreq_up = .99
 percentile_cyclefreq_dw = .01
 

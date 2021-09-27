@@ -6,10 +6,10 @@ import scipy.signal
 import mne
 import pandas as pd
 import respirationtools
+import joblib
 
 from n0_config import *
 from n0bis_analysis_functions import *
-
 
 debug = False
 
@@ -171,7 +171,7 @@ def precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_lis
 
 
             tf_allchan = np.zeros((np.size(data,0),nfrex,np.size(data,1)))
-            for n_chan in range(np.size(data,0)):
+            def conv_wavelets_precompute_tf(n_chan):
 
                 if n_chan/np.size(data,0) % .2 <= .01:
                     print("{:.2f}".format(n_chan/np.size(data,0)))
@@ -183,7 +183,19 @@ def precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_lis
                     
                     tf[fi,:] = abs(scipy.signal.fftconvolve(x, wavelets[fi,:], 'same'))**2 
 
-                tf_allchan[n_chan,:,:] = tf
+                return tf
+
+            conv_wavelets_precompute_tf_results = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(conv_wavelets_precompute_tf)(n_chan) for n_chan in range(np.size(data,0)))
+   
+            #################################
+
+            for n_chan in range(np.size(data,0)):
+
+                tf_allchan[n_chan,:,:] = conv_wavelets_precompute_tf_results[n_chan]
+
+            del conv_wavelets_precompute_tf_results
+
+            ################################
 
 
             #### stretch

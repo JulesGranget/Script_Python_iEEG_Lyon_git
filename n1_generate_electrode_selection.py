@@ -191,12 +191,12 @@ def generate_plot_loca(chan_list_trc):
 
     #### export missed plots
     os.chdir(os.path.join(path_anatomy, sujet))
-    miss_plot_textfile = open(sujet + "_missed_plot.txt", "w")
+    miss_plot_textfile = open(sujet + "_miss_in_csv.txt", "w")
     for element in miss_plot:
         miss_plot_textfile.write(element + "\n")
     miss_plot_textfile.close()
 
-    keep_plot_textfile = open(sujet + "_keep_plot.txt", "w")
+    keep_plot_textfile = open(sujet + "_trcplot_in_csv.txt", "w")
     for element in chan_list_trc_rmw:
         keep_plot_textfile.write(element + "\n")
     keep_plot_textfile.close()

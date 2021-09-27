@@ -151,7 +151,7 @@ def extract_data_trc():
     os.chdir(os.path.join(path_anatomy, sujet))
 
     #### first removing
-    chan_list_first_clean_file = open(sujet + "_keep_plot.txt", "r")
+    chan_list_first_clean_file = open(sujet + "_trcplot_in_csv.txt", "r")
     chan_list_first_clean = chan_list_first_clean_file.read()
     chan_list_first_clean = chan_list_first_clean.split("\n")[:-1]
     chan_list_first_clean_file.close()

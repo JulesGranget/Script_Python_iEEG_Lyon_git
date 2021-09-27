@@ -10,7 +10,7 @@ import respirationtools
 from n0_config import *
 from n0bis_analysis_functions import *
 
-
+import joblib
 
 debug = False
 
@@ -56,9 +56,7 @@ def precompute_surrogates_coh(band_prep, cond, session_i):
 
     surrogates_n_chan = np.zeros((np.size(data_tmp,0),len(hzCxy)))
 
-    for n_chan in range(np.size(data_tmp,0)):
-
-        chan_name = chan_list[n_chan]
+    def compute_surrogates_coh_n_chan(n_chan):
 
         if n_chan/np.size(data_tmp,0) % .2 <= .01:
             print('{:.2f}'.format(n_chan/np.size(data_tmp,0)))
@@ -80,7 +78,15 @@ def precompute_surrogates_coh(band_prep, cond, session_i):
 
         surrogates_val_tmp_sorted = np.sort(surrogates_val_tmp, axis=0)
         percentile_i = int(np.floor(n_surrogates_coh*percentile_coh))
-        surrogates_n_chan[n_chan,:] = surrogates_val_tmp_sorted[percentile_i,:]
+        compute_surrogates_coh_tmp = surrogates_val_tmp_sorted[percentile_i,:]
+
+        return compute_surrogates_coh_tmp
+    
+    compute_surrogates_coh_results = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_surrogates_coh_n_chan)(n_chan) for n_chan in range(np.size(data_tmp,0)))
+
+    for n_chan in range(np.size(data_tmp,0)):
+
+        surrogates_n_chan[n_chan,:] = compute_surrogates_coh_results[n_chan]
 
     np.save(sujet + '_' + cond + '_' + str(session_i+1) + '_Coh.npy', surrogates_n_chan)
 
@@ -103,9 +109,7 @@ def precompute_surrogates_cyclefreq(band_prep, cond, session_i, respfeatures_all
 
     respfeatures_i = respfeatures_allcond[cond][session_i]
 
-    for n_chan in range(np.size(data_tmp,0)):
-
-        chan_name = chan_list[n_chan]
+    def compute_surrogates_cyclefreq_nchan(n_chan):
 
         if n_chan/np.size(data_tmp,0) % .2 <= .01:
             print('{:.2f}'.format(n_chan/np.size(data_tmp,0)))
@@ -132,9 +136,18 @@ def precompute_surrogates_cyclefreq(band_prep, cond, session_i, respfeatures_all
         percentile_i_up = int(np.floor(n_surrogates_cyclefreq*percentile_cyclefreq_up))
         percentile_i_dw = int(np.floor(n_surrogates_cyclefreq*percentile_cyclefreq_dw))
 
-        surrogates_n_chan[0,n_chan,:] = mean_surrogate_tmp
-        surrogates_n_chan[1,n_chan,:] = surrogates_val_tmp_sorted[percentile_i_up,:]
-        surrogates_n_chan[2,n_chan,:] = surrogates_val_tmp_sorted[percentile_i_dw,:]
+        up_percentile_values_tmp = surrogates_val_tmp_sorted[percentile_i_up,:]
+        dw_percentile_values_tmp = surrogates_val_tmp_sorted[percentile_i_dw,:]
+
+        return mean_surrogate_tmp, up_percentile_values_tmp, dw_percentile_values_tmp
+
+    compute_surrogates_cyclefreq_results = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_surrogates_cyclefreq_nchan)(n_chan) for n_chan in range(np.size(data_tmp,0)))
+
+    for n_chan in range(np.size(data_tmp,0)):
+
+        surrogates_n_chan[0,n_chan,:] = compute_surrogates_cyclefreq_results[n_chan][0]
+        surrogates_n_chan[1,n_chan,:] = compute_surrogates_cyclefreq_results[n_chan][1]
+        surrogates_n_chan[2,n_chan,:] = compute_surrogates_cyclefreq_results[n_chan][2]
     
     np.save(sujet + '_' + cond + '_' + str(session_i+1) + '_cyclefreq_' +  band_prep + '.npy', surrogates_n_chan)
 
