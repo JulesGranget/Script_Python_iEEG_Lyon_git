@@ -600,6 +600,13 @@ def chop_save_trc(data, chan_list, data_aux, chan_list_aux, conditions_trig, tri
     info = mne.create_info(chan_list_all, srate, ch_types=ch_types)
     raw_all = mne.io.RawArray(data_all, info)
 
+    #### save chan_list
+    os.chdir(os.path.join(path_anatomy, sujet))
+    keep_plot_textfile = open(sujet + "_chanlist_ieeg.txt", "w")
+    for element in chan_list_all[:-4]:
+        keep_plot_textfile.write(element + "\n")
+    keep_plot_textfile.close()
+
     #### add cR events
     event_cR = np.zeros((len(ecg_events_time),3))
     for cR in range(len(ecg_events_time)):

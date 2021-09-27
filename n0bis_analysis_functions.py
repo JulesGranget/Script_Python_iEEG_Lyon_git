@@ -9,6 +9,7 @@ import pandas as pd
 import respirationtools
 
 from n0_config import *
+from n1_generate_electrode_selection import *
 
 
 debug = False
@@ -54,7 +55,7 @@ def extract_chanlist_srate_conditions(conditions_allsubjects):
 
     srate = int(raw.info['sfreq'])
     chan_list = raw.info['ch_names']
-    chan_list_ieeg = chan_list[:-4]
+    chan_list_ieeg = chan_list[:-4] # on enlève : nasal, ventral, ECG, ECG_cR
 
     #### go back to path source
     os.chdir(path_source)
@@ -227,7 +228,11 @@ def get_electrode_loca():
 
     file_plot_select = pd.read_excel(sujet + '_plot_loca.xlsx')
 
-    chan_list_ieeg = file_plot_select['plot'].loc[file_plot_select['select'] == 1].values.tolist()
+    chan_list_txt = open(sujet + '_chanlist_ieeg.txt', 'r')
+    chan_list_txt_readlines = chan_list_txt.readlines()
+    chan_list_ieeg = [i.replace('\n', '') for i in chan_list_txt_readlines]
+    chan_list_ieeg, trash = modify_name(chan_list_ieeg)
+    chan_list_ieeg.sort()
 
     loca_ieeg = []
     for chan_name in chan_list_ieeg:
@@ -248,7 +253,11 @@ def get_loca_df():
 
     file_plot_select = pd.read_excel(sujet + '_plot_loca.xlsx')
 
-    chan_list_ieeg = file_plot_select['plot'].loc[file_plot_select['select'] == 1].values.tolist()
+    chan_list_txt = open(sujet + '_chanlist_ieeg.txt', 'r')
+    chan_list_txt_readlines = chan_list_txt.readlines()
+    chan_list_ieeg = [i.replace('\n', '') for i in chan_list_txt_readlines]
+    chan_list_ieeg, trash = modify_name(chan_list_ieeg)
+    chan_list_ieeg.sort()
 
     ROI_ieeg = []
     lobes_ieeg = []
@@ -271,7 +280,11 @@ def get_mni_loca():
 
     file_plot_select = pd.read_excel(sujet + '_plot_loca.xlsx')
 
-    chan_list_ieeg = file_plot_select['plot'].loc[file_plot_select['select'] == 1].values.tolist()
+    chan_list_txt = open(sujet + '_chanlist_ieeg.txt', 'r')
+    chan_list_txt_readlines = chan_list_txt.readlines()
+    chan_list_ieeg = [i.replace('\n', '') for i in chan_list_txt_readlines]
+    chan_list_ieeg, trash = modify_name(chan_list_ieeg)
+    chan_list_ieeg.sort()
 
     mni_loc = file_plot_select['MNI']
 
