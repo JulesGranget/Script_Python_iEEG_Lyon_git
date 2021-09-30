@@ -177,7 +177,7 @@ def compute_fc_metrics(band_prep, data, freq, band, cond, session_i):
 
     #### supress mmap
     os.chdir(path_memmap)
-    os.remove('convolutions.dat')
+    os.remove('fc_convolutions.dat')
     
     return pli_mat, ispc_mat
 
