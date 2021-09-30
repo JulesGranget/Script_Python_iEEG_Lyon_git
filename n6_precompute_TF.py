@@ -110,8 +110,6 @@ def compute_stretch_tf_itpc(tf, cond, session_i, respfeatures_allcond, stretch_p
 
 def precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_list, band_prep_list):
 
-    os.chdir(os.path.join(path_precompute, sujet, 'TF'))
-
     print('TF PRECOMPUTE')
 
     #### select prep to load
@@ -125,6 +123,8 @@ def precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_lis
 
         #band, freq = list(freq_band.items())[0]
         for band, freq in freq_band.items():
+
+            os.chdir(os.path.join(path_precompute, sujet, 'TF'))
 
             if os.path.exists(sujet + '_tf_' + str(freq[0]) + '_' + str(freq[1]) + '_' + cond + '_' + str(session_i+1) + '.npy') == True :
                 print('ALREADY COMPUTED')
