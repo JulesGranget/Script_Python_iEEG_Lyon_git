@@ -47,12 +47,9 @@ def compute_stretch_tf(tf, cond, session_i, respfeatures_allcond, stretch_point_
 #condition, resp_features, freq_band, stretch_point_TF = conditions[0], list(resp_features_allcond.values())[0], freq_band, stretch_point_TF
 def compute_stretch_tf_dB(tf, cond, session_i, respfeatures_allcond, stretch_point_TF):
 
-    tf_mean_allchan = np.zeros((np.size(tf,0), np.size(tf,1), stretch_point_TF))
-
     baseline = np.mean(tf, axis=2)
     baseline = np.transpose(baseline)
 
-    db_tf = np.zeros((np.size(tf,0), np.size(tf,1), np.size(tf,2)), dtype='float32')
     for n_chan in range(np.size(tf,0)):
         
         for fi in range(np.size(tf,1)):
@@ -60,13 +57,9 @@ def compute_stretch_tf_dB(tf, cond, session_i, respfeatures_allcond, stretch_poi
             activity = tf[n_chan,fi,:]
             baseline_fi = baseline[fi,n_chan]
 
-            db_tf[n_chan,fi,:] = 10*np.log10(activity/baseline_fi)
+            tf[n_chan,fi,:] = 10*np.log10(activity/baseline_fi)
 
-    tf = db_tf
-
-    tf_mean_allchan = np.zeros((np.size(tf,0), np.size(tf,1), int(stretch_point_TF)))
-
-    for n_chan in range(np.size(tf,0)):
+    def stretch_tf_db_n_chan(n_chan):
 
         if n_chan/np.size(tf,0) % .2 <= .01:
             print('{:.2f}'.format(n_chan/np.size(tf,0)))
@@ -78,8 +71,14 @@ def compute_stretch_tf_dB(tf, cond, session_i, respfeatures_allcond, stretch_poi
             x_stretch, ratio = stretch_data(respfeatures_allcond.get(cond)[session_i], stretch_point_TF, x, srate)
             tf_mean[fi,:] = np.mean(x_stretch, axis=0)
 
-        tf_mean_allchan[n_chan,:,:] = tf_mean
+        return tf_mean
 
+    stretch_tf_db_nchan_res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(stretch_tf_db_n_chan)(n_chan) for n_chan in range(np.size(tf,0)))
+
+    tf_mean_allchan = np.zeros((np.size(tf,0), np.size(tf,1), stretch_point_TF))
+
+    for n_chan in range(np.size(tf,0)):
+        tf_mean_allchan[n_chan,:,:] = stretch_tf_db_nchan_res[n_chan]
 
     return tf_mean_allchan
 
@@ -116,6 +115,8 @@ def compute_stretch_tf_itpc(tf, cond, session_i, respfeatures_allcond, stretch_p
 def precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_list, band_prep_list):
 
     os.chdir(os.path.join(path_precompute, sujet, 'TF'))
+
+    print('TF PRECOMCUPTE')
 
     #### select prep to load
     #band_prep_i, band_prep = 0, 'hf'
@@ -171,7 +172,7 @@ def precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_lis
 
 
             tf_allchan = np.zeros((np.size(data,0),nfrex,np.size(data,1)))
-            def conv_wavelets_precompute_tf(n_chan):
+            for n_chan in range(np.size(data,0)):
 
                 if n_chan/np.size(data,0) % .2 <= .01:
                     print("{:.2f}".format(n_chan/np.size(data,0)))
@@ -183,20 +184,7 @@ def precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_lis
                     
                     tf[fi,:] = abs(scipy.signal.fftconvolve(x, wavelets[fi,:], 'same'))**2 
 
-                return tf
-
-            conv_wavelets_precompute_tf_results = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(conv_wavelets_precompute_tf)(n_chan) for n_chan in range(np.size(data,0)))
-   
-            #################################
-
-            for n_chan in range(np.size(data,0)):
-
-                tf_allchan[n_chan,:,:] = conv_wavelets_precompute_tf_results[n_chan]
-
-            del conv_wavelets_precompute_tf_results
-
-            ################################
-
+                tf_allchan[n_chan,:,:] = tf
 
             #### stretch
             print('STRETCH')
@@ -218,6 +206,8 @@ def precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_lis
 
 def precompute_tf_itpc(cond, session_i, srate_dw, respfeatures_allcond, freq_band_list, band_prep_list):
 
+    print('ITPC PRECOMCUPTE')
+    
     #### select prep to load
     for band_prep_i, band_prep in enumerate(band_prep_list):
 
@@ -236,7 +226,6 @@ def precompute_tf_itpc(cond, session_i, srate_dw, respfeatures_allcond, freq_ban
                 continue
             
             print(band, ' : ', freq)
-            print('COMPUTE')
 
             #### select wavelet parameters
             if band_prep == 'lf':
@@ -272,9 +261,8 @@ def precompute_tf_itpc(cond, session_i, srate_dw, respfeatures_allcond, freq_ban
                 plt.show()
 
             #### compute itpc
-            print('STRETCH & ITPC')
-            itpc_allchan = np.zeros((np.size(data,0),nfrex,stretch_point_TF))
-            for n_chan in range(np.size(data,0)):
+            print('COMPUTE, STRETCH & ITPC')
+            def compute_itpc_n_chan(n_chan):
 
                 if n_chan/np.size(data,0) % .2 <= .01:
                     print("{:.2f}".format(n_chan/np.size(data,0)))
@@ -292,15 +280,23 @@ def precompute_tf_itpc(cond, session_i, srate_dw, respfeatures_allcond, freq_ban
                 #### ITPC
                 tf_angle = np.angle(tf_stretch)
                 tf_cangle = np.exp(1j*tf_angle) 
-                itpc = np.abs(np.mean(tf_cangle,0)) 
-
-                itpc_allchan[n_chan,:,:] = itpc
+                itpc = np.abs(np.mean(tf_cangle,0))
 
                 if debug == True:
                     time = range(stretch_point_TF)
                     frex = range(nfrex)
                     plt.pcolormesh(time,frex,itpc,vmin=np.min(itpc),vmax=np.max(itpc))
                     plt.show()
+
+                return itpc 
+
+            compute_itpc_n_chan_res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_itpc_n_chan)(n_chan) for n_chan in range(np.size(data,0)))
+            
+            itpc_allchan = np.zeros((np.size(data,0),nfrex,stretch_point_TF))
+
+            for n_chan in range(np.size(data,0)):
+
+                itpc_allchan[n_chan,:,:] = compute_itpc_n_chan_res[n_chan]
 
             #### save
             print('SAVE')
@@ -331,9 +327,11 @@ if __name__ == '__main__':
 
     #### compute all
 
-    print('######## PRECOMPUTE TF ITPC ########')
+    print('######## PRECOMPUTE TF & ITPC ########')
 
     #### compute and save tf
+    #cond = conditions[0]
+    #session_i = 0
     for cond in conditions:
 
         print(cond)

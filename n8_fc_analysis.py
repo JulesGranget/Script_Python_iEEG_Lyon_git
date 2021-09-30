@@ -7,6 +7,8 @@ import scipy.signal
 import mne
 import pandas as pd
 import respirationtools
+import joblib
+
 from n3_respi_analysis import analyse_resp
 
 from n0_config import *
@@ -31,7 +33,6 @@ respi_ratio_allcond = get_all_respi_ratio(conditions, respfeatures_allcond)
 #### localization
 dict_loca = get_electrode_loca()
 df_loca = get_loca_df()
-dict_mni = get_mni_loca()
 
 
 
@@ -41,7 +42,7 @@ dict_mni = get_mni_loca()
 ############# ISPC & PLI #############
 #######################################
 
-#raw, freq = raw_allcond.get(band_prep).get(cond)[session_i], [2, 10]
+#data = data_tmp
 def compute_fc_metrics(band_prep, data, freq, band, cond, session_i):
     
     #### check if already computed
@@ -90,14 +91,17 @@ def compute_fc_metrics(band_prep, data, freq, band, cond, session_i):
     data = data[:len(chan_list_ieeg),:]
 
     #### compute all convolution
-    convolutions = {}
+    os.chdir(path_memmap)
+    convolutions = np.memmap('convolutions.dat', dtype=np.complex128, mode='w+', shape=(len(chan_list_ieeg), nfrex, data.shape[1]))
 
     print('CONV')
 
-    for nchan in range(np.size(data,0)) :
+    def convolution_x_wavelets_nchan(nchan):
 
+        if nchan/np.size(data,0) % .2 <= .01:
+            print("{:.2f}".format(nchan/len(chan_list_ieeg)))
+        
         nchan_conv = np.zeros((nfrex, np.size(data,1)), dtype='complex')
-        nchan_name = chan_list_ieeg[nchan]
 
         x = data[nchan,:]
 
@@ -105,7 +109,11 @@ def compute_fc_metrics(band_prep, data, freq, band, cond, session_i):
 
             nchan_conv[fi,:] = scipy.signal.fftconvolve(x, wavelets[fi,:], 'same')
 
-        convolutions[nchan_name] = nchan_conv
+        convolutions[nchan,:,:] = nchan_conv
+
+        return
+
+    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(convolution_x_wavelets_nchan)(nchan) for nchan in range(np.size(data,0)))
 
     #### compute metrics
     pli_mat = np.zeros((np.size(data,0),np.size(data,0)))
@@ -115,14 +123,12 @@ def compute_fc_metrics(band_prep, data, freq, band, cond, session_i):
 
     for seed in range(np.size(data,0)) :
 
-        seed_name = chan_list_ieeg[seed]
+        print("{:.2f}".format(seed/len(chan_list_ieeg)))
 
-        for nchan in range(np.size(data,0)) :
-
-            nchan_name = chan_list_ieeg[nchan]
+        def compute_ispc_pli(nchan):
 
             if nchan == seed : 
-                continue
+                return
                 
             else :
 
@@ -133,8 +139,8 @@ def compute_fc_metrics(band_prep, data, freq, band, cond, session_i):
                 # compute metrics
                 for fi in range(nfrex):
                     
-                    as1 = convolutions.get(seed_name)[fi,:]
-                    as2 = convolutions.get(nchan_name)[fi,:]
+                    as1 = convolutions[seed][fi,:]
+                    as2 = convolutions[nchan][fi,:]
 
                     # collect "eulerized" phase angle differences
                     cdd = np.exp(1j*(np.angle(as1)-np.angle(as2)))
@@ -143,8 +149,24 @@ def compute_fc_metrics(band_prep, data, freq, band, cond, session_i):
                     ispc[fi] = np.abs(np.mean(cdd))
                     pli[fi] = np.abs(np.mean(np.sign(np.imag(cdd))))
 
-                pli_mat[seed,nchan] = np.mean(ispc,0)
-                ispc_mat[seed,nchan] = np.mean(pli,0)
+            # compute mean
+            mean_ispc = np.mean(ispc,0)
+            mean_pli = np.mean(pli,0)
+
+            return mean_ispc, mean_pli
+
+        compute_ispc_pli_res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_ispc_pli)(nchan) for nchan in range(np.size(data,0)))
+        
+        for nchan in range(np.size(data,0)) :
+                
+            if nchan == seed:
+
+                continue
+
+            else:
+                    
+                ispc_mat[seed,nchan] = compute_ispc_pli_res[nchan][0]
+                pli_mat[seed,nchan] = compute_ispc_pli_res[nchan][1]
 
     #### save matrix
     os.chdir(os.path.join(path_results, sujet, 'FC', 'ISPC', 'matrix'))
@@ -152,6 +174,10 @@ def compute_fc_metrics(band_prep, data, freq, band, cond, session_i):
 
     os.chdir(os.path.join(path_results, sujet, 'FC', 'PLI', 'matrix'))
     np.save(sujet + '_PLI_' + band + '_' + cond + '_' + str(session_i+1) + '.npy', pli_mat)
+
+    #### supress mmap
+    os.chdir(path_memmap)
+    os.remove('convolutions.dat')
     
     return pli_mat, ispc_mat
 
@@ -163,8 +189,10 @@ def compute_fc_metrics(band_prep, data, freq, band, cond, session_i):
 pli_allband = {}
 ispc_allband = {}
 
+#band_prep_i, band_prep = 0, 'lf'
 for band_prep_i, band_prep in enumerate(band_prep_list):
 
+    #band = 'theta'
     for band in freq_band_list[band_prep_i].keys():
 
         if band == 'whole' :
@@ -178,6 +206,8 @@ for band_prep_i, band_prep in enumerate(band_prep_list):
             pli_allcond = {}
             ispc_allcond = {}
 
+            #cond_i, cond = 0, conditions[0]
+            #session_i = 0
             for cond_i, cond in enumerate(conditions) :
 
                 print(band, cond)
@@ -320,39 +350,68 @@ elif len(conditions) == 5:
 elif len(conditions) == 6:
     nrows, ncols = 3, 3
 
+if ncols == 0:
 
+    #band_prep_i, band_prep, nchan, band, freq = 0, 'lf', 0, 'theta', [2, 10]
+    for band, freq in freq_band_fc_analysis.items():
 
-#band_prep_i, band_prep, nchan, band, freq = 0, 'lf', 0, 'theta', [2, 10]
-for band, freq in freq_band_fc_analysis.items():
+        fig = plt.figure(facecolor='black')
+        for cond_i, cond in enumerate(conditions):
+            mne.viz.plot_connectivity_circle(sort_ispc(ispc_allband_reduced.get(band).get(cond)), node_names=chan_name_sorted, n_lines=None, title=cond, show=False, padding=7, fig=fig)
+        plt.suptitle('ISPC_' + band, color='w')
+        fig.set_figheight(10)
+        fig.set_figwidth(12)
+        #fig.show()
 
-    fig = plt.figure(facecolor='black')
-    for cond_i, cond in enumerate(conditions):
-        mne.viz.plot_connectivity_circle(sort_ispc(ispc_allband_reduced.get(band).get(cond)), node_names=chan_name_sorted, n_lines=None, title=cond, show=False, padding=7, fig=fig, subplot=(nrows, ncols, cond_i+1))
-    plt.suptitle('ISPC_' + band, color='w')
-    fig.set_figheight(10)
-    fig.set_figwidth(12)
-    #fig.show()
+        fig.savefig(sujet + '_ISPC_' + band, dpi = 600)
 
-    fig.savefig(sujet + '_ISPC_' + band, dpi = 600)
+else:
+
+    #band_prep_i, band_prep, nchan, band, freq = 0, 'lf', 0, 'theta', [2, 10]
+    for band, freq in freq_band_fc_analysis.items():
+
+        fig = plt.figure(facecolor='black')
+        for cond_i, cond in enumerate(conditions):
+            mne.viz.plot_connectivity_circle(sort_ispc(ispc_allband_reduced.get(band).get(cond)), node_names=chan_name_sorted, n_lines=None, title=cond, show=False, padding=7, fig=fig, subplot=(nrows, ncols, cond_i+1))
+        plt.suptitle('ISPC_' + band, color='w')
+        fig.set_figheight(10)
+        fig.set_figwidth(12)
+        #fig.show()
+
+        fig.savefig(sujet + '_ISPC_' + band, dpi = 600)
 
 
 #### PLI
 
 os.chdir(os.path.join(path_results, sujet, 'FC', 'PLI', 'figures'))
 
-#band_prep_i, band_prep, nchan, band, freq = 0, 'lf', 0, 'theta', [2, 10]
-for band, freq in freq_band_fc_analysis.items():
+if ncols == 0:
 
-    fig = plt.figure(facecolor='black')
-    for cond_i, cond in enumerate(conditions):
-        mne.viz.plot_connectivity_circle(sort_ispc(pli_allband_reduced.get(band).get(cond)), node_names=chan_name_sorted, n_lines=None, title=cond, show=False, padding=7, fig=fig, subplot=(nrows, ncols, cond_i+1))
-    plt.suptitle('PLI_' + band, color='w')
-    fig.set_figheight(10)
-    fig.set_figwidth(12)
-    #fig.show()
+    #band_prep_i, band_prep, nchan, band, freq = 0, 'lf', 0, 'theta', [2, 10]
+    for band, freq in freq_band_fc_analysis.items():
 
-    fig.savefig(sujet + '_PLI_' + band, dpi = 600)
+        fig = plt.figure(facecolor='black')
+        for cond_i, cond in enumerate(conditions):
+            mne.viz.plot_connectivity_circle(sort_ispc(pli_allband_reduced.get(band).get(cond)), node_names=chan_name_sorted, n_lines=None, title=cond, show=False, padding=7, fig=fig)
+        plt.suptitle('PLI_' + band, color='w')
+        fig.set_figheight(10)
+        fig.set_figwidth(12)
+        #fig.show()
 
+        fig.savefig(sujet + '_PLI_' + band, dpi = 600)
 
+else:
 
+    #band_prep_i, band_prep, nchan, band, freq = 0, 'lf', 0, 'theta', [2, 10]
+    for band, freq in freq_band_fc_analysis.items():
+
+        fig = plt.figure(facecolor='black')
+        for cond_i, cond in enumerate(conditions):
+            mne.viz.plot_connectivity_circle(sort_ispc(pli_allband_reduced.get(band).get(cond)), node_names=chan_name_sorted, n_lines=None, title=cond, show=False, padding=7, fig=fig, subplot=(nrows, ncols, cond_i+1))
+        plt.suptitle('PLI_' + band, color='w')
+        fig.set_figheight(10)
+        fig.set_figwidth(12)
+        #fig.show()
+
+        fig.savefig(sujet + '_PLI_' + band, dpi = 600)
 

@@ -7,7 +7,7 @@ import scipy.signal
 import mne
 import pandas as pd
 import respirationtools
-from n1_generate_electrode_selection import modify_name
+import joblib
 
 from n0_config import *
 from n0bis_analysis_functions import *
@@ -361,8 +361,8 @@ os.chdir(os.path.join(path_results, sujet, 'PSD_Coh', 'summary'))
 
 print('######## PLOT & SAVE PSD AND COH ########')
 
-#### for lf
-for n_chan in range(len(chan_list_ieeg)):
+#### def functions
+def plot_save_PSD_Coh_lf(n_chan):
 
     session_i = 0       
     
@@ -384,6 +384,8 @@ for n_chan in range(len(chan_list_ieeg)):
 
         fig, axs = plt.subplots(nrows=4, ncols=len(conditions))
         plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
+
+        cond = conditions[0]
 
         #### supress NaN
         keep = np.invert(np.isnan(respfeatures_allcond_adjust.get(cond)[session_i]['cycle_freq'].values))
@@ -455,11 +457,11 @@ for n_chan in range(len(chan_list_ieeg)):
     fig.savefig(sujet + '_' + chan_name + '_lf.jpeg', dpi=600)
     plt.close()
 
+    return
 
 
 
-#### for hf
-for n_chan in range(len(chan_list_ieeg)):       
+def plot_save_PSD_Coh_hf(n_chan):    
     
     session_i = 0
 
@@ -528,14 +530,16 @@ for n_chan in range(len(chan_list_ieeg)):
     fig.savefig(sujet + '_' + chan_name + '_hf.jpeg', dpi=600)
     plt.close()
 
+    return
 
 
 
 
 
+#### compute joblib
 
-
-
+joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(plot_save_PSD_Coh_lf)(n_chan) for n_chan in range(len(chan_list_ieeg)))
+joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(plot_save_PSD_Coh_hf)(n_chan) for n_chan in range(len(chan_list_ieeg)))
 
 
 
@@ -668,271 +672,274 @@ os.chdir(os.path.join(path_results, sujet, 'TF', 'summary'))
 
 print('######## SAVE TF ########')
 
+
+def save_TF_n_chan(n_chan):
+
+    chan_name_init = chan_list_ieeg[n_chan]
+    chan_name_modif, trash = modify_name([chan_name_init])
+    chan_name = str(chan_name_modif[0])
+
+    if n_chan/len(chan_list_ieeg) % .2 <= .01:
+        print('{:.2f}'.format(n_chan/len(chan_list_ieeg)))
+
+    time = range(stretch_point_TF)
+    frex = np.size(tf_stretch_allcond.get(conditions[0]).get(list(freq_band.keys())[0]),1)
+
+    if len(conditions) == 1:
+
+        if freq_band_i == 0:
+
+            #### plot
+            fig, axs = plt.subplots(nrows=4, ncols=len(conditions))
+            plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
+
+            for c, cond in enumerate(conditions):
+                
+                #### plot
+                if c == 0:
+                        
+                    for i, (band, freq) in enumerate(freq_band.items()) :
+
+                        data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
+                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
+                    
+                        if i == 0 :
+
+                            ax = axs[i]
+                            ax.set_title(cond, fontweight='bold', rotation=0)
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.set_ylabel(band)
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                        else :
+
+                            ax = axs[i]
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.set_ylabel(band)
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                else:
+
+                    for i, (band, freq) in enumerate(freq_band.items()) :
+
+                        data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
+                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
+                    
+                        if i == 0 :
+
+                            ax = axs[i]
+                            ax.set_title(cond, fontweight='bold', rotation=0)
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                        else :
+
+                            ax = axs[i]
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+                    
+                
+            #### save
+            fig.savefig(sujet + '_' + chan_name + '_lf.jpeg', dpi=600)
+            plt.close()
+
+
+        elif freq_band_i == 1:
+
+            #### plot
+            fig, axs = plt.subplots(nrows=2, ncols=len(conditions))
+            plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
+
+            for c, cond in enumerate(conditions):
+                
+                #### plot
+                if c == 0:
+                        
+                    for i, (band, freq) in enumerate(freq_band.items()) :
+
+                        data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
+                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
+                    
+                        if i == 0 :
+
+                            ax = axs[i]
+                            ax.set_title(cond, fontweight='bold', rotation=0)
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.set_ylabel(band)
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                        else :
+
+                            ax = axs[i]
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.set_ylabel(band)
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                else:
+
+                    for i, (band, freq) in enumerate(freq_band.items()) :
+
+                        data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
+                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
+                    
+                        if i == 0 :
+
+                            ax = axs[i]
+                            ax.set_title(cond, fontweight='bold', rotation=0)
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                        else :
+
+                            ax = axs[i]
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+                    
+                
+            #### save
+            fig.savefig(sujet + '_' + chan_name + '_hf.jpeg', dpi=600)
+            plt.close()
+
+
+
+    else:
+
+        if freq_band_i == 0:
+
+            #### plot
+            fig, axs = plt.subplots(nrows=4, ncols=len(conditions))
+            plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
+
+            for c, cond in enumerate(conditions):
+                
+                #### plot
+                if c == 0:
+                        
+                    for i, (band, freq) in enumerate(freq_band.items()) :
+
+                        data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
+                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
+                    
+                        if i == 0 :
+
+                            ax = axs[i,c]
+                            ax.set_title(cond, fontweight='bold', rotation=0)
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.set_ylabel(band)
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                        else :
+
+                            ax = axs[i,c]
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.set_ylabel(band)
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                else:
+
+                    for i, (band, freq) in enumerate(freq_band.items()) :
+
+                        data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
+                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
+                    
+                        if i == 0 :
+
+                            ax = axs[i,c]
+                            ax.set_title(cond, fontweight='bold', rotation=0)
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                        else :
+
+                            ax = axs[i,c]
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+                    
+                
+            #### save
+            fig.savefig(sujet + '_' + chan_name + '_lf.jpeg', dpi=600)
+            plt.close()
+
+
+        elif freq_band_i == 1:
+
+            #### plot
+            fig, axs = plt.subplots(nrows=2, ncols=len(conditions))
+            plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
+
+            for c, cond in enumerate(conditions):
+                
+                #### plot
+                if c == 0:
+                        
+                    for i, (band, freq) in enumerate(freq_band.items()) :
+
+                        data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
+                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
+                    
+                        if i == 0 :
+
+                            ax = axs[i,c]
+                            ax.set_title(cond, fontweight='bold', rotation=0)
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.set_ylabel(band)
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                        else :
+
+                            ax = axs[i,c]
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.set_ylabel(band)
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                else:
+
+                    for i, (band, freq) in enumerate(freq_band.items()) :
+
+                        data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
+                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
+                    
+                        if i == 0 :
+
+                            ax = axs[i,c]
+                            ax.set_title(cond, fontweight='bold', rotation=0)
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                        else :
+
+                            ax = axs[i,c]
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+                    
+                
+            #### save
+            fig.savefig(sujet + '_' + chan_name + '_hf.jpeg', dpi=600)
+            plt.close()
+
+    return
+
+
+#### compute
 for freq_band_i, freq_band in enumerate(freq_band_list): 
 
-    for n_chan in range(len(chan_list_ieeg)):       
-        
-        chan_name_init = chan_list_ieeg[n_chan]
-        chan_name_modif, trash = modify_name([chan_name_init])
-        chan_name = str(chan_name_modif[0])
-
-        if n_chan/len(chan_list_ieeg) % .2 <= .01:
-            print('{:.2f}'.format(n_chan/len(chan_list_ieeg)))
-
-        time = range(stretch_point_TF)
-        frex = np.size(tf_stretch_allcond.get(conditions[0]).get(list(freq_band.keys())[0]),1)
-
-
-
-
-        if len(conditions) == 1:
-
-            if freq_band_i == 0:
-
-                #### plot
-                fig, axs = plt.subplots(nrows=4, ncols=len(conditions))
-                plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
-
-                for c, cond in enumerate(conditions):
-                    
-                    #### plot
-                    if c == 0:
-                            
-                        for i, (band, freq) in enumerate(freq_band.items()) :
-
-                            data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
-                            frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                        
-                            if i == 0 :
-
-                                ax = axs[i]
-                                ax.set_title(cond, fontweight='bold', rotation=0)
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.set_ylabel(band)
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                            else :
-
-                                ax = axs[i]
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.set_ylabel(band)
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                    else:
-
-                        for i, (band, freq) in enumerate(freq_band.items()) :
-
-                            data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
-                            frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                        
-                            if i == 0 :
-
-                                ax = axs[i]
-                                ax.set_title(cond, fontweight='bold', rotation=0)
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                            else :
-
-                                ax = axs[i]
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-                        
-                    
-                #### save
-                fig.savefig(sujet + '_' + chan_name + '_lf.jpeg', dpi=600)
-                plt.close()
-
-
-            elif freq_band_i == 1:
-
-                #### plot
-                fig, axs = plt.subplots(nrows=2, ncols=len(conditions))
-                plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
-
-                for c, cond in enumerate(conditions):
-                    
-                    #### plot
-                    if c == 0:
-                            
-                        for i, (band, freq) in enumerate(freq_band.items()) :
-
-                            data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
-                            frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                        
-                            if i == 0 :
-
-                                ax = axs[i]
-                                ax.set_title(cond, fontweight='bold', rotation=0)
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.set_ylabel(band)
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                            else :
-
-                                ax = axs[i]
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.set_ylabel(band)
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                    else:
-
-                        for i, (band, freq) in enumerate(freq_band.items()) :
-
-                            data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
-                            frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                        
-                            if i == 0 :
-
-                                ax = axs[i]
-                                ax.set_title(cond, fontweight='bold', rotation=0)
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                            else :
-
-                                ax = axs[i]
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-                        
-                    
-                #### save
-                fig.savefig(sujet + '_' + chan_name + '_hf.jpeg', dpi=600)
-                plt.close()
-
-
-
-        else:
-
-            if freq_band_i == 0:
-
-                #### plot
-                fig, axs = plt.subplots(nrows=4, ncols=len(conditions))
-                plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
-
-                for c, cond in enumerate(conditions):
-                    
-                    #### plot
-                    if c == 0:
-                            
-                        for i, (band, freq) in enumerate(freq_band.items()) :
-
-                            data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
-                            frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                        
-                            if i == 0 :
-
-                                ax = axs[i,c]
-                                ax.set_title(cond, fontweight='bold', rotation=0)
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.set_ylabel(band)
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                            else :
-
-                                ax = axs[i,c]
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.set_ylabel(band)
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                    else:
-
-                        for i, (band, freq) in enumerate(freq_band.items()) :
-
-                            data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
-                            frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                        
-                            if i == 0 :
-
-                                ax = axs[i,c]
-                                ax.set_title(cond, fontweight='bold', rotation=0)
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                            else :
-
-                                ax = axs[i,c]
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-                        
-                    
-                #### save
-                fig.savefig(sujet + '_' + chan_name + '_lf.jpeg', dpi=600)
-                plt.close()
-
-
-            elif freq_band_i == 1:
-
-                #### plot
-                fig, axs = plt.subplots(nrows=2, ncols=len(conditions))
-                plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
-
-                for c, cond in enumerate(conditions):
-                    
-                    #### plot
-                    if c == 0:
-                            
-                        for i, (band, freq) in enumerate(freq_band.items()) :
-
-                            data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
-                            frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                        
-                            if i == 0 :
-
-                                ax = axs[i,c]
-                                ax.set_title(cond, fontweight='bold', rotation=0)
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.set_ylabel(band)
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                            else :
-
-                                ax = axs[i,c]
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.set_ylabel(band)
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                    else:
-
-                        for i, (band, freq) in enumerate(freq_band.items()) :
-
-                            data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
-                            frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                        
-                            if i == 0 :
-
-                                ax = axs[i,c]
-                                ax.set_title(cond, fontweight='bold', rotation=0)
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                            else :
-
-                                ax = axs[i,c]
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-                        
-                    
-                #### save
-                fig.savefig(sujet + '_' + chan_name + '_hf.jpeg', dpi=600)
-                plt.close()
-
+    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(save_TF_n_chan)(n_chan) for n_chan in range(len(chan_list_ieeg)))
 
 
 
@@ -1059,265 +1066,267 @@ os.chdir(os.path.join(path_results, sujet, 'ITPC', 'summary'))
 
 print('######## SAVE ITPC ########')
 
+def save_itpc_n_chan(n_chan):       
+    
+    chan_name_init = chan_list_ieeg[n_chan]
+    chan_name_modif, trash = modify_name([chan_name_init])
+    chan_name = str(chan_name_modif[0])
+
+    if n_chan/len(chan_list_ieeg) % .2 <= .01:
+        print('{:.2f}'.format(n_chan/len(chan_list_ieeg)))
+
+    time = range(stretch_point_TF)
+    frex = np.size(tf_itpc_allcond.get(conditions[0]).get(list(freq_band.keys())[0]),1)
+
+    if len(conditions) == 1:
+
+        if freq_band_i == 0:
+
+            #### plot
+            fig, axs = plt.subplots(nrows=4, ncols=len(conditions))
+            plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
+
+            for c, cond in enumerate(conditions):
+                
+                #### plot
+                if c == 0:
+                        
+                    for i, (band, freq) in enumerate(freq_band.items()) :
+
+                        data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
+                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
+                    
+                        if i == 0 :
+
+                            ax = axs[i]
+                            ax.set_title(cond, fontweight='bold', rotation=0)
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.set_ylabel(band)
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                        else :
+
+                            ax = axs[i]
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.set_ylabel(band)
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                else:
+
+                    for i, (band, freq) in enumerate(freq_band.items()) :
+
+                        data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
+                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
+                    
+                        if i == 0 :
+
+                            ax = axs[i]
+                            ax.set_title(cond, fontweight='bold', rotation=0)
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                        else :
+
+                            ax = axs[i]
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+                    
+                
+            #### save
+            fig.savefig(sujet + '_' + chan_name + '_lf.jpeg', dpi=600)
+            plt.close()
+
+        elif freq_band_i == 1:
+
+            #### plot
+            fig, axs = plt.subplots(nrows=2, ncols=len(conditions))
+            plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
+
+            for c, cond in enumerate(conditions):
+                
+                #### plot
+                if c == 0:
+                        
+                    for i, (band, freq) in enumerate(freq_band.items()) :
+
+                        data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
+                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
+                    
+                        if i == 0 :
+
+                            ax = axs[i]
+                            ax.set_title(cond, fontweight='bold', rotation=0)
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.set_ylabel(band)
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                        else :
+
+                            ax = axs[i]
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.set_ylabel(band)
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                else:
+
+                    for i, (band, freq) in enumerate(freq_band.items()) :
+
+                        data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
+                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
+                    
+                        if i == 0 :
+
+                            ax = axs[i]
+                            ax.set_title(cond, fontweight='bold', rotation=0)
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                        else :
+
+                            ax = axs[i]
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+                    
+                
+            #### save
+            fig.savefig(sujet + '_' + chan_name + '_hf.jpeg', dpi=600)
+            plt.close()
+
+    else:
+
+        if freq_band_i == 0:
+
+            #### plot
+            fig, axs = plt.subplots(nrows=4, ncols=len(conditions))
+            plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
+
+            for c, cond in enumerate(conditions):
+                
+                #### plot
+                if c == 0:
+                        
+                    for i, (band, freq) in enumerate(freq_band.items()) :
+
+                        data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
+                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
+                    
+                        if i == 0 :
+
+                            ax = axs[i,c]
+                            ax.set_title(cond, fontweight='bold', rotation=0)
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.set_ylabel(band)
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                        else :
+
+                            ax = axs[i,c]
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.set_ylabel(band)
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                else:
+
+                    for i, (band, freq) in enumerate(freq_band.items()) :
+
+                        data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
+                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
+                    
+                        if i == 0 :
+
+                            ax = axs[i,c]
+                            ax.set_title(cond, fontweight='bold', rotation=0)
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                        else :
+
+                            ax = axs[i,c]
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+                    
+                
+            #### save
+            fig.savefig(sujet + '_' + chan_name + '_lf.jpeg', dpi=600)
+            plt.close()
+
+        elif freq_band_i == 1:
+
+            #### plot
+            fig, axs = plt.subplots(nrows=2, ncols=len(conditions))
+            plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
+
+            for c, cond in enumerate(conditions):
+                
+                #### plot
+                if c == 0:
+                        
+                    for i, (band, freq) in enumerate(freq_band.items()) :
+
+                        data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
+                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
+                    
+                        if i == 0 :
+
+                            ax = axs[i,c]
+                            ax.set_title(cond, fontweight='bold', rotation=0)
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.set_ylabel(band)
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                        else :
+
+                            ax = axs[i,c]
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.set_ylabel(band)
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                else:
+
+                    for i, (band, freq) in enumerate(freq_band.items()) :
+
+                        data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
+                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
+                    
+                        if i == 0 :
+
+                            ax = axs[i,c]
+                            ax.set_title(cond, fontweight='bold', rotation=0)
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+
+                        else :
+
+                            ax = axs[i,c]
+                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
+                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            #plt.show()
+                    
+                
+            #### save
+            fig.savefig(sujet + '_' + chan_name + '_hf.jpeg', dpi=600)
+            plt.close()
+
+    return
+
 for freq_band_i, freq_band in enumerate(freq_band_list): 
 
-    for n_chan in range(len(chan_list_ieeg)):       
-        
-        chan_name_init = chan_list_ieeg[n_chan]
-        chan_name_modif, trash = modify_name([chan_name_init])
-        chan_name = str(chan_name_modif[0])
-
-        if n_chan/len(chan_list_ieeg) % .2 <= .01:
-            print('{:.2f}'.format(n_chan/len(chan_list_ieeg)))
-
-        time = range(stretch_point_TF)
-        frex = np.size(tf_itpc_allcond.get(conditions[0]).get(list(freq_band.keys())[0]),1)
-
-        if len(conditions) == 1:
-
-            if freq_band_i == 0:
-
-                #### plot
-                fig, axs = plt.subplots(nrows=4, ncols=len(conditions))
-                plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
-
-                for c, cond in enumerate(conditions):
-                    
-                    #### plot
-                    if c == 0:
-                            
-                        for i, (band, freq) in enumerate(freq_band.items()) :
-
-                            data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
-                            frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                        
-                            if i == 0 :
-
-                                ax = axs[i]
-                                ax.set_title(cond, fontweight='bold', rotation=0)
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.set_ylabel(band)
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                            else :
-
-                                ax = axs[i]
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.set_ylabel(band)
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                    else:
-
-                        for i, (band, freq) in enumerate(freq_band.items()) :
-
-                            data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
-                            frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                        
-                            if i == 0 :
-
-                                ax = axs[i]
-                                ax.set_title(cond, fontweight='bold', rotation=0)
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                            else :
-
-                                ax = axs[i]
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-                        
-                    
-                #### save
-                fig.savefig(sujet + '_' + chan_name + '_lf.jpeg', dpi=600)
-                plt.close()
-
-            elif freq_band_i == 1:
-
-                #### plot
-                fig, axs = plt.subplots(nrows=2, ncols=len(conditions))
-                plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
-
-                for c, cond in enumerate(conditions):
-                    
-                    #### plot
-                    if c == 0:
-                            
-                        for i, (band, freq) in enumerate(freq_band.items()) :
-
-                            data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
-                            frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                        
-                            if i == 0 :
-
-                                ax = axs[i]
-                                ax.set_title(cond, fontweight='bold', rotation=0)
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.set_ylabel(band)
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                            else :
-
-                                ax = axs[i]
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.set_ylabel(band)
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                    else:
-
-                        for i, (band, freq) in enumerate(freq_band.items()) :
-
-                            data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
-                            frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                        
-                            if i == 0 :
-
-                                ax = axs[i]
-                                ax.set_title(cond, fontweight='bold', rotation=0)
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                            else :
-
-                                ax = axs[i]
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-                        
-                    
-                #### save
-                fig.savefig(sujet + '_' + chan_name + '_hf.jpeg', dpi=600)
-                plt.close()
-
-        else:
-
-            if freq_band_i == 0:
-
-                #### plot
-                fig, axs = plt.subplots(nrows=4, ncols=len(conditions))
-                plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
-
-                for c, cond in enumerate(conditions):
-                    
-                    #### plot
-                    if c == 0:
-                            
-                        for i, (band, freq) in enumerate(freq_band.items()) :
-
-                            data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
-                            frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                        
-                            if i == 0 :
-
-                                ax = axs[i,c]
-                                ax.set_title(cond, fontweight='bold', rotation=0)
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.set_ylabel(band)
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                            else :
-
-                                ax = axs[i,c]
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.set_ylabel(band)
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                    else:
-
-                        for i, (band, freq) in enumerate(freq_band.items()) :
-
-                            data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
-                            frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                        
-                            if i == 0 :
-
-                                ax = axs[i,c]
-                                ax.set_title(cond, fontweight='bold', rotation=0)
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                            else :
-
-                                ax = axs[i,c]
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-                        
-                    
-                #### save
-                fig.savefig(sujet + '_' + chan_name + '_lf.jpeg', dpi=600)
-                plt.close()
-
-            elif freq_band_i == 1:
-
-                #### plot
-                fig, axs = plt.subplots(nrows=2, ncols=len(conditions))
-                plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
-
-                for c, cond in enumerate(conditions):
-                    
-                    #### plot
-                    if c == 0:
-                            
-                        for i, (band, freq) in enumerate(freq_band.items()) :
-
-                            data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
-                            frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                        
-                            if i == 0 :
-
-                                ax = axs[i,c]
-                                ax.set_title(cond, fontweight='bold', rotation=0)
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.set_ylabel(band)
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                            else :
-
-                                ax = axs[i,c]
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.set_ylabel(band)
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                    else:
-
-                        for i, (band, freq) in enumerate(freq_band.items()) :
-
-                            data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
-                            frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                        
-                            if i == 0 :
-
-                                ax = axs[i,c]
-                                ax.set_title(cond, fontweight='bold', rotation=0)
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-
-                            else :
-
-                                ax = axs[i,c]
-                                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data))
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                                #plt.show()
-                        
-                    
-                #### save
-                fig.savefig(sujet + '_' + chan_name + '_hf.jpeg', dpi=600)
-                plt.close()
-
-
+    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(save_itpc_n_chan)(n_chan) for n_chan in range(len(chan_list_ieeg)))
 
 
 

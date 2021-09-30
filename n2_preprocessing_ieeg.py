@@ -11,7 +11,7 @@ import scipy.fftpack
 import scipy.signal
 
 from n0_config import *
-from n1_generate_electrode_selection import modify_name
+from n0bis_analysis_functions import *
 
 
 debug = False

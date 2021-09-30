@@ -9,11 +9,116 @@ import pandas as pd
 import respirationtools
 
 from n0_config import *
-from n1_generate_electrode_selection import *
 
 
 debug = False
 
+
+
+########################################
+######## GENERATE FOLDERS ########
+########################################
+
+
+#os.getcwd()
+def create_folder(folder_name, construct_token):
+    if os.path.exists(folder_name) == False:
+        os.mkdir(folder_name)
+        print('create : ' + folder_name)
+        construct_token += 1
+    return construct_token
+
+def generate_folder_structure(sujet):
+
+    construct_token = 0
+
+    os.chdir(path_general)
+    
+    construct_token = create_folder('Analyses', construct_token)
+    construct_token = create_folder('Data', construct_token)
+    construct_token = create_folder('Mmap', construct_token)
+
+    #### Analyses
+    os.chdir(os.path.join(path_general, 'Analyses'))
+    construct_token = create_folder('preprocessing', construct_token)
+    construct_token = create_folder('precompute', construct_token)
+    construct_token = create_folder('anatomy', construct_token)
+    construct_token = create_folder('results', construct_token)
+    construct_token = create_folder('protocole', construct_token)
+    
+        #### preprocessing
+    os.chdir(os.path.join(path_general, 'Analyses', 'preprocessing'))
+    construct_token = create_folder(sujet, construct_token)
+    os.chdir(os.path.join(path_general, 'Analyses', 'preprocessing', sujet))
+    construct_token = create_folder('sections', construct_token)
+    construct_token = create_folder('info', construct_token)
+
+        #### precompute
+    os.chdir(os.path.join(path_general, 'Analyses', 'precompute'))
+    construct_token = create_folder(sujet, construct_token)
+    os.chdir(os.path.join(path_general, 'Analyses', 'precompute', sujet))
+    construct_token = create_folder('ITPC', construct_token)
+    construct_token = create_folder('TF', construct_token)
+    construct_token = create_folder('PSD_Coh', construct_token)
+
+        #### anatomy
+    os.chdir(os.path.join(path_general, 'Analyses', 'anatomy'))
+    construct_token = create_folder(sujet, construct_token)
+
+        #### results
+    os.chdir(os.path.join(path_general, 'Analyses', 'results'))
+    construct_token = create_folder(sujet, construct_token)
+    os.chdir(os.path.join(path_general, 'Analyses', 'results', sujet))
+    construct_token = create_folder('RESPI', construct_token)
+    construct_token = create_folder('TF', construct_token)
+    construct_token = create_folder('PSD_Coh', construct_token)
+    construct_token = create_folder('ITPC', construct_token)
+    construct_token = create_folder('FC', construct_token)
+    construct_token = create_folder('HRV', construct_token)
+
+            #### TF
+    os.chdir(os.path.join(path_general, 'Analyses', 'results', sujet, 'TF'))
+    construct_token = create_folder('summary', construct_token)
+    construct_token = create_folder('allcond', construct_token)
+
+            #### PSD_Coh
+    os.chdir(os.path.join(path_general, 'Analyses', 'results', sujet, 'PSD_Coh'))
+    construct_token = create_folder('summary', construct_token)
+    construct_token = create_folder('allcond', construct_token)
+
+            #### ITPC
+    os.chdir(os.path.join(path_general, 'Analyses', 'results', sujet, 'ITPC'))
+    construct_token = create_folder('summary', construct_token)
+    construct_token = create_folder('allcond', construct_token)
+
+            #### FC
+    os.chdir(os.path.join(path_general, 'Analyses', 'results', sujet, 'FC'))
+    construct_token = create_folder('PLI', construct_token)
+    construct_token = create_folder('ISPC', construct_token)
+
+                #### PLI
+    os.chdir(os.path.join(path_general, 'Analyses', 'results', sujet, 'FC', 'PLI'))
+    construct_token = create_folder('figures', construct_token)
+    construct_token = create_folder('matrix', construct_token)
+
+                #### ISPC
+    os.chdir(os.path.join(path_general, 'Analyses', 'results', sujet, 'FC', 'ISPC'))
+    construct_token = create_folder('figures', construct_token)
+    construct_token = create_folder('matrix', construct_token)
+
+    #### Data
+    os.chdir(os.path.join(path_general, 'Data'))
+    construct_token = create_folder('raw_data', construct_token)
+
+        #### raw_data
+    os.chdir(os.path.join(path_general, 'Data', 'raw_data'))    
+    construct_token = create_folder(sujet, construct_token)
+    
+            #### anatomy
+    os.chdir(os.path.join(path_general, 'Data', 'raw_data', sujet))    
+    construct_token = create_folder('anatomy', construct_token)
+
+    return construct_token
 
 
 
@@ -298,9 +403,69 @@ def get_mni_loca():
     return dict_mni
 
 
+########################################
+######## CHANGE NAME CSV TRC ########
+########################################
 
 
+def modify_name(chan_list):
+    
+    chan_list_modified = []
+    chan_list_keep = []
 
+    for nchan in chan_list:
+
+        #### what we remove
+        if nchan.find("+") != -1:
+            continue
+
+        if np.sum([str.isalpha(str_i) for str_i in nchan]) >= 2 and nchan.find('p') == -1:
+            continue
+
+        if nchan.find('ECG') != -1:
+            continue
+
+        if nchan.find('.') != -1:
+            continue
+
+        if nchan.find('*') != -1:
+            continue
+
+        #### what we do to chan we keep
+        else:
+
+            nchan_mod = nchan.replace(' ', '')
+            nchan_mod = nchan_mod.replace("'", 'p')
+
+            if nchan_mod.find('p') != -1:
+                split = nchan_mod.split('p')
+                letter_chan = split[0]
+
+                if len(split[1]) == 1:
+                    num_chan = '0' + split[1] 
+                else:
+                    num_chan = split[1]
+
+                chan_list_modified.append(letter_chan + 'p' + num_chan)
+                chan_list_keep.append(nchan)
+                continue
+
+            if nchan_mod.find('p') == -1:
+                letter_chan = nchan_mod[0]
+
+                split = nchan_mod[1:]
+
+                if len(split) == 1:
+                    num_chan = '0' + split
+                else:
+                    num_chan = split
+
+                chan_list_modified.append(letter_chan + num_chan)
+                chan_list_keep.append(nchan)
+                continue
+
+
+    return chan_list_modified, chan_list_keep
 
 
 

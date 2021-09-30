@@ -7,68 +7,10 @@ import glob
 import pandas as pd
 
 from n0_config import *
+from n0bis_analysis_functions import *
+
 
 debug = False
-
-#### to change chan name
-def modify_name(chan_list):
-    
-    chan_list_modified = []
-    chan_list_keep = []
-
-    for nchan in chan_list:
-
-        #### what we remove
-        if nchan.find("+") != -1:
-            continue
-
-        if np.sum([str.isalpha(str_i) for str_i in nchan]) >= 2 and nchan.find('p') == -1:
-            continue
-
-        if nchan.find('ECG') != -1:
-            continue
-
-        if nchan.find('.') != -1:
-            continue
-
-        if nchan.find('*') != -1:
-            continue
-
-        #### what we do to chan we keep
-        else:
-
-            nchan_mod = nchan.replace(' ', '')
-            nchan_mod = nchan_mod.replace("'", 'p')
-
-            if nchan_mod.find('p') != -1:
-                split = nchan_mod.split('p')
-                letter_chan = split[0]
-
-                if len(split[1]) == 1:
-                    num_chan = '0' + split[1] 
-                else:
-                    num_chan = split[1]
-
-                chan_list_modified.append(letter_chan + 'p' + num_chan)
-                chan_list_keep.append(nchan)
-                continue
-
-            if nchan_mod.find('p') == -1:
-                letter_chan = nchan_mod[0]
-
-                split = nchan_mod[1:]
-
-                if len(split) == 1:
-                    num_chan = '0' + split
-                else:
-                    num_chan = split
-
-                chan_list_modified.append(letter_chan + num_chan)
-                chan_list_keep.append(nchan)
-                continue
-
-
-    return chan_list_modified, chan_list_keep
 
 #trc_filename = 'LYONNEURO_2021_GOBc_RESPI.TRC'
 def extract_chanlist():
@@ -263,15 +205,23 @@ def generate_plot_loca(chan_list_trc):
 
 if __name__== '__main__':
 
-    #### verif if file exist
-    os.chdir(os.path.join(path_anatomy, sujet))
-    if os.path.exists(sujet + '_plot_loca.xlsx'):
-        print('#### ALREADY COMPUTED ####')
-        exit()
+    construct_token = generate_folder_structure(sujet)
 
-    #### execute
-    chan_list_trc = extract_chanlist()
-    generate_plot_loca(chan_list_trc)
+    if construct_token != 0 :
+        
+        print('Folder structure has been generated')
+        print('Lauch the script again for electrode selection')
+
+    else:
+
+        os.chdir(os.path.join(path_anatomy, sujet))
+        if os.path.exists(sujet + '_plot_loca.xlsx'):
+            print('#### ALREADY COMPUTED ####')
+            exit()
+
+        #### execute
+        chan_list_trc = extract_chanlist()
+        generate_plot_loca(chan_list_trc)
 
 
 
