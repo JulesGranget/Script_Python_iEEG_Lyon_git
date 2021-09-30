@@ -39,10 +39,6 @@ def compute_stretch_tf(tf, cond, session_i, respfeatures_allcond, stretch_point_
 
     return tf_mean_allchan
 
-#compute_stretch_tf(condition, resp_features_CV, freq_band, stretch_point_TF)
-
-
-
 
 #condition, resp_features, freq_band, stretch_point_TF = conditions[0], list(resp_features_allcond.values())[0], freq_band, stretch_point_TF
 def compute_stretch_tf_dB(tf, cond, session_i, respfeatures_allcond, stretch_point_TF):
@@ -116,7 +112,7 @@ def precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_lis
 
     os.chdir(os.path.join(path_precompute, sujet, 'TF'))
 
-    print('TF PRECOMCUPTE')
+    print('TF PRECOMPUTE')
 
     #### select prep to load
     #band_prep_i, band_prep = 0, 'hf'
@@ -170,9 +166,10 @@ def precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_lis
                 plt.title('Real part of wavelets')
                 plt.show()
 
+            os.chdir(path_memmap)
+            tf_allchan = np.memmap('precompute_convolutions.dat', dtype=np.float64, mode='w+', shape=(np.size(data,0), nfrex, np.size(data,1)))
 
-            tf_allchan = np.zeros((np.size(data,0),nfrex,np.size(data,1)))
-            for n_chan in range(np.size(data,0)):
+            def compute_tf_convolution_nchan(n_chan):
 
                 if n_chan/np.size(data,0) % .2 <= .01:
                     print("{:.2f}".format(n_chan/np.size(data,0)))
@@ -186,6 +183,10 @@ def precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_lis
 
                 tf_allchan[n_chan,:,:] = tf
 
+                return
+
+            joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_tf_convolution_nchan)(n_chan) for n_chan in range(np.size(data,0)))
+
             #### stretch
             print('STRETCH')
             tf_allband_stretched = compute_stretch_tf_dB(tf_allchan, cond, session_i, respfeatures_allcond, stretch_point_TF)
@@ -194,7 +195,10 @@ def precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_lis
             print('SAVE')
             np.save(sujet + '_tf_' + str(freq[0]) + '_' + str(freq[1]) + '_' + cond + '_' + str(session_i+1) + '.npy', tf_allband_stretched)
             
-            del tf_allchan
+            os.chdir(path_memmap)
+            os.remove('precompute_convolutions.dat')
+
+
 
 
 
@@ -206,7 +210,7 @@ def precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_lis
 
 def precompute_tf_itpc(cond, session_i, srate_dw, respfeatures_allcond, freq_band_list, band_prep_list):
 
-    print('ITPC PRECOMCUPTE')
+    print('ITPC PRECOMPUTE')
     
     #### select prep to load
     for band_prep_i, band_prep in enumerate(band_prep_list):

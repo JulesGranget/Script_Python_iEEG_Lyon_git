@@ -92,7 +92,7 @@ def compute_fc_metrics(band_prep, data, freq, band, cond, session_i):
 
     #### compute all convolution
     os.chdir(path_memmap)
-    convolutions = np.memmap('convolutions.dat', dtype=np.complex128, mode='w+', shape=(len(chan_list_ieeg), nfrex, data.shape[1]))
+    convolutions = np.memmap('fc_convolutions.dat', dtype=np.complex128, mode='w+', shape=(len(chan_list_ieeg), nfrex, data.shape[1]))
 
     print('CONV')
 

@@ -179,6 +179,8 @@ if __name__ == '__main__':
 
     for band_prep in band_prep_list:
 
+        print('COMPUTE FOR ' + band_prep)
+
         for cond in conditions:
 
             if len(respfeatures_allcond.get(cond)) == 1:
