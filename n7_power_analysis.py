@@ -551,6 +551,8 @@ joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(plot_save_
 ######## LOAD TF ########
 ################################
 
+print('######## LOAD TF ########')
+
 #### load and reduce to all cond
 os.chdir(os.path.join(path_precompute, sujet, 'TF'))
 

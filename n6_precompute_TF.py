@@ -193,6 +193,7 @@ def precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_lis
             
             #### save
             print('SAVE')
+            os.chdir(os.path.join(path_precompute, sujet, 'TF'))
             np.save(sujet + '_tf_' + str(freq[0]) + '_' + str(freq[1]) + '_' + cond + '_' + str(session_i+1) + '.npy', tf_allband_stretched)
             
             os.chdir(path_memmap)
@@ -304,6 +305,7 @@ def precompute_tf_itpc(cond, session_i, srate_dw, respfeatures_allcond, freq_ban
 
             #### save
             print('SAVE')
+            os.chdir(os.path.join(path_precompute, sujet, 'ITPC'))
             np.save(sujet + '_itpc_' + str(freq[0]) + '_' + str(freq[1]) + '_' + cond + '_' + str(session_i+1) + '.npy', itpc_allchan)
 
             del itpc_allchan
