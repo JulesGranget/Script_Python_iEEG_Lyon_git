@@ -20,7 +20,11 @@ enable_big_execute = True
 #sujet = 'MUGa' # ATTENTION, UNIQUEMENT FR_CV
 #sujet = 'TREt'
 
-sujet = 'DEBUG'
+sujet = 'pat_02459_0912'
+#sujet = 'pat_02476_0929'
+#sujet = 'pat_02495_0949'
+
+#sujet = 'DEBUG'
 
 sujet_list = ['CHEe', 'GOBc', 'MAZm', 'MUGa', 'TREt']
 
@@ -49,9 +53,9 @@ if PC_ID == 'LAPTOP-EI7OSP7K':
 
     PC_working = 'Jules_Home'
     path_main_workdir = 'C:\\Users\\jules\\Desktop\\Codage Informatique\\Script_Python_iEEG_Lyon'
-    path_general = 'D:\\LPPR_CMO_PROJECT\\Lyon'
-    path_memmap = 'D:\\LPPR_CMO_PROJECT\\Lyon\\Mmap'
-    n_core = 2
+    path_general = 'D:\\LPPR_CMO_PROJECT\\Lyon\\iEEG'
+    path_memmap = 'D:\\LPPR_CMO_PROJECT\\Lyon\\iEEG\\Mmap'
+    n_core = 4
 
 if PC_ID == 'DESKTOP-3IJUK7R':
 
