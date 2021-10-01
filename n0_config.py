@@ -14,15 +14,16 @@
 
 enable_big_execute = True
 
-#sujet = 'CHEe'
+#sujet = 'CHEe' # pas d'anat
+
 #sujet = 'GOBc'
 #sujet = 'MAZm'
-#sujet = 'MUGa' # ATTENTION, UNIQUEMENT FR_CV
+#sujet = 'MUGa' # uniquement FR_CV
 #sujet = 'TREt'
 
-sujet = 'pat_02459_0912'
-#sujet = 'pat_02476_0929'
-#sujet = 'pat_02495_0949'
+#sujet = 'pat_02459_0912' # uniquement FR_CV
+#sujet = 'pat_02476_0929' # uniquement FR_CV
+sujet = 'pat_02495_0949' # uniquement FR_CV
 
 #sujet = 'DEBUG'
 

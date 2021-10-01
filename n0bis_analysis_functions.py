@@ -335,16 +335,20 @@ def get_electrode_loca():
 
     chan_list_txt = open(sujet + '_chanlist_ieeg.txt', 'r')
     chan_list_txt_readlines = chan_list_txt.readlines()
-    chan_list_ieeg = [i.replace('\n', '') for i in chan_list_txt_readlines]
-    chan_list_ieeg, trash = modify_name(chan_list_ieeg)
-    chan_list_ieeg.sort()
+    chan_list_ieeg_trc = [i.replace('\n', '') for i in chan_list_txt_readlines]
+
+    if sujet[:3] == 'pat':
+        chan_list_ieeg_csv = chan_list_ieeg_trc.copy()
+    else:
+        chan_list_ieeg_csv, trash = modify_name(chan_list_ieeg_trc)
+        chan_list_ieeg_csv.sort()
 
     loca_ieeg = []
-    for chan_name in chan_list_ieeg:
+    for chan_name in chan_list_ieeg_csv:
         loca_ieeg.append( str(file_plot_select['localisation_corrected'].loc[file_plot_select['plot'] == chan_name].values.tolist()[0]) )
 
     dict_loca = {}
-    for nchan_i, chan_name in enumerate(chan_list_ieeg):
+    for nchan_i, chan_name in enumerate(chan_list_ieeg_trc):
         dict_loca[chan_name] = loca_ieeg[nchan_i]
 
 
@@ -360,17 +364,21 @@ def get_loca_df():
 
     chan_list_txt = open(sujet + '_chanlist_ieeg.txt', 'r')
     chan_list_txt_readlines = chan_list_txt.readlines()
-    chan_list_ieeg = [i.replace('\n', '') for i in chan_list_txt_readlines]
-    chan_list_ieeg, trash = modify_name(chan_list_ieeg)
-    chan_list_ieeg.sort()
+    chan_list_ieeg_trc = [i.replace('\n', '') for i in chan_list_txt_readlines]
+
+    if sujet[:3] == 'pat':
+        chan_list_ieeg_csv = chan_list_ieeg_trc.copy()
+    else:
+        chan_list_ieeg_csv, trash = modify_name(chan_list_ieeg_trc)
+        chan_list_ieeg_csv.sort()
 
     ROI_ieeg = []
     lobes_ieeg = []
-    for chan_name in chan_list_ieeg:
+    for chan_name in chan_list_ieeg_csv:
         ROI_ieeg.append( file_plot_select['localisation_corrected'].loc[file_plot_select['plot'] == chan_name].values.tolist()[0] )
         lobes_ieeg.append( file_plot_select['lobes_corrected'].loc[file_plot_select['plot'] == chan_name].values.tolist()[0] )
 
-    dict_loca = {'name' : chan_list_ieeg,
+    dict_loca = {'name' : chan_list_ieeg_trc,
                 'ROI' : ROI_ieeg,
                 'lobes' : lobes_ieeg
                 }
@@ -378,6 +386,7 @@ def get_loca_df():
     df_loca = pd.DataFrame(dict_loca, columns=dict_loca.keys())
 
     return df_loca
+
 
 def get_mni_loca():
 
