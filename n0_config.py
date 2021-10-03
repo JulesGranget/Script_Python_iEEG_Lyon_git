@@ -1,3 +1,7 @@
+
+import numpy as np
+import scipy.signal
+
 ################################
 ######## MODULES ########
 ################################
@@ -14,8 +18,7 @@
 
 enable_big_execute = True
 
-#sujet = 'CHEe' # pas d'anat
-
+sujet = 'CHEe'
 #sujet = 'GOBc'
 #sujet = 'MAZm'
 #sujet = 'MUGa' # uniquement FR_CV
@@ -23,11 +26,11 @@ enable_big_execute = True
 
 #sujet = 'pat_02459_0912' # uniquement FR_CV
 #sujet = 'pat_02476_0929' # uniquement FR_CV
-sujet = 'pat_02495_0949' # uniquement FR_CV
+#sujet = 'pat_02495_0949' # uniquement FR_CV
 
 #sujet = 'DEBUG'
 
-sujet_list = ['CHEe', 'GOBc', 'MAZm', 'MUGa', 'TREt']
+sujet_list = ['CHEe', 'GOBc', 'MAZm', 'MUGa', 'TREt', 'pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949']
 
 conditions_allsubjects = ['RD_CV', 'RD_FV', 'RD_SV', 'RD_AV', 'FR_CV', 'FR_MV']
 
@@ -179,6 +182,15 @@ prep_step_hf = {
 ########################################
 ######## PARAMS SURROGATES ########
 ########################################
+
+#### Pxx Cxy
+def get_params_spectral_analysis(srate):
+    nwind = int( 20*srate ) # window length in seconds*srate
+    nfft = nwind*15 # if no zero padding nfft = nwind
+    noverlap = np.round(nwind/2) # number of points of overlap here 50%
+    hannw = scipy.signal.windows.hann(nwind) # hann window
+
+    return nwind, nfft, noverlap, hannw
 
 #### stretch
 stretch_point_surrogates = 1000

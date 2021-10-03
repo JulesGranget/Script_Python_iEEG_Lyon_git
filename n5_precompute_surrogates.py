@@ -167,11 +167,7 @@ if __name__ == '__main__':
 
     #### params surrogates
 
-    nwind = int( 20*srate ) # window length in seconds*srate
-    nfft = nwind*5 # if no zero padding nfft = nwind
-    noverlap = np.round(nwind/2) # number of points of overlap here 50%
-    hannw = scipy.signal.windows.hann(nwind) # hann window
-    
+    nwind, nfft, noverlap, hannw = get_params_spectral_analysis(srate)
 
     #### compute and save
 

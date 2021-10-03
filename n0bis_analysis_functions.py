@@ -168,6 +168,48 @@ def extract_chanlist_srate_conditions(conditions_allsubjects):
     return conditions, chan_list, chan_list_ieeg, srate
 
 
+def extract_chanlist_srate_conditions_for_sujet(sujet, conditions_allsubjects):
+
+    path_source = os.getcwd()
+    
+    #### select conditions to keep
+    os.chdir(os.path.join(path_prep, sujet, 'sections'))
+    dirlist_subject = os.listdir()
+
+    conditions = []
+    for cond in conditions_allsubjects:
+
+        for file in dirlist_subject:
+
+            if file.find(cond) != -1 : 
+                conditions.append(cond)
+                break
+
+    #### extract data
+    band_prep = band_prep_list[0]
+    cond = conditions[0]
+
+    load_i = []
+    for session_i, session_name in enumerate(os.listdir()):
+        if ( session_name.find(cond) != -1 ) & ( session_name.find(band_prep) != -1 ):
+            load_i.append(session_i)
+        else:
+            continue
+
+    load_name = [os.listdir()[i] for i in load_i][0]
+
+    raw = mne.io.read_raw_fif(load_name, preload=True, verbose='critical')
+
+    srate = int(raw.info['sfreq'])
+    chan_list = raw.info['ch_names']
+    chan_list_ieeg = chan_list[:-4] # on enlève : nasal, ventral, ECG, ECG_cR
+
+    #### go back to path source
+    os.chdir(path_source)
+
+    return conditions, chan_list, chan_list_ieeg, srate
+
+
 
 def load_data(band_prep, cond, session_i):
 
@@ -197,6 +239,52 @@ def load_data(band_prep, cond, session_i):
 
     return data
 
+
+def load_data_sujet(sujet, band_prep, cond, session_i):
+
+    path_source = os.getcwd()
+    
+    os.chdir(os.path.join(path_prep, sujet, 'sections'))
+
+    load_i = []
+    for i, session_name in enumerate(os.listdir()):
+        if ( session_name.find(cond) != -1 ) & ( session_name.find(band_prep) != -1 ):
+            load_i.append(i)
+        else:
+            continue
+
+    load_list = [os.listdir()[i] for i in load_i]
+    load_name = load_list[session_i]
+
+    raw = mne.io.read_raw_fif(load_name, preload=True, verbose='critical')
+
+    data = raw.get_data() 
+
+    #### go back to path source
+    os.chdir(path_source)
+
+    #### free memory
+    del raw
+
+    return data
+
+def get_srate(sujet):
+
+    path_source = os.getcwd()
+    
+    os.chdir(os.path.join(path_prep, sujet, 'sections'))
+
+    raw = mne.io.read_raw_fif(sujet + '_FR_CV_1_lf.fif', preload=True, verbose='critical')
+    
+    srate = int(raw.info['sfreq'])
+
+    #### go back to path source
+    os.chdir(path_source)
+
+    #### free memory
+    del raw
+
+    return srate
 
 
 
