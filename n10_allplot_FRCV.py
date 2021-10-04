@@ -117,6 +117,12 @@ def count_all_plot_location():
     
 
 
+
+
+
+
+
+
 def get_ROI_Lobes_list_and_Plots():
 
     #### generate anat list
@@ -199,8 +205,24 @@ os.chdir(path_memmap)
 PxxRespi_Cxy_p = np.memmap('PxxRespi_Cxy_p.dat', dtype='float64', mode='w+', shape=(len(df_all_plot_noselect.index.values),4))
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def get_Coh_Respi_1plot(plot_i_to_process):
 
+    print(plot_i_to_process)
+    
     if plot_i_to_process/len(df_all_plot_noselect.index.values) % .2 <= .01:
         print('{:.2f}'.format(plot_i_to_process/len(df_all_plot_noselect.index.values)))
 
@@ -426,60 +448,48 @@ def get_CycleFreq_for_ROI(ROI_to_process):
 
     
     
-    #### plot lf
-    fig, axs = plt.subplots(nrows=4, ncols=len(conditions))
-    plt.suptitle(ROI_to_process)
-                        
-    for i, (band, freq) in enumerate(dict_freq_band.items()) :
+    #### plot
+    for band_prep_i, band_prep in enumerate(band_prep_list):
 
-        data = dict_TF_for_ROI_to_process[band]
-        frex = np.linspace(freq[0], freq[1], np.size(data,0))
-    
-        if i == 0 :
-
-            ax = axs[i,c]
-            ax.set_title(cond, fontweight='bold', rotation=0)
-            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-            ax.set_ylabel(band)
-            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-            #plt.show()
-
-        else :
-
-            ax = axs[i,c]
-            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-            ax.set_ylabel(band)
-            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-            #plt.show()
-
-                else:
-
-                    for i, (band, freq) in enumerate(freq_band.items()) :
-
-                        data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
-                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                    
-                        if i == 0 :
-
-                            ax = axs[i,c]
-                            ax.set_title(cond, fontweight='bold', rotation=0)
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-
-                        else :
-
-                            ax = axs[i,c]
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-                    
-                
-            #### save
-            fig.savefig(sujet + '_' + chan_name + '_lf.jpeg', dpi=600)
-            plt.close()
-
+        if band_prep == 'lf':
+            fig, axs = plt.subplots(nrows=4, ncols=1)
+        if band_prep == 'hf':
+            fig, axs = plt.subplots(nrows=2, ncols=1)
         
+        plt.suptitle(ROI_to_process)
+        
+        dict_freq_to_plot = freq_band_list[band_prep_i]
+                        
+        for i, (band, freq) in enumerate(dict_freq_to_plot) :
+
+            data = dict_TF_for_ROI_to_process[band]
+            frex = np.linspace(freq[0], freq[1], data.shape[0])
+            time = np.arange(stretch_point_TF)
+        
+            if i == 0 :
+
+                ax = axs[i,0]
+                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
+                ax.set_ylabel(band)
+                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                #plt.show()
+
+            else :
+
+                ax = axs[i,0]
+                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
+                ax.set_ylabel(band)
+                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                #plt.show()
+                          
+        #### save
+        if band_prep == 'lf':
+            fig.savefig(ROI_to_process + '_lf.jpeg', dpi=600)
+        if band_prep == 'hf':
+            fig.savefig(ROI_to_process + '_hf.jpeg', dpi=600)
+        plt.close()
+
+            
 
 
 

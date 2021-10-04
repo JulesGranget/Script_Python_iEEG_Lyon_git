@@ -173,10 +173,12 @@ if __name__ == '__main__':
 
     print('######## COMPUTE SURROGATES ########')
 
+    #band_prep = band_prep_list[0]
     for band_prep in band_prep_list:
 
         print('COMPUTE FOR ' + band_prep)
 
+        #cond = 'FR_CV'
         for cond in conditions:
 
             if len(respfeatures_allcond.get(cond)) == 1:

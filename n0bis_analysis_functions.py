@@ -168,12 +168,12 @@ def extract_chanlist_srate_conditions(conditions_allsubjects):
     return conditions, chan_list, chan_list_ieeg, srate
 
 
-def extract_chanlist_srate_conditions_for_sujet(sujet, conditions_allsubjects):
+def extract_chanlist_srate_conditions_for_sujet(sujet_tmp, conditions_allsubjects):
 
     path_source = os.getcwd()
     
     #### select conditions to keep
-    os.chdir(os.path.join(path_prep, sujet, 'sections'))
+    os.chdir(os.path.join(path_prep, sujet_tmp, 'sections'))
     dirlist_subject = os.listdir()
 
     conditions = []
@@ -240,11 +240,11 @@ def load_data(band_prep, cond, session_i):
     return data
 
 
-def load_data_sujet(sujet, band_prep, cond, session_i):
+def load_data_sujet(sujet_tmp, band_prep, cond, session_i):
 
     path_source = os.getcwd()
     
-    os.chdir(os.path.join(path_prep, sujet, 'sections'))
+    os.chdir(os.path.join(path_prep, sujet_tmp, 'sections'))
 
     load_i = []
     for i, session_name in enumerate(os.listdir()):
