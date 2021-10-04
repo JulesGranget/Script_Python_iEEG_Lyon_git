@@ -408,7 +408,10 @@ def plot_save_PSD_Coh_lf(n_chan):
         ax.plot(cyclefreq_surrogates_allcond_lf.get(cond)[session_i][0, n_chan,:], color='b')
         ax.plot(cyclefreq_surrogates_allcond_lf.get(cond)[session_i][1, n_chan,:], color='c', linestyle='dotted')
         ax.plot(cyclefreq_surrogates_allcond_lf.get(cond)[session_i][2, n_chan,:], color='c', linestyle='dotted')
-        ax.vlines(respi_ratio_allcond.get(cond)[session_i]*stretch_point_surrogates, ymin=np.min( cyclefreq_surrogates_allcond_lf.get(cond)[session_i][2, n_chan,:] ), ymax=np.max( cyclefreq_surrogates_allcond_lf.get(cond)[session_i][1, n_chan,:] ), colors='r')
+        if stretch_TF_auto:
+            ax.vlines(respi_ratio_allcond.get(cond)[session_i]*stretch_point_surrogates, ymin=np.min( cyclefreq_surrogates_allcond_lf.get(cond)[session_i][2, n_chan,:] ), ymax=np.max( cyclefreq_surrogates_allcond_lf.get(cond)[session_i][1, n_chan,:] ), colors='r')
+        else:
+            ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=np.min( cyclefreq_surrogates_allcond_lf.get(cond)[session_i][2, n_chan,:] ), ymax=np.max( cyclefreq_surrogates_allcond_lf.get(cond)[session_i][1, n_chan,:] ), colors='r')
 
     else:
 
@@ -444,8 +447,11 @@ def plot_save_PSD_Coh_lf(n_chan):
             ax.plot(cyclefreq_surrogates_allcond_lf.get(cond)[session_i][0, n_chan,:], color='b')
             ax.plot(cyclefreq_surrogates_allcond_lf.get(cond)[session_i][1, n_chan,:], color='c', linestyle='dotted')
             ax.plot(cyclefreq_surrogates_allcond_lf.get(cond)[session_i][2, n_chan,:], color='c', linestyle='dotted')
-            ax.vlines(respi_ratio_allcond.get(cond)[session_i]*stretch_point_surrogates, ymin=np.min( cyclefreq_surrogates_allcond_lf.get(cond)[session_i][2, n_chan,:] ), ymax=np.max( cyclefreq_surrogates_allcond_lf.get(cond)[session_i][1, n_chan,:] ), colors='r')
-
+            if stretch_TF_auto:
+                ax.vlines(respi_ratio_allcond.get(cond)[session_i]*stretch_point_surrogates, ymin=np.min( cyclefreq_surrogates_allcond_lf.get(cond)[session_i][2, n_chan,:] ), ymax=np.max( cyclefreq_surrogates_allcond_lf.get(cond)[session_i][1, n_chan,:] ), colors='r')
+            else:
+                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=np.min( cyclefreq_surrogates_allcond_lf.get(cond)[session_i][2, n_chan,:] ), ymax=np.max( cyclefreq_surrogates_allcond_lf.get(cond)[session_i][1, n_chan,:] ), colors='r')
+                
 
     #### save
     fig.savefig(sujet + '_' + chan_name + '_lf.jpeg', dpi=600)
@@ -492,7 +498,10 @@ def plot_save_PSD_Coh_hf(n_chan):
             ax.plot(cyclefreq_surrogates_allcond_hf.get(cond)[session_i][0, n_chan,:], color='b')
             ax.plot(cyclefreq_surrogates_allcond_hf.get(cond)[session_i][1, n_chan,:], color='c', linestyle='dotted')
             ax.plot(cyclefreq_surrogates_allcond_hf.get(cond)[session_i][2, n_chan,:], color='c', linestyle='dotted')
-            ax.vlines(respi_ratio_allcond.get(cond)[session_i]*stretch_point_surrogates, ymin=np.min( cyclefreq_surrogates_allcond_hf.get(cond)[session_i][2, n_chan,:] ), ymax=np.max( cyclefreq_surrogates_allcond_hf.get(cond)[session_i][1, n_chan,:] ), colors='r')
+            if stretch_TF_auto:
+                ax.vlines(respi_ratio_allcond.get(cond)[session_i]*stretch_point_surrogates, ymin=np.min( cyclefreq_surrogates_allcond_hf.get(cond)[session_i][2, n_chan,:] ), ymax=np.max( cyclefreq_surrogates_allcond_hf.get(cond)[session_i][1, n_chan,:] ), colors='r')
+            else:
+                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=np.min( cyclefreq_surrogates_allcond_hf.get(cond)[session_i][2, n_chan,:] ), ymax=np.max( cyclefreq_surrogates_allcond_hf.get(cond)[session_i][1, n_chan,:] ), colors='r')
 
     else:
 
@@ -515,7 +524,10 @@ def plot_save_PSD_Coh_hf(n_chan):
             ax.plot(cyclefreq_surrogates_allcond_hf.get(cond)[session_i][0, n_chan,:], color='b')
             ax.plot(cyclefreq_surrogates_allcond_hf.get(cond)[session_i][1, n_chan,:], color='c', linestyle='dotted')
             ax.plot(cyclefreq_surrogates_allcond_hf.get(cond)[session_i][2, n_chan,:], color='c', linestyle='dotted')
-            ax.vlines(respi_ratio_allcond.get(cond)[session_i]*stretch_point_surrogates, ymin=np.min( cyclefreq_surrogates_allcond_hf.get(cond)[session_i][2, n_chan,:] ), ymax=np.max( cyclefreq_surrogates_allcond_hf.get(cond)[session_i][1, n_chan,:] ), colors='r')
+            if stretch_TF_auto:
+                ax.vlines(respi_ratio_allcond.get(cond)[session_i]*stretch_point_surrogates, ymin=np.min( cyclefreq_surrogates_allcond_hf.get(cond)[session_i][2, n_chan,:] ), ymax=np.max( cyclefreq_surrogates_allcond_hf.get(cond)[session_i][1, n_chan,:] ), colors='r')
+            else:
+                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=np.min( cyclefreq_surrogates_allcond_hf.get(cond)[session_i][2, n_chan,:] ), ymax=np.max( cyclefreq_surrogates_allcond_hf.get(cond)[session_i][1, n_chan,:] ), colors='r')
 
 
     #### save
@@ -702,7 +714,10 @@ def save_TF_n_chan(n_chan):
                             ax.set_title(cond, fontweight='bold', rotation=0)
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
                             ax.set_ylabel(band)
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                         else :
@@ -710,7 +725,10 @@ def save_TF_n_chan(n_chan):
                             ax = axs[i]
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
                             ax.set_ylabel(band)
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                 else:
@@ -725,14 +743,20 @@ def save_TF_n_chan(n_chan):
                             ax = axs[i]
                             ax.set_title(cond, fontweight='bold', rotation=0)
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                         else :
 
                             ax = axs[i]
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
                     
                 
@@ -763,7 +787,10 @@ def save_TF_n_chan(n_chan):
                             ax.set_title(cond, fontweight='bold', rotation=0)
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
                             ax.set_ylabel(band)
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                         else :
@@ -771,7 +798,10 @@ def save_TF_n_chan(n_chan):
                             ax = axs[i]
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
                             ax.set_ylabel(band)
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                 else:
@@ -786,14 +816,20 @@ def save_TF_n_chan(n_chan):
                             ax = axs[i]
                             ax.set_title(cond, fontweight='bold', rotation=0)
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                         else :
 
                             ax = axs[i]
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
                     
                 
@@ -827,7 +863,10 @@ def save_TF_n_chan(n_chan):
                             ax.set_title(cond, fontweight='bold', rotation=0)
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
                             ax.set_ylabel(band)
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                         else :
@@ -835,7 +874,10 @@ def save_TF_n_chan(n_chan):
                             ax = axs[i,c]
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
                             ax.set_ylabel(band)
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                 else:
@@ -850,14 +892,20 @@ def save_TF_n_chan(n_chan):
                             ax = axs[i,c]
                             ax.set_title(cond, fontweight='bold', rotation=0)
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                         else :
 
                             ax = axs[i,c]
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
                     
                 
@@ -888,7 +936,10 @@ def save_TF_n_chan(n_chan):
                             ax.set_title(cond, fontweight='bold', rotation=0)
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
                             ax.set_ylabel(band)
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                         else :
@@ -896,7 +947,10 @@ def save_TF_n_chan(n_chan):
                             ax = axs[i,c]
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
                             ax.set_ylabel(band)
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                 else:
@@ -911,14 +965,20 @@ def save_TF_n_chan(n_chan):
                             ax = axs[i,c]
                             ax.set_title(cond, fontweight='bold', rotation=0)
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                         else :
 
                             ax = axs[i,c]
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
                     
                 
@@ -1094,7 +1154,10 @@ def save_itpc_n_chan(n_chan):
                             ax.set_title(cond, fontweight='bold', rotation=0)
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
                             ax.set_ylabel(band)
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                         else :
@@ -1102,7 +1165,10 @@ def save_itpc_n_chan(n_chan):
                             ax = axs[i]
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
                             ax.set_ylabel(band)
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                 else:
@@ -1117,14 +1183,20 @@ def save_itpc_n_chan(n_chan):
                             ax = axs[i]
                             ax.set_title(cond, fontweight='bold', rotation=0)
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                         else :
 
                             ax = axs[i]
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
                     
                 
@@ -1154,7 +1226,10 @@ def save_itpc_n_chan(n_chan):
                             ax.set_title(cond, fontweight='bold', rotation=0)
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
                             ax.set_ylabel(band)
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                         else :
@@ -1162,7 +1237,10 @@ def save_itpc_n_chan(n_chan):
                             ax = axs[i]
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
                             ax.set_ylabel(band)
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                 else:
@@ -1177,14 +1255,20 @@ def save_itpc_n_chan(n_chan):
                             ax = axs[i]
                             ax.set_title(cond, fontweight='bold', rotation=0)
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                         else :
 
                             ax = axs[i]
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
                     
                 
@@ -1216,7 +1300,10 @@ def save_itpc_n_chan(n_chan):
                             ax.set_title(cond, fontweight='bold', rotation=0)
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
                             ax.set_ylabel(band)
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                         else :
@@ -1224,7 +1311,10 @@ def save_itpc_n_chan(n_chan):
                             ax = axs[i,c]
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
                             ax.set_ylabel(band)
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                 else:
@@ -1239,14 +1329,20 @@ def save_itpc_n_chan(n_chan):
                             ax = axs[i,c]
                             ax.set_title(cond, fontweight='bold', rotation=0)
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                         else :
 
                             ax = axs[i,c]
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
                     
                 
@@ -1276,7 +1372,10 @@ def save_itpc_n_chan(n_chan):
                             ax.set_title(cond, fontweight='bold', rotation=0)
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
                             ax.set_ylabel(band)
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                         else :
@@ -1284,7 +1383,10 @@ def save_itpc_n_chan(n_chan):
                             ax = axs[i,c]
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
                             ax.set_ylabel(band)
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                 else:
@@ -1299,14 +1401,20 @@ def save_itpc_n_chan(n_chan):
                             ax = axs[i,c]
                             ax.set_title(cond, fontweight='bold', rotation=0)
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
 
                         else :
 
                             ax = axs[i,c]
                             ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            if stretch_TF_auto:
+                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                            else:
+                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
                             #plt.show()
                     
                 

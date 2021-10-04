@@ -217,6 +217,8 @@ percentile_cyclefreq_dw = .01
 
 #### stretch
 stretch_point_TF = 1000
+stretch_TF_auto = False
+ratio_stretch_TF = 0.45
 
 #### TF & ITPC
 nfrex_hf = 50

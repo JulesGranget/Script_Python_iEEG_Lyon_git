@@ -388,8 +388,12 @@ def stretch_data(resp_features, nb_point_by_cycle, data, srate):
     times = np.arange(0,np.size(data))/srate
 
     # stretch
-    clipped_times, times_to_cycles, cycles, cycle_points, data_stretch_linear = respirationtools.deform_to_cycle_template(
-            data, times, cycle_times, nb_point_by_cycle=nb_point_by_cycle, inspi_ratio=mean_inspi_ratio)
+    if stretch_TF_auto:
+        clipped_times, times_to_cycles, cycles, cycle_points, data_stretch_linear = respirationtools.deform_to_cycle_template(
+                data, times, cycle_times, nb_point_by_cycle=nb_point_by_cycle, inspi_ratio=mean_inspi_ratio)
+    else:
+        clipped_times, times_to_cycles, cycles, cycle_points, data_stretch_linear = respirationtools.deform_to_cycle_template(
+                data, times, cycle_times, nb_point_by_cycle=nb_point_by_cycle, inspi_ratio=ratio_stretch_TF)
 
     nb_cycle = data_stretch_linear.shape[0]//nb_point_by_cycle
     phase = np.arange(nb_point_by_cycle)/nb_point_by_cycle
