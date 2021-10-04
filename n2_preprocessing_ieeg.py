@@ -208,20 +208,22 @@ def extract_data_trc():
         add_in_csv_textfile.write(element + "\n")
     add_in_csv_textfile.close()
 
-    #### verif chan number
-    chan2suppr = len(np.where(electrode_select['select'] == 0)[0]) - len(chan_list_add_in_csv)
-    chan_final = len(chan_list_rmv_first) - chan2suppr
-
-    if len(chan_list_rmv_second) != chan_final and np.size(data_rmv_second,0) != chan_final:
-        print('chan remove incorrect')
-        exit()
-
     #### idicate removed chan
     print('verification nchan out first:')
     print(chan_list_nchan_rmv_first)
     print('')
     print('verification nchan out second:')
     print(chan_list_nchan_rmv_second)
+
+    chan_list_nchan_rmv_first_textfile = open(sujet + "_first_rmv.txt", "w")
+    for element in chan_list_nchan_rmv_first:
+        chan_list_nchan_rmv_first_textfile.write(element + "\n")
+    chan_list_nchan_rmv_first_textfile.close()
+
+    chan_list_nchan_rmv_second_textfile = open(sujet + "_second_rmv.txt", "w")
+    for element in chan_list_nchan_rmv_second:
+        chan_list_nchan_rmv_second_textfile.write(element + "\n")
+    chan_list_nchan_rmv_second_textfile.close()
 
     #### chan list all rmw
     chan_list_all_rmw = chan_list_nchan_rmv_first + chan_list_nchan_rmv_second
