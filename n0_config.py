@@ -19,9 +19,9 @@ import scipy.signal
 enable_big_execute = True
 
 #sujet = 'CHEe'
-sujet = 'GOBc'
+#sujet = 'GOBc'
 #sujet = 'MAZm'
-#sujet = 'MUGa' # uniquement FR_CV
+sujet = 'MUGa' # uniquement FR_CV
 #sujet = 'TREt'
 
 #sujet = 'pat_02459_0912' # uniquement FR_CV

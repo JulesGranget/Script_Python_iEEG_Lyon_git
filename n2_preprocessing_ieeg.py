@@ -29,6 +29,11 @@ def extract_data_trc():
     #### identify number of trc file
     trc_file_names = glob.glob('*.TRC')
 
+    #### sort order TRC
+    trc_file_names_ordered = []
+    [trc_file_names_ordered.append(file_name) for file_name in trc_file_names if file_name.find('FR_CV') != -1]
+    [trc_file_names_ordered.append(file_name) for file_name in trc_file_names if file_name.find('PROTOCOLE') != -1]
+
     #### extract file one by one
     print('#### EXTRACT TRC ####')
     data_whole = []
@@ -36,8 +41,8 @@ def extract_data_trc():
     srate_whole = []
     events_name_whole = []
     events_time_whole = []
-    #file_i, file_name = 0, trc_file_names[0]
-    for file_i, file_name in enumerate(trc_file_names):
+    #file_i, file_name = 1, trc_file_names[1]
+    for file_i, file_name in enumerate(trc_file_names_ordered):
 
         #### current file
         print(file_name)
@@ -322,6 +327,8 @@ def compare_pre_post(pre, post, nchan):
 def preprocessing_ieeg(data, chan_list, srate, prep_step):
 
 
+    print('#### PREPROCESSING ####')
+    
     # 1. Generate raw structures
 
     ch_types = ['seeg'] * (np.size(data,0)) # ‘ecg’, ‘stim’, ‘eog’, ‘misc’, ‘seeg’, ‘eeg’
@@ -395,7 +402,7 @@ def preprocessing_ieeg(data, chan_list, srate, prep_step):
         else:
             raw_post = raw
 
-        raw_post.notch_filter(50)
+        raw_post.notch_filter(50, verbose='critical')
 
         
         if debug == True :
@@ -470,7 +477,7 @@ def preprocessing_ieeg(data, chan_list, srate, prep_step):
             flim = (0.1, srate / 2.)
             mne.viz.plot_filter(h, srate, freq=None, gain=None, title=None, flim=flim, fscale='log')
 
-        raw_eeg_mc_hp = raw_post.filter(l_freq, h_freq, filter_length=filter_length, method='fir', phase='zero-double', fir_window='hamming', fir_design='firwin2')
+        raw_eeg_mc_hp = raw_post.filter(l_freq, h_freq, filter_length=filter_length, method='fir', phase='zero-double', fir_window='hamming', fir_design='firwin2', verbose='critical')
 
         if debug == True :
             duration = 60.
@@ -498,7 +505,7 @@ def preprocessing_ieeg(data, chan_list, srate, prep_step):
             flim = (0.1, srate / 2.)
             mne.viz.plot_filter(h, srate, freq=None, gain=None, title=None, flim=flim, fscale='log')
 
-        raw_post = raw_post.filter(l_freq, h_freq, filter_length=filter_length, method='fir', phase='zero-double', fir_window='hann', fir_design='firwin2')
+        raw_post = raw_post.filter(l_freq, h_freq, filter_length=filter_length, method='fir', phase='zero-double', fir_window='hann', fir_design='firwin2', verbose='critical')
 
         if debug == True :
             duration = .5
@@ -590,6 +597,8 @@ def preprocessing_ieeg(data, chan_list, srate, prep_step):
 
 def ecg_detection(data_aux, chan_list_aux, srate):
 
+    print('#### ECG DETECTION ####')
+    
     #### adjust ECG
     if sujet_ecg_adjust.get(sujet) == 'inverse':
         data_aux[-1,:] = data_aux[-1,:] * -1
@@ -600,13 +609,13 @@ def ecg_detection(data_aux, chan_list_aux, srate):
     info_aux = mne.create_info(chan_list_aux, srate, ch_types=ch_types)
     raw_aux = mne.io.RawArray(data_aux, info_aux)
 
-    raw_aux.notch_filter(50, picks='misc')
+    raw_aux.notch_filter(50, picks='misc', verbose='critical')
 
     # ECG
     event_id = 999
     ch_name = 'ECG'
     qrs_threshold = .5 #between o and 1
-    ecg_events = mne.preprocessing.find_ecg_events(raw_aux, event_id=event_id, ch_name=ch_name, qrs_threshold=qrs_threshold)
+    ecg_events = mne.preprocessing.find_ecg_events(raw_aux, event_id=event_id, ch_name=ch_name, qrs_threshold=qrs_threshold, verbose='critical')
     ecg_events_time = list(ecg_events[0][:,0])
 
     data_aux_final = raw_aux.get_data()
@@ -622,6 +631,8 @@ def ecg_detection(data_aux, chan_list_aux, srate):
 
 def chop_save_trc(data, chan_list, data_aux, chan_list_aux, conditions_trig, trig, srate, ecg_events_time, band_preproc, export_info):
 
+    print('#### SAVE ####')
+    
     #### save alldata + stim chan
     data_all = np.vstack(( data, data_aux, np.zeros(( len(data[0,:]) )) ))
     chan_list_all = chan_list + chan_list_aux + ['ECG_cR']
