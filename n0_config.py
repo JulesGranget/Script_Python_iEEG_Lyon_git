@@ -18,8 +18,8 @@ import scipy.signal
 
 enable_big_execute = True
 
-sujet = 'CHEe'
-#sujet = 'GOBc'
+#sujet = 'CHEe'
+sujet = 'GOBc'
 #sujet = 'MAZm'
 #sujet = 'MUGa' # uniquement FR_CV
 #sujet = 'TREt'
@@ -83,7 +83,7 @@ if PC_ID == 'nodeGPU':
     path_main_workdir = '/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/Script_Python_iEEG_Lyon'
     path_general = '/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ'
     path_memmap = '/mnt/data/julesgranget'
-    n_core = 30
+    n_core = 40
 
 path_data = os.path.join(path_general, 'Data', 'raw_data')
 path_prep = os.path.join(path_general, 'Analyses', 'preprocessing')
@@ -196,7 +196,7 @@ def get_params_spectral_analysis(srate):
 stretch_point_surrogates = 1000
 
 #### coh
-n_surrogates_coh = 100
+n_surrogates_coh = 10
 freq_surrogates = [0, 2]
 percentile_coh = .95
 

@@ -141,6 +141,12 @@ def extract_data_trc():
 
                 len_trc += np.size(data_whole[trc_i],1)
 
+    
+    #### no more use
+    del data_whole
+    del data_whole_file
+    del data_file
+    
     #### events in df
     event_dict = {'name' : events_name, 'time' : events_time}
     columns = ['name', 'time']
@@ -157,7 +163,10 @@ def extract_data_trc():
     chan_list_first_clean_file.close()
 
         #### remove chan
-    data_rmv_first = data.copy() 
+    if debug:
+        data_rmv_first = data.copy() 
+    else:
+        data_rmv_first = data
     chan_list_rmv_first = chan_list.copy()
     chan_list_nchan_rmv_first = []
     for nchan in chan_list:
@@ -177,7 +186,10 @@ def extract_data_trc():
     chan_list_rmv_first_modified_rmv = chan_list_rmv_first_modified.copy()
 
         #### remove chan
-    data_rmv_second = data_rmv_first.copy() 
+    if debug:
+        data_rmv_second = data_rmv_first.copy() 
+    else:
+        data_rmv_second = data_rmv_first
     chan_list_rmv_second = chan_list_rmv_first.copy()
     chan_list_nchan_rmv_second = []
     for nchan in chan_list_rmv_first_modified:
@@ -239,6 +251,9 @@ def extract_data_trc():
 
     data = data_rmv_second.copy()
     chan_list = chan_list_rmv_second.copy()
+
+    del data_rmv_first
+    del data_rmv_second
 
     return data, chan_list, data_aux, chan_list_aux, chan_list_all_rmw, trig, srate
 
@@ -330,7 +345,7 @@ def preprocessing_ieeg(data, chan_list, srate, prep_step):
         #plt.show()
         plt.close()
 
-
+    del data
 
     # 2. Initiate preprocessing step
 
@@ -347,7 +362,9 @@ def preprocessing_ieeg(data, chan_list, srate, prep_step):
 
         # fill raw
         for chan in range(np.size(data,0)):
-            raw[chan,:] = data_mc[chan,:]    
+            raw[chan,:] = data_mc[chan,:]
+
+        del data_mc    
 
         # verif
         if debug == True :
@@ -373,7 +390,10 @@ def preprocessing_ieeg(data, chan_list, srate, prep_step):
 
         linenoise_freq = [50, 100, 150]
 
-        raw_post = raw.copy()
+        if debug:
+            raw_post = raw.copy()
+        else:
+            raw_post = raw
 
         raw_post.notch_filter(50)
 
@@ -437,7 +457,10 @@ def preprocessing_ieeg(data, chan_list, srate, prep_step):
 
     def high_pass(raw, h_freq, l_freq):
 
-        raw_post = raw.copy()
+        if debug:
+            raw_post = raw.copy()
+        else:
+            raw_post = raw
 
         #filter_length = int(srate*10) # give sec
         filter_length = 'auto'
@@ -463,7 +486,10 @@ def preprocessing_ieeg(data, chan_list, srate, prep_step):
 
     def low_pass(raw, h_freq, l_freq):
 
-        raw_post = raw.copy()
+        if debug:
+            raw_post = raw.copy()
+        else:
+            raw_post = raw
 
         filter_length = int(srate*10) # in samples
 
@@ -488,7 +514,10 @@ def preprocessing_ieeg(data, chan_list, srate, prep_step):
 
     def average_reref(raw):
 
-        raw_post = raw.copy()
+        if debug:
+            raw_post = raw.copy()
+        else:
+            raw_post = raw
 
         raw_post.set_eeg_reference('average')
 
@@ -504,21 +533,23 @@ def preprocessing_ieeg(data, chan_list, srate, prep_step):
 
     # 3. Execute preprocessing 
 
-    raw = raw_init.copy() # first data
+    if debug:
+        raw = raw_init.copy() # first data
+    else:
+        raw = raw_init
 
     if prep_step.get('mean_centered_detrend').get('execute') :
         print('mean_centered_detrend')
         raw_post = mean_centered_detrend(raw)
         #compare_pre_post(raw.get_data(), raw_post.get_data(), 5)
-        raw = raw_post.copy()
+        raw = raw_post
 
-    
 
     if prep_step.get('line_noise_removing').get('execute') :
         print('line_noise_removing')
         raw_post = line_noise_removing(raw)
         #compare_pre_post(raw.get_data(), raw_post.get_data(), 5)
-        raw = raw_post.copy()
+        raw = raw_post
 
 
     if prep_step.get('high_pass').get('execute') :
@@ -527,8 +558,7 @@ def preprocessing_ieeg(data, chan_list, srate, prep_step):
         l_freq = prep_step.get('high_pass').get('params').get('l_freq')
         raw_post = high_pass(raw, h_freq, l_freq)
         #compare_pre_post(raw.get_data(), raw_post.get_data(), 5)
-        raw = raw_post.copy()
-
+        raw = raw_post
 
     if prep_step.get('low_pass').get('execute') :
         print('low_pass')
@@ -536,15 +566,13 @@ def preprocessing_ieeg(data, chan_list, srate, prep_step):
         l_freq = prep_step.get('low_pass').get('params').get('l_freq')
         raw_post = low_pass(raw, h_freq, l_freq)
         #compare_pre_post(raw.get_data(), raw_post.get_data(), 5)
-        raw = raw_post.copy()
-
+        raw = raw_post
 
     if prep_step.get('average_reref').get('execute') :
         print('average_reref')
         raw_post = average_reref(raw)
         #compare_pre_post(raw.get_data(), raw_post.get_data(), 5)
-        raw = raw_post.copy()
-
+        raw = raw_post
 
     data_preproc = raw.get_data()
 
@@ -602,6 +630,9 @@ def chop_save_trc(data, chan_list, data_aux, chan_list_aux, conditions_trig, tri
     info = mne.create_info(chan_list_all, srate, ch_types=ch_types)
     raw_all = mne.io.RawArray(data_all, info)
 
+    del data
+    del data_all
+
     #### save chan_list
     os.chdir(os.path.join(path_anatomy, sujet))
     keep_plot_textfile = open(sujet + "_chanlist_ieeg.txt", "w")
@@ -644,6 +675,8 @@ def chop_save_trc(data, chan_list, data_aux, chan_list_aux, conditions_trig, tri
             
             raw_chunk.save(sujet + '_' + condition + '_' + str(i+1) + '_' + band_preproc + '.fif')
 
+            del raw_chunk
+
 
     df = {'condition' : list(count_session.keys()), 'count' : list(count_session.values())}
     count_session = pd.DataFrame(df, columns=['condition', 'count'])
@@ -660,6 +693,7 @@ def chop_save_trc(data, chan_list, data_aux, chan_list_aux, conditions_trig, tri
         cR = pd.DataFrame(ecg_events_time, columns=['cR_time'])
         cR.to_excel(sujet +'_cR_time.xlsx')
 
+    del raw_all
 
     return 
 
@@ -833,7 +867,7 @@ if __name__== '__main__':
         ecg_events_time += ecg_events_corrected
         ecg_events_time.sort()
         #### remove
-        ecg_events_to_remove = [555198, 1298638, 1297486, 1297749]
+        ecg_events_to_remove = []
         [ecg_events_time.remove(i) for i in ecg_events_to_remove]    
 
     if sujet == 'GOBc':
@@ -876,25 +910,23 @@ if __name__== '__main__':
 
 
 
-    ################################
-    ######## PREPROCESSING ########
-    ################################
+    ################################################
+    ######## PREPROCESSING, CHOP AND SAVE ########
+    ################################################
 
     data_preproc_lf  = preprocessing_ieeg(data, chan_list, srate, prep_step_lf)
+    chop_save_trc(data_preproc_lf, chan_list, data_aux, chan_list_aux, conditions_trig, trig, srate, ecg_events_time, band_preproc='lf', export_info=True)
+
+    del data_preproc_lf
+
     data_preproc_hf = preprocessing_ieeg(data, chan_list, srate, prep_step_hf)
- 
+    chop_save_trc(data_preproc_hf, chan_list, data_aux, chan_list_aux, conditions_trig, trig, srate, ecg_events_time, band_preproc='hf', export_info=False)
+
     #### verif
     if debug == True:
         compare_pre_post(data, data_preproc_lf, 0)
 
 
-
-    ################################
-    ######## CHOP AND SAVE ########
-    ################################
-
-    chop_save_trc(data_preproc_lf, chan_list, data_aux, chan_list_aux, conditions_trig, trig, srate, ecg_events_time, band_preproc='lf', export_info=True)
-    chop_save_trc(data_preproc_hf, chan_list, data_aux, chan_list_aux, conditions_trig, trig, srate, ecg_events_time, band_preproc='hf', export_info=False)
 
 
 

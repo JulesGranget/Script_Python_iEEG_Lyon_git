@@ -174,8 +174,8 @@ def get_ROI_Lobes_list_and_Plots():
             lobe_dict[lobe_tmp] = lobe_dict[lobe_tmp] + 1
             count_verif += 1
 
-            ROI_dict_plots[ROI_tmp].append(sujet_i + '_' + nchan)
-            lobe_dict_plots[lobe_tmp].append(sujet_i + '_' + nchan)
+            ROI_dict_plots[ROI_tmp].append([sujet_i, nchan])
+            lobe_dict_plots[lobe_tmp].append([sujet_i, nchan])
 
         #### verif count
         if count_verif != len(chan_list_ieeg):
@@ -384,7 +384,7 @@ os.remove('PxxRespi_Cxy_p.dat')
 
 
 
-
+# ROI_to_process = ROI_list[1]
 def get_CycleFreq_for_ROI(ROI_to_process):
 
     if plot_i_to_process/len(df_all_plot_noselect.index.values) % .2 <= .01:
@@ -400,7 +400,8 @@ def get_CycleFreq_for_ROI(ROI_to_process):
     #### generate dict for loading TF
     dict_TF_for_ROI_to_process = {}
     dict_freq_band = {}
-    for freq_band_i, freq_band_dict in freq_band_list:
+    #freq_band_i, freq_band_dict = 0, freq_band_list[0]
+    for freq_band_i, freq_band_dict in enumerate(freq_band_list):
         if freq_band_i == 0:
             for band_i in list(freq_band_dict.keys()):
                 dict_TF_for_ROI_to_process[band_i] = np.zeros((nfrex_lf, stretch_point_TF))
@@ -411,11 +412,12 @@ def get_CycleFreq_for_ROI(ROI_to_process):
                 dict_TF_for_ROI_to_process[band_i] = np.zeros((nfrex_hf, stretch_point_TF))
                 dict_freq_band[band_i] = freq_band_list[freq_band_i][band_i]
 
-    #### compute TF    
+    #### compute TF
+    # plot_to_process_i = plot_to_process[0]    
     for plot_to_process_i in plot_to_process:
         
-        sujet_tmp = df_all_plot_noselect['subject'][plot_to_process_i]
-        plot_tmp_mod = df_all_plot_noselect['plot'][plot_to_process_i]
+        sujet_tmp = plot_to_process_i[0]
+        plot_tmp_mod = plot_to_process_i[1]
 
         #### load subject params
         conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions_for_sujet(sujet_tmp, conditions_allsubjects)
@@ -444,11 +446,10 @@ def get_CycleFreq_for_ROI(ROI_to_process):
                 
                 TF_load = np.load(sujet_tmp + '_tf_' + str(freq[0]) + '_' + str(freq[1]) + '_' + cond + '_' + str(session_i + 1) + '.npy')
 
-                dict_TF_for_ROI_to_process[band] = (dict_TF_for_ROI_to_process[band] + TF_load)/2
+                dict_TF_for_ROI_to_process[band] = (dict_TF_for_ROI_to_process[band] + TF_load[plot_tmp_i,:,:])/2
 
-    
-    
     #### plot
+    # band_prep_i, band_prep = 0, 'lf'
     for band_prep_i, band_prep in enumerate(band_prep_list):
 
         if band_prep == 'lf':
@@ -457,10 +458,10 @@ def get_CycleFreq_for_ROI(ROI_to_process):
             fig, axs = plt.subplots(nrows=2, ncols=1)
         
         plt.suptitle(ROI_to_process)
-        
         dict_freq_to_plot = freq_band_list[band_prep_i]
                         
-        for i, (band, freq) in enumerate(dict_freq_to_plot) :
+        # i, (band, freq) = 0, ('theta', [2 ,10])
+        for i, (band, freq) in enumerate(list(dict_freq_to_plot.items())) :
 
             data = dict_TF_for_ROI_to_process[band]
             frex = np.linspace(freq[0], freq[1], data.shape[0])
@@ -468,7 +469,7 @@ def get_CycleFreq_for_ROI(ROI_to_process):
         
             if i == 0 :
 
-                ax = axs[i,0]
+                ax = axs[i]
                 ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
                 ax.set_ylabel(band)
                 ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
@@ -476,7 +477,7 @@ def get_CycleFreq_for_ROI(ROI_to_process):
 
             else :
 
-                ax = axs[i,0]
+                ax = axs[i]
                 ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
                 ax.set_ylabel(band)
                 ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
