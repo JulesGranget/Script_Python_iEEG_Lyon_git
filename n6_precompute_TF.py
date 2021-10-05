@@ -167,7 +167,7 @@ def precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_lis
                 plt.show()
 
             os.chdir(path_memmap)
-            tf_allchan = np.memmap('precompute_convolutions.dat', dtype=np.float64, mode='w+', shape=(np.size(data,0), nfrex, np.size(data,1)))
+            tf_allchan = np.memmap(sujet + '_precompute_convolutions.dat', dtype=np.float64, mode='w+', shape=(np.size(data,0), nfrex, np.size(data,1)))
 
             def compute_tf_convolution_nchan(n_chan):
 
@@ -197,7 +197,7 @@ def precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_lis
             np.save(sujet + '_tf_' + str(freq[0]) + '_' + str(freq[1]) + '_' + cond + '_' + str(session_i+1) + '.npy', tf_allband_stretched)
             
             os.chdir(path_memmap)
-            os.remove('precompute_convolutions.dat')
+            os.remove(sujet + '_precompute_convolutions.dat')
 
 
 

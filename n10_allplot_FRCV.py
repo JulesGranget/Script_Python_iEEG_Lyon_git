@@ -3,9 +3,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal
-import mne
 import pandas as pd
-import respirationtools
 import joblib
 import seaborn as sns
 
@@ -14,6 +12,10 @@ from n0bis_analysis_functions import *
 
 
 debug = False
+
+########################################
+######## ALLPLOT ANATOMY ######## 
+########################################
 
 
 def count_all_plot_location():
@@ -68,7 +70,7 @@ def count_all_plot_location():
             exit()
 
     #### for all plot, i. e. not included
-    os.chdir(os.path.join(path_anatomy))
+    os.chdir(os.path.join(path_anatomy, 'allplot'))
     df_all_plot_noselect = pd.read_excel('plot_loca_all.xlsx')
 
     for i in df_all_plot_noselect.index.values:
@@ -86,7 +88,7 @@ def count_all_plot_location():
     df_lobes_count = pd.DataFrame(df_data_Lobes)
 
     #### save df
-    os.chdir(os.path.join(path_results, 'all_plot'))
+    os.chdir(os.path.join(path_anatomy, 'allplot'))
 
     if os.path.exists('ROI_count.xlsx'):
         os.remove('ROI_count.xlsx')
@@ -120,6 +122,9 @@ def count_all_plot_location():
 
 
 
+########################################
+######## PREP ALLPLOT ANALYSIS ########
+########################################
 
 
 
@@ -189,39 +194,18 @@ def get_ROI_Lobes_list_and_Plots():
 
 
 
-ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots()
-
-#### load all plot
-os.chdir(os.path.join(path_anatomy))
-df_all_plot_noselect = pd.read_excel('plot_loca_all.xlsx')
-all_proccessed_plot = []
-for list_i in list(ROI_dict_plots.values()):
-    for i in range(len(list_i)):
-        all_proccessed_plot.append(list_i[i])
-
-
-
-os.chdir(path_memmap)
-PxxRespi_Cxy_p = np.memmap('PxxRespi_Cxy_p.dat', dtype='float64', mode='w+', shape=(len(df_all_plot_noselect.index.values),4))
 
 
 
 
 
+################################
+######## COHERENCE ########
+################################
 
 
-
-
-
-
-
-
-
-
-
+# plot_i_to_process = 0
 def get_Coh_Respi_1plot(plot_i_to_process):
-
-    print(plot_i_to_process)
     
     if plot_i_to_process/len(df_all_plot_noselect.index.values) % .2 <= .01:
         print('{:.2f}'.format(plot_i_to_process/len(df_all_plot_noselect.index.values)))
@@ -260,12 +244,6 @@ def get_Coh_Respi_1plot(plot_i_to_process):
     mask_hzCxy = (hzCxy>=freq_surrogates[0]) & (hzCxy<freq_surrogates[1])
     hzCxy = hzCxy[mask_hzCxy]
 
-    ######
-    if plot_i_to_process == 624:
-        print('top') 
-    ######
-
-
     Cxy_for_cond = np.zeros((session_count, len(hzCxy)))
     Pxx_respi = np.zeros((session_count, len(hzCxy)))
 
@@ -288,18 +266,11 @@ def get_Coh_Respi_1plot(plot_i_to_process):
     Cxy_surrogates = np.zeros((session_count, len(hzCxy)))
     os.chdir(os.path.join(path_precompute, sujet_tmp, 'PSD_Coh'))
 
-    ######
-    if plot_i_to_process == 624:
-        print('top') 
-    ######
-
-
     for session_i in range(session_count):
 
         data_load = np.load(sujet_tmp + '_' + cond + '_' + str(1) + '_Coh.npy')
         plot_tmp_i = chan_list.index(plot_tmp)
         Cxy_surrogates[session_i,:] = data_load[plot_tmp_i,:]
-
 
     #### reduce all sessions
     Pxx_respi_reduced = np.zeros((len(hzCxy)))
@@ -325,12 +296,6 @@ def get_Coh_Respi_1plot(plot_i_to_process):
                 Cxy_reduced = (Cxy_reduced + Cxy_for_cond[session_i,:])/2
                 Cxy_surrogates_reduced = (Cxy_surrogates_reduced + Cxy_surrogates[session_i,:])/2
 
-    ######
-    if plot_i_to_process == 624:
-        print('top') 
-    ######
-
-    
     max_Cxy = hzCxy[np.argmax(Cxy_reduced)]
     max_respi = hzCxy[np.argmax(Pxx_respi_reduced)]
     Cxy_value = Cxy_reduced[np.argmax(Cxy_reduced)]
@@ -339,12 +304,6 @@ def get_Coh_Respi_1plot(plot_i_to_process):
     else:
         Cxy_significant = 0
 
-    ######
-    if plot_i_to_process == 624:
-        print('top') 
-    ######
-
-
     #### load into memmap
     PxxRespi_Cxy_p[plot_i_to_process,0] = max_respi
     PxxRespi_Cxy_p[plot_i_to_process,1] = max_Cxy
@@ -352,43 +311,16 @@ def get_Coh_Respi_1plot(plot_i_to_process):
     PxxRespi_Cxy_p[plot_i_to_process,3] = Cxy_significant
 
 
-#### compute CxyRespi all plot
-joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(get_Coh_Respi_1plot)(plot_i_to_process) for plot_i_to_process in range(len(df_all_plot_noselect.index.values)))
-
-data_df = {'sujet' : df_all_plot_noselect['subject'].values, 'plot' : df_all_plot_noselect['plot'].values, 'max_respi' : PxxRespi_Cxy_p[:,0], 'max_Cxy' : PxxRespi_Cxy_p[:,1], 'Cxy_value' : PxxRespi_Cxy_p[:,2], 'Cxy_significant' : PxxRespi_Cxy_p[:,3]} 
-
-df_CxyRespi = pd.DataFrame(data_df)
-
-size_marker = []
-for plot_i_to_process in range(len(df_all_plot_noselect.index.values)):
-    df_CxyRespi
-
-#### plot CxyRespi
-x = df_CxyRespi['max_respi'].values
-y = df_CxyRespi['max_Cxy'].values
-colors = df_CxyRespi['Cxy_significant'].values
-area = df_CxyRespi['Cxy_value'].values * 100
-
-plt.scatter(x, y, s=area, c=colors, alpha=0.5)
-plt.show()
-
-#### save
-os.chdir(os.path.join(path_results, 'all_plot'))
-df_CxyRespi.to_excel('CxyRespi_all_plot.xlsx')
-
-os.chdir(path_memmap)
-os.remove('PxxRespi_Cxy_p.dat')
 
 
 
+################################
+######## TF & ITPC ########
+################################
 
 
-
-# ROI_to_process = ROI_list[1]
-def get_CycleFreq_for_ROI(ROI_to_process):
-
-    if plot_i_to_process/len(df_all_plot_noselect.index.values) % .2 <= .01:
-        print('{:.2f}'.format(plot_i_to_process/len(df_all_plot_noselect.index.values)))
+# ROI_to_process = 'fusiforme'
+def get_TF_and_ITPC_for_ROI(ROI_to_process):
 
     #### identify if proccessed
     if (ROI_to_process in ROI_to_include) != True:
@@ -399,19 +331,25 @@ def get_CycleFreq_for_ROI(ROI_to_process):
 
     #### generate dict for loading TF
     dict_TF_for_ROI_to_process = {}
+    dict_ITPC_for_ROI_to_process = {}
     dict_freq_band = {}
     #freq_band_i, freq_band_dict = 0, freq_band_list[0]
     for freq_band_i, freq_band_dict in enumerate(freq_band_list):
         if freq_band_i == 0:
             for band_i in list(freq_band_dict.keys()):
                 dict_TF_for_ROI_to_process[band_i] = np.zeros((nfrex_lf, stretch_point_TF))
+                dict_ITPC_for_ROI_to_process[band_i] = np.zeros((nfrex_lf, stretch_point_TF))
                 dict_freq_band[band_i] = freq_band_list[freq_band_i][band_i]
 
         else :
             for band_i in list(freq_band_dict.keys()):
                 dict_TF_for_ROI_to_process[band_i] = np.zeros((nfrex_hf, stretch_point_TF))
+                dict_ITPC_for_ROI_to_process[band_i] = np.zeros((nfrex_hf, stretch_point_TF))
                 dict_freq_band[band_i] = freq_band_list[freq_band_i][band_i]
 
+    #### initiate len recorded
+    len_recorded = []
+    
     #### compute TF
     # plot_to_process_i = plot_to_process[0]    
     for plot_to_process_i in plot_to_process:
@@ -432,6 +370,9 @@ def get_CycleFreq_for_ROI(ROI_to_process):
 
         plot_tmp_i = chan_list_ieeg.index(plot_tmp)
 
+        #### add length recorded
+        len_recorded.append(load_data_sujet(sujet_tmp, 'lf', 'FR_CV', 0)[plot_tmp_i,:].shape[0]/srate/60)
+
         #### count session number
         os.chdir(os.path.join(path_prep, sujet_tmp, 'sections'))
         listdir_file = os.listdir()
@@ -448,50 +389,285 @@ def get_CycleFreq_for_ROI(ROI_to_process):
 
                 dict_TF_for_ROI_to_process[band] = (dict_TF_for_ROI_to_process[band] + TF_load[plot_tmp_i,:,:])/2
 
+        #### load ITPC
+        os.chdir(os.path.join(path_precompute, sujet_tmp, 'ITPC'))
+        for band, freq in dict_freq_band.items():
+
+            for session_i in range(session_count):
+                
+                ITPC_load = np.load(sujet_tmp + '_itpc_' + str(freq[0]) + '_' + str(freq[1]) + '_' + cond + '_' + str(session_i + 1) + '.npy')
+
+                dict_ITPC_for_ROI_to_process[band] = (dict_ITPC_for_ROI_to_process[band] + ITPC_load[plot_tmp_i,:,:])/2
+
     #### plot
-    # band_prep_i, band_prep = 0, 'lf'
-    for band_prep_i, band_prep in enumerate(band_prep_list):
 
-        if band_prep == 'lf':
-            fig, axs = plt.subplots(nrows=4, ncols=1)
-        if band_prep == 'hf':
-            fig, axs = plt.subplots(nrows=2, ncols=1)
-        
-        plt.suptitle(ROI_to_process)
-        dict_freq_to_plot = freq_band_list[band_prep_i]
-                        
-        # i, (band, freq) = 0, ('theta', [2 ,10])
-        for i, (band, freq) in enumerate(list(dict_freq_to_plot.items())) :
+    for TF_type in ['TF', 'ITPC']:
 
-            data = dict_TF_for_ROI_to_process[band]
-            frex = np.linspace(freq[0], freq[1], data.shape[0])
-            time = np.arange(stretch_point_TF)
-        
-            if i == 0 :
+        if TF_type == 'TF':
+            os.chdir(os.path.join(path_results, 'allplot', 'FR_CV', 'TF', 'ROI'))
+        if TF_type == 'ITPC':
+            os.chdir(os.path.join(path_results, 'allplot', 'FR_CV', 'ITPC', 'ROI'))
 
-                ax = axs[i]
-                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                ax.set_ylabel(band)
-                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                #plt.show()
+        # band_prep_i, band_prep = 0, 'lf'
+        for band_prep_i, band_prep in enumerate(band_prep_list):
 
-            else :
-
-                ax = axs[i]
-                ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                ax.set_ylabel(band)
-                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                #plt.show()
-                          
-        #### save
-        if band_prep == 'lf':
-            fig.savefig(ROI_to_process + '_lf.jpeg', dpi=600)
-        if band_prep == 'hf':
-            fig.savefig(ROI_to_process + '_hf.jpeg', dpi=600)
-        plt.close()
-
+            if band_prep == 'lf':
+                fig, axs = plt.subplots(nrows=4, ncols=1)
+            if band_prep == 'hf':
+                fig, axs = plt.subplots(nrows=2, ncols=1)
             
+            plt.suptitle(ROI_to_process)
+            dict_freq_to_plot = freq_band_list[band_prep_i]
+                            
+            # i, (band, freq) = 0, ('theta', [2 ,10])
+            for i, (band, freq) in enumerate(list(dict_freq_to_plot.items())) :
 
+                if TF_type == 'TF':
+                    data = dict_TF_for_ROI_to_process[band]
+                if TF_type == 'ITPC':
+                    data = dict_ITPC_for_ROI_to_process[band]
+                
+                frex = np.linspace(freq[0], freq[1], data.shape[0])
+                time = np.arange(stretch_point_TF)
+            
+                if i == 0 :
+
+                    ax = axs[i]
+                    ax.set_title(f'n_plot : {len(plot_to_process)}, length : {int(np.sum(len_recorded))} min')
+                    ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
+                    ax.set_ylabel(band)
+                    ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                    #plt.show()
+
+                else :
+
+                    ax = axs[i]
+                    ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
+                    ax.set_ylabel(band)
+                    ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                    #plt.show()
+                            
+            #### save
+            if band_prep == 'lf':
+                fig.savefig(ROI_to_process + '_lf.jpeg', dpi=600)
+            if band_prep == 'hf':
+                fig.savefig(ROI_to_process + '_hf.jpeg', dpi=600)
+            plt.close()
+
+
+
+
+
+
+# Lobe_to_process = 'Occipital'
+def get_TF_and_ITPC_for_Lobe(Lobe_to_process):
+
+    #### identify if proccessed
+    if (Lobe_to_process in lobe_to_include) != True:
+        return
+
+    #### plot to compute
+    plot_to_process = lobe_dict_plots[Lobe_to_process]
+
+    #### generate dict for loading TF
+    dict_TF_for_Lobe_to_process = {}
+    dict_ITPC_for_Lobe_to_process = {}
+    dict_freq_band = {}
+    #freq_band_i, freq_band_dict = 0, freq_band_list[0]
+    for freq_band_i, freq_band_dict in enumerate(freq_band_list):
+        if freq_band_i == 0:
+            for band_i in list(freq_band_dict.keys()):
+                dict_TF_for_Lobe_to_process[band_i] = np.zeros((nfrex_lf, stretch_point_TF))
+                dict_ITPC_for_Lobe_to_process[band_i] = np.zeros((nfrex_lf, stretch_point_TF))
+                dict_freq_band[band_i] = freq_band_list[freq_band_i][band_i]
+
+        else :
+            for band_i in list(freq_band_dict.keys()):
+                dict_TF_for_Lobe_to_process[band_i] = np.zeros((nfrex_hf, stretch_point_TF))
+                dict_ITPC_for_Lobe_to_process[band_i] = np.zeros((nfrex_hf, stretch_point_TF))
+                dict_freq_band[band_i] = freq_band_list[freq_band_i][band_i]
+
+    #### initiate len recorded
+    len_recorded = []
+    
+    #### compute TF
+    # plot_to_process_i = plot_to_process[0]    
+    for plot_to_process_i in plot_to_process:
+        
+        sujet_tmp = plot_to_process_i[0]
+        plot_tmp_mod = plot_to_process_i[1]
+
+        #### load subject params
+        conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions_for_sujet(sujet_tmp, conditions_allsubjects)
+        cond = 'FR_CV'
+
+        #### identify plot name in trc
+        if sujet_tmp[:3] != 'pat':
+            list_mod, list_trc = modify_name(chan_list_ieeg)
+            plot_tmp = list_trc[list_mod.index(plot_tmp_mod)]
+        else:
+            plot_tmp = plot_tmp_mod
+
+        plot_tmp_i = chan_list_ieeg.index(plot_tmp)
+
+        #### add length recorded
+        len_recorded.append(load_data_sujet(sujet_tmp, 'lf', 'FR_CV', 0)[plot_tmp_i,:].shape[0]/srate/60)
+
+        #### count session number
+        os.chdir(os.path.join(path_prep, sujet_tmp, 'sections'))
+        listdir_file = os.listdir()
+        file_to_load = [listdir_i for listdir_i in listdir_file if listdir_i.find(cond) != -1 and listdir_i.find('lf') != -1]
+        session_count = len(file_to_load)
+
+        #### load TF
+        os.chdir(os.path.join(path_precompute, sujet_tmp, 'TF'))
+        for band, freq in dict_freq_band.items():
+
+            for session_i in range(session_count):
+                
+                TF_load = np.load(sujet_tmp + '_tf_' + str(freq[0]) + '_' + str(freq[1]) + '_' + cond + '_' + str(session_i + 1) + '.npy')
+
+                dict_TF_for_Lobe_to_process[band] = (dict_TF_for_Lobe_to_process[band] + TF_load[plot_tmp_i,:,:])/2
+
+        #### load ITPC
+        os.chdir(os.path.join(path_precompute, sujet_tmp, 'ITPC'))
+        for band, freq in dict_freq_band.items():
+
+            for session_i in range(session_count):
+                
+                ITPC_load = np.load(sujet_tmp + '_itpc_' + str(freq[0]) + '_' + str(freq[1]) + '_' + cond + '_' + str(session_i + 1) + '.npy')
+
+                dict_ITPC_for_Lobe_to_process[band] = (dict_ITPC_for_Lobe_to_process[band] + ITPC_load[plot_tmp_i,:,:])/2
+
+    #### plot
+
+    for TF_type in ['TF', 'ITPC']:
+
+        if TF_type == 'TF':
+            os.chdir(os.path.join(path_results, 'allplot', 'FR_CV', 'TF', 'Lobes'))
+        if TF_type == 'ITPC':
+            os.chdir(os.path.join(path_results, 'allplot', 'FR_CV', 'ITPC', 'Lobes'))
+    
+        # band_prep_i, band_prep = 0, 'lf'
+        for band_prep_i, band_prep in enumerate(band_prep_list):
+
+            if band_prep == 'lf':
+                fig, axs = plt.subplots(nrows=4, ncols=1)
+            if band_prep == 'hf':
+                fig, axs = plt.subplots(nrows=2, ncols=1)
+            
+            plt.suptitle(Lobe_to_process)
+            dict_freq_to_plot = freq_band_list[band_prep_i]
+                            
+            # i, (band, freq) = 0, ('theta', [2 ,10])
+            for i, (band, freq) in enumerate(list(dict_freq_to_plot.items())) :
+
+                if TF_type == 'TF':
+                    data = dict_TF_for_Lobe_to_process[band]
+                if TF_type == 'ITPC':
+                    data = dict_ITPC_for_Lobe_to_process[band]
+
+                frex = np.linspace(freq[0], freq[1], data.shape[0])
+                time = np.arange(stretch_point_TF)
+            
+                if i == 0 :
+
+                    ax = axs[i]
+                    ax.set_title(f'n_plot : {len(plot_to_process)}, length : {int(np.sum(len_recorded))} min')
+                    ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
+                    ax.set_ylabel(band)
+                    ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                    #plt.show()
+
+                else :
+
+                    ax = axs[i]
+                    ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
+                    ax.set_ylabel(band)
+                    ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
+                    #plt.show()
+                            
+            #### save
+            if band_prep == 'lf':
+                fig.savefig(Lobe_to_process + '_lf.jpeg', dpi=600)
+            if band_prep == 'hf':
+                fig.savefig(Lobe_to_process + '_hf.jpeg', dpi=600)
+            plt.close()
+
+
+
+
+
+################################
+######## EXECUTE ########
+################################
+
+
+if __name__ == '__main__':
+
+
+    ######## ANATOMY ########
+
+    count_all_plot_location()
+
+
+    ######## PREP ALLLOCA ANALYSIS ########
+
+    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots()
+
+
+    ######## CxyRespi ########
+
+    #### load all plot
+    os.chdir(os.path.join(path_anatomy, 'allplot'))
+    df_all_plot_noselect = pd.read_excel('plot_loca_all.xlsx')
+    all_proccessed_plot = []
+    for list_i in list(ROI_dict_plots.values()):
+        for i in range(len(list_i)):
+            all_proccessed_plot.append(list_i[i][1])
+
+
+    #### initiate for CxyRespi computation
+    os.chdir(path_memmap)
+    PxxRespi_Cxy_p = np.memmap('CxyRespi_allplot.dat', dtype='float64', mode='w+', shape=(len(df_all_plot_noselect.index.values),4))
+
+    #### compute CxyRespi all plot
+    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(get_Coh_Respi_1plot)(plot_i_to_process) for plot_i_to_process in range(len(df_all_plot_noselect.index.values)))
+
+    #### plot & save CxyRespi
+    data_df = {'sujet' : df_all_plot_noselect['subject'].values, 'plot' : df_all_plot_noselect['plot'].values, 'max_respi' : PxxRespi_Cxy_p[:,0], 'max_Cxy' : PxxRespi_Cxy_p[:,1], 'Cxy_value' : PxxRespi_Cxy_p[:,2], 'Cxy_significant' : PxxRespi_Cxy_p[:,3]} 
+
+    df_CxyRespi = pd.DataFrame(data_df)
+
+    size_marker = []
+    for plot_i_to_process in range(len(df_all_plot_noselect.index.values)):
+        df_CxyRespi
+
+    x = df_CxyRespi['max_respi'].values
+    y = df_CxyRespi['max_Cxy'].values
+    colors = df_CxyRespi['Cxy_significant'].values
+    area = df_CxyRespi['Cxy_value'].values * 100
+
+    plt.scatter(x, y, s=area, c=colors, alpha=0.5)
+    plt.show()
+
+    os.chdir(os.path.join(path_results, 'all_plot', 'anatomy'))
+    df_CxyRespi.to_excel('CxyRespi_all_plot.xlsx')
+
+    #### remove memmap CxyRespi
+    os.chdir(path_memmap)
+    os.remove('CxyRespi_allplot.dat')
+
+
+
+    ######## TF & ITPC ########
+
+
+    #### compute TF & ITPC for ROI
+    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(get_TF_and_ITPC_for_ROI)(ROI_to_process) for ROI_to_process in ROI_to_include)
+
+    #### compute TF & ITPC for Lobes
+    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(get_TF_and_ITPC_for_Lobe)(Lobe_to_process) for Lobe_to_process in lobe_to_include)
 
 
 
