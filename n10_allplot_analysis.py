@@ -128,7 +128,7 @@ def count_all_plot_location():
 
 
 
-def get_ROI_Lobes_list_and_Plots():
+def get_ROI_Lobes_list_and_Plots(cond):
 
     #### generate anat list
     os.chdir(os.path.join(path_anatomy, 'nomenclature'))
@@ -151,9 +151,24 @@ def get_ROI_Lobes_list_and_Plots():
         lobe_dict[anat_lobe_list_non_sorted[i]] = 0
         lobe_dict_plots[anat_lobe_list_non_sorted[i]] = []
 
+    #### initiate for cond
+    sujet_for_cond = []
+
     #### search for ROI & lobe that have been counted
     #sujet_i = sujet_list[0]
     for sujet_i in sujet_list:
+
+        os.chdir(os.path.join(path_prep, sujet_i, 'sections'))
+        session_count_sujet_i = []
+        for file_i in os.listdir():
+            if file_i.find(cond) != -1:
+                session_count_sujet_i.append(file_i)
+            else:
+                continue
+        if len(session_count_sujet_i) == 0:
+            continue
+        else:
+            sujet_for_cond.append(sujet_i)
 
         os.chdir(os.path.join(path_anatomy, sujet_i))
         plot_loca_df = pd.read_excel(sujet_i + '_plot_loca.xlsx')
@@ -190,7 +205,7 @@ def get_ROI_Lobes_list_and_Plots():
     ROI_to_include = [ROI_i for ROI_i in ROI_list if ROI_dict[ROI_i] > 0]
     lobe_to_include = [Lobe_i for Lobe_i in lobe_list if lobe_dict[Lobe_i] > 0]
 
-    return ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots
+    return sujet_for_cond, ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots
 
 
 
@@ -204,14 +219,14 @@ def get_ROI_Lobes_list_and_Plots():
 ################################
 
 
-# plot_i_to_process = 0
+# plot_i_to_process = 5
 def get_Coh_Respi_1plot(plot_i_to_process):
-    
+        
     if plot_i_to_process/len(df_all_plot_noselect.index.values) % .2 <= .01:
         print('{:.2f}'.format(plot_i_to_process/len(df_all_plot_noselect.index.values)))
 
     #### identify if proccessed
-    if (df_all_plot_noselect['subject'][plot_i_to_process] + '_' + df_all_plot_noselect['plot'][plot_i_to_process] in all_proccessed_plot) != True:
+    if (df_all_plot_noselect['subject'][plot_i_to_process] + '_' + df_all_plot_noselect['plot'][plot_i_to_process] in all_proccessed_plot) == False:
         return
 
     sujet_tmp = df_all_plot_noselect['subject'][plot_i_to_process]
@@ -219,7 +234,6 @@ def get_Coh_Respi_1plot(plot_i_to_process):
 
     #### load subject params
     conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions_for_sujet(sujet_tmp, conditions_allsubjects)
-    cond = 'FR_CV'
     band_prep = 'lf'
 
     #### load Cxy params
@@ -319,15 +333,27 @@ def get_Coh_Respi_1plot(plot_i_to_process):
 ################################
 
 
-# ROI_to_process = 'fusiforme'
+# ROI_to_process = 'postcentral'
 def get_TF_and_ITPC_for_ROI(ROI_to_process):
 
     #### identify if proccessed
     if (ROI_to_process in ROI_to_include) != True:
         return
 
+    if ROI_to_include.index(ROI_to_process)/len(ROI_to_include) % .2 <= .01:
+        print('{:.2f}'.format(ROI_to_include.index(ROI_to_process)/len(ROI_to_include)))
+
+
     #### plot to compute
     plot_to_process = ROI_dict_plots[ROI_to_process]
+
+    #### identify sujet that participate
+    sujet_that_participate = []
+    for plot_sujet_i, plot_plot_i in plot_to_process:
+        if plot_sujet_i in sujet_that_participate:
+            continue
+        else:
+            sujet_that_participate.append(plot_sujet_i)
 
     #### generate dict for loading TF
     dict_TF_for_ROI_to_process = {}
@@ -359,7 +385,6 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process):
 
         #### load subject params
         conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions_for_sujet(sujet_tmp, conditions_allsubjects)
-        cond = 'FR_CV'
 
         #### identify plot name in trc
         if sujet_tmp[:3] != 'pat':
@@ -371,7 +396,7 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process):
         plot_tmp_i = chan_list_ieeg.index(plot_tmp)
 
         #### add length recorded
-        len_recorded.append(load_data_sujet(sujet_tmp, 'lf', 'FR_CV', 0)[plot_tmp_i,:].shape[0]/srate/60)
+        len_recorded.append(load_data_sujet(sujet_tmp, 'lf', cond, 0)[plot_tmp_i,:].shape[0]/srate/60)
 
         #### count session number
         os.chdir(os.path.join(path_prep, sujet_tmp, 'sections'))
@@ -404,9 +429,9 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process):
     for TF_type in ['TF', 'ITPC']:
 
         if TF_type == 'TF':
-            os.chdir(os.path.join(path_results, 'allplot', 'FR_CV', 'TF', 'ROI'))
+            os.chdir(os.path.join(path_results, 'allplot', cond, 'TF', 'ROI'))
         if TF_type == 'ITPC':
-            os.chdir(os.path.join(path_results, 'allplot', 'FR_CV', 'ITPC', 'ROI'))
+            os.chdir(os.path.join(path_results, 'allplot', cond, 'ITPC', 'ROI'))
 
         # band_prep_i, band_prep = 0, 'lf'
         for band_prep_i, band_prep in enumerate(band_prep_list):
@@ -433,7 +458,7 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process):
                 if i == 0 :
 
                     ax = axs[i]
-                    ax.set_title(f'n_plot : {len(plot_to_process)}, length : {int(np.sum(len_recorded))} min')
+                    ax.set_title(f'n_sujet : {len(sujet_that_participate)}, n_plot : {len(plot_to_process)}, length : {int(np.sum(len_recorded))} min')
                     ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
                     ax.set_ylabel(band)
                     ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
@@ -466,8 +491,18 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process):
     if (Lobe_to_process in lobe_to_include) != True:
         return
 
+    print(Lobe_to_process)
+
     #### plot to compute
     plot_to_process = lobe_dict_plots[Lobe_to_process]
+
+    #### identify sujet that participate
+    sujet_that_participate = []
+    for plot_sujet_i, plot_plot_i in plot_to_process:
+        if plot_sujet_i in sujet_that_participate:
+            continue
+        else:
+            sujet_that_participate.append(plot_sujet_i)
 
     #### generate dict for loading TF
     dict_TF_for_Lobe_to_process = {}
@@ -499,7 +534,6 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process):
 
         #### load subject params
         conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions_for_sujet(sujet_tmp, conditions_allsubjects)
-        cond = 'FR_CV'
 
         #### identify plot name in trc
         if sujet_tmp[:3] != 'pat':
@@ -511,7 +545,7 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process):
         plot_tmp_i = chan_list_ieeg.index(plot_tmp)
 
         #### add length recorded
-        len_recorded.append(load_data_sujet(sujet_tmp, 'lf', 'FR_CV', 0)[plot_tmp_i,:].shape[0]/srate/60)
+        len_recorded.append(load_data_sujet(sujet_tmp, 'lf', cond, 0)[plot_tmp_i,:].shape[0]/srate/60)
 
         #### count session number
         os.chdir(os.path.join(path_prep, sujet_tmp, 'sections'))
@@ -544,9 +578,9 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process):
     for TF_type in ['TF', 'ITPC']:
 
         if TF_type == 'TF':
-            os.chdir(os.path.join(path_results, 'allplot', 'FR_CV', 'TF', 'Lobes'))
+            os.chdir(os.path.join(path_results, 'allplot', cond, 'TF', 'Lobes'))
         if TF_type == 'ITPC':
-            os.chdir(os.path.join(path_results, 'allplot', 'FR_CV', 'ITPC', 'Lobes'))
+            os.chdir(os.path.join(path_results, 'allplot', cond, 'ITPC', 'Lobes'))
     
         # band_prep_i, band_prep = 0, 'lf'
         for band_prep_i, band_prep in enumerate(band_prep_list):
@@ -573,7 +607,7 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process):
                 if i == 0 :
 
                     ax = axs[i]
-                    ax.set_title(f'n_plot : {len(plot_to_process)}, length : {int(np.sum(len_recorded))} min')
+                    ax.set_title(f'n_sujet : {len(sujet_that_participate)}, n_plot : {len(plot_to_process)}, length : {int(np.sum(len_recorded))} min')
                     ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
                     ax.set_ylabel(band)
                     ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
@@ -606,68 +640,101 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process):
 if __name__ == '__main__':
 
 
+    ######## PARAMS ########
+
+    #### when there is need to count
+    count_exe = False
+
+    #### analysis
+    
+    CxyRespi_exe = True
+    TF_ITPC_exe = True
+    
     ######## ANATOMY ########
 
-    count_all_plot_location()
+    if count_exe:
+        count_all_plot_location()
 
 
     ######## PREP ALLLOCA ANALYSIS ########
 
-    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots()
+    #cond = 'RD_CV'
+    for cond in conditions_allsubjects:
+
+        print(cond)
+        
+        sujet_for_cond, ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(cond)
+
+        ######## CxyRespi ########
+
+        if CxyRespi_exe:
+
+            print('#### Cxy Respi ####')
+
+            #### load all plot
+            os.chdir(os.path.join(path_anatomy, 'allplot'))
+            df_all_plot_noselect = pd.read_excel('plot_loca_all.xlsx')
+            all_proccessed_plot = []
+            for list_i in list(ROI_dict_plots.values()):
+                for i in range(len(list_i)):
+                    all_proccessed_plot.append(list_i[i][0] + '_' + list_i[i][1])
+
+            df_adjust_for_sujets_list = []
+            for i, sujet_cond_i in enumerate(sujet_for_cond):
+                df_adjust_for_sujets_list.append(df_all_plot_noselect[df_all_plot_noselect['subject'] == sujet_cond_i])
+            df_adjust_for_sujets = pd.concat(df_adjust_for_sujets_list)
 
 
-    ######## CxyRespi ########
+            #### initiate for CxyRespi computation
+            os.chdir(path_memmap)
+            PxxRespi_Cxy_p = np.memmap('CxyRespi_allplot.dat', dtype='float64', mode='w+', shape=(len(df_adjust_for_sujets.index.values),4))
 
-    #### load all plot
-    os.chdir(os.path.join(path_anatomy, 'allplot'))
-    df_all_plot_noselect = pd.read_excel('plot_loca_all.xlsx')
-    all_proccessed_plot = []
-    for list_i in list(ROI_dict_plots.values()):
-        for i in range(len(list_i)):
-            all_proccessed_plot.append(list_i[i][1])
+            #### compute CxyRespi all plot
+            joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(get_Coh_Respi_1plot)(plot_i_to_process) for plot_i_to_process in range(len(df_adjust_for_sujets.index.values)))
 
+            #### plot & save CxyRespi
 
-    #### initiate for CxyRespi computation
-    os.chdir(path_memmap)
-    PxxRespi_Cxy_p = np.memmap('CxyRespi_allplot.dat', dtype='float64', mode='w+', shape=(len(df_all_plot_noselect.index.values),4))
+            data_df = {'sujet' : df_adjust_for_sujets['subject'].values, 'plot' : df_adjust_for_sujets['plot'].values, 'max_respi' : PxxRespi_Cxy_p[:,0], 'max_Cxy' : PxxRespi_Cxy_p[:,1], 'Cxy_value' : PxxRespi_Cxy_p[:,2], 'Cxy_significant' : PxxRespi_Cxy_p[:,3]} 
 
-    #### compute CxyRespi all plot
-    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(get_Coh_Respi_1plot)(plot_i_to_process) for plot_i_to_process in range(len(df_all_plot_noselect.index.values)))
+            df_CxyRespi = pd.DataFrame(data_df)
 
-    #### plot & save CxyRespi
-    data_df = {'sujet' : df_all_plot_noselect['subject'].values, 'plot' : df_all_plot_noselect['plot'].values, 'max_respi' : PxxRespi_Cxy_p[:,0], 'max_Cxy' : PxxRespi_Cxy_p[:,1], 'Cxy_value' : PxxRespi_Cxy_p[:,2], 'Cxy_significant' : PxxRespi_Cxy_p[:,3]} 
+            size_marker = []
+            for plot_i_to_process in range(len(df_all_plot_noselect.index.values)):
+                df_CxyRespi
 
-    df_CxyRespi = pd.DataFrame(data_df)
+            x = df_CxyRespi['max_respi'].values
+            y = df_CxyRespi['max_Cxy'].values
+            colors = df_CxyRespi['Cxy_significant'].values
+            area = df_CxyRespi['Cxy_value'].values * 100
 
-    size_marker = []
-    for plot_i_to_process in range(len(df_all_plot_noselect.index.values)):
-        df_CxyRespi
+            fig_CxyRespi = plt.figure()
+            plt.title('CxyRespi_allplot_' + cond)
+            plt.scatter(x, y, s=area, c=colors, alpha=0.5)
+            plt.xlabel('Respi')
+            plt.ylabel('iEEG')
+            #plt.show()
 
-    x = df_CxyRespi['max_respi'].values
-    y = df_CxyRespi['max_Cxy'].values
-    colors = df_CxyRespi['Cxy_significant'].values
-    area = df_CxyRespi['Cxy_value'].values * 100
+            os.chdir(os.path.join(path_results, 'allplot', cond, 'PSD_Coh'))
+            df_CxyRespi.to_excel('CxyRespi_all_plot_' + cond + '.xlsx')
+            fig_CxyRespi.savefig('CxyRespi_scatter.png', dpi=600)
+            plt.close()
 
-    plt.scatter(x, y, s=area, c=colors, alpha=0.5)
-    plt.show()
-
-    os.chdir(os.path.join(path_results, 'all_plot', 'anatomy'))
-    df_CxyRespi.to_excel('CxyRespi_all_plot.xlsx')
-
-    #### remove memmap CxyRespi
-    os.chdir(path_memmap)
-    os.remove('CxyRespi_allplot.dat')
+            #### remove memmap CxyRespi
+            os.chdir(path_memmap)
+            os.remove('CxyRespi_allplot.dat')
 
 
+        ######## TF & ITPC ########
 
-    ######## TF & ITPC ########
+        if TF_ITPC_exe: 
 
+            #### compute TF & ITPC for ROI
+            print('#### TF and ITPC for ROI ####')
+            joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(get_TF_and_ITPC_for_ROI)(ROI_to_process) for ROI_to_process in ROI_to_include)
 
-    #### compute TF & ITPC for ROI
-    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(get_TF_and_ITPC_for_ROI)(ROI_to_process) for ROI_to_process in ROI_to_include)
-
-    #### compute TF & ITPC for Lobes
-    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(get_TF_and_ITPC_for_Lobe)(Lobe_to_process) for Lobe_to_process in lobe_to_include)
+            #### compute TF & ITPC for Lobes
+            print('#### TF and ITPC for Lobe ####')
+            joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(get_TF_and_ITPC_for_Lobe)(Lobe_to_process) for Lobe_to_process in lobe_to_include)
 
 
 
