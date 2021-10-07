@@ -20,9 +20,9 @@ enable_big_execute = True
 
 #sujet = 'CHEe'
 #sujet = 'GOBc'
-sujet = 'MAZm'
+#sujet = 'MAZm'
 #sujet = 'MUGa' # uniquement FR_CV
-#sujet = 'TREt'
+sujet = 'TREt'
 
 #sujet = 'pat_02459_0912' # uniquement FR_CV
 #sujet = 'pat_02476_0929' # uniquement FR_CV

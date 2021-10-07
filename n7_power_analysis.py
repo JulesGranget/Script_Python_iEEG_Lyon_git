@@ -415,10 +415,10 @@ def plot_save_PSD_Coh_lf(n_chan):
 
     else:
 
+        fig, axs = plt.subplots(nrows=4, ncols=len(conditions))
+        plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
+        
         for c, cond in enumerate(conditions):
-
-            fig, axs = plt.subplots(nrows=4, ncols=len(conditions))
-            plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
 
             #### supress NaN
             keep = np.invert(np.isnan(respfeatures_allcond_adjust.get(cond)[session_i]['cycle_freq'].values))
