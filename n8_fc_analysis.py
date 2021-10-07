@@ -98,7 +98,7 @@ def compute_fc_metrics(band_prep, data, freq, band, cond, session_i):
 
     def convolution_x_wavelets_nchan(nchan):
 
-        if nchan/np.size(data,0) % .2 <= .01:
+        if nchan/np.size(data,0) % .25 <= .01:
             print("{:.2f}".format(nchan/len(chan_list_ieeg)))
         
         nchan_conv = np.zeros((nfrex, np.size(data,1)), dtype='complex')
@@ -123,7 +123,8 @@ def compute_fc_metrics(band_prep, data, freq, band, cond, session_i):
 
     for seed in range(np.size(data,0)) :
 
-        print("{:.2f}".format(seed/len(chan_list_ieeg)))
+        if seed/len(chan_list_ieeg) % .25 <= .01:
+            print("{:.2f}".format(seed/len(chan_list_ieeg)))
 
         def compute_ispc_pli(nchan):
 
