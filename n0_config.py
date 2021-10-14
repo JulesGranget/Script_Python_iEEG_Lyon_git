@@ -11,6 +11,8 @@ import scipy.signal
 # respirationtools
 # mne
 # neo
+# bycycle
+# pingouin
 
 ################################
 ######## GENERAL PARAMS ######## 
@@ -77,6 +79,14 @@ if PC_ID == 'pc-jules':
     path_memmap = '/home/jules/smb4k/CRNLDATA/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/Mmap'
     n_core = 6
 
+if PC_ID == 'pc-valentin':
+
+    PC_working = 'Valentin_Labo_Linux'
+    path_main_workdir = '/home/valentin/smb4k/CRNLDATA/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/Script_Python_iEEG_Lyon/'
+    path_general = '/home/valentin/smb4k/CRNLDATA/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/'
+    path_memmap = '/home/valentin/smb4k/CRNLDATA/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/Mmap'
+    n_core = 10
+
 if PC_ID == 'nodeGPU':
 
     PC_working = 'nodeGPU'
@@ -84,6 +94,8 @@ if PC_ID == 'nodeGPU':
     path_general = '/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ'
     path_memmap = '/mnt/data/julesgranget'
     n_core = 40
+
+
 
 path_data = os.path.join(path_general, 'Data', 'raw_data')
 path_prep = os.path.join(path_general, 'Analyses', 'preprocessing')
@@ -242,6 +254,24 @@ coh_computation_interval = .02 #Hz around respi
 
 #### band to remove
 freq_band_fc_analysis = {'theta' : [4, 8], 'alpha' : [9,12], 'beta' : [15,40], 'l_gamma' : [50, 80], 'h_gamma' : [80, 120]}
+
+
+
+
+################################
+######## HRV ANALYSIS ########
+################################
+
+
+
+srate_resample_hrv = 10
+nwind_hrv = int( 128*srate_resample_hrv )
+nfft_hrv = nwind_hrv
+noverlap_hrv = np.round(nwind_hrv/10)
+win_hrv = scipy.signal.windows.hann(nwind_hrv)
+f_RRI = (.1, .5)
+
+
 
 
 

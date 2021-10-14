@@ -433,11 +433,10 @@ def get_electrode_loca():
         chan_list_ieeg_csv = chan_list_ieeg_trc.copy()
     else:
         chan_list_ieeg_csv, trash = modify_name(chan_list_ieeg_trc)
-        chan_list_ieeg_csv.sort()
 
     loca_ieeg = []
     for chan_name in chan_list_ieeg_csv:
-        loca_ieeg.append( str(file_plot_select['localisation_corrected'].loc[file_plot_select['plot'] == chan_name].values.tolist()[0]) )
+        loca_ieeg.append( str(file_plot_select['localisation_corrected'][file_plot_select['plot'] == chan_name].values.tolist()[0]) )
 
     dict_loca = {}
     for nchan_i, chan_name in enumerate(chan_list_ieeg_trc):

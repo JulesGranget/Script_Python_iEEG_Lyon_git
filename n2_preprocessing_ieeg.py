@@ -856,7 +856,7 @@ if __name__== '__main__':
         #### add events if necessary
         corrected = []
         cR_init = trig['time'].values
-        ecg_events_corrected = cR_init + corrected
+        ecg_events_corrected = np.hstack([cR_init, np.array(corrected)])
 
         #### find an event to remove
         around_to_find = 1000
@@ -883,7 +883,7 @@ if __name__== '__main__':
 
     if sujet == 'GOBc':
         #### add
-        ecg_events_corrected = [914419, 1206975, 1.70231e6, 1721770, 1730034, 1730871, 1731349, 1732781, 1.78158e6, 1.78227e6, 1.78493e6, 2199475, 2321365, 2322851, 2473316, 2797246, 2800339, 2.88987e6, 2.89661e6, 2968938]
+        ecg_events_corrected = [574640, 902240, 903060, 1205660, 1206290, 1632024, 1784291, 1895429, 2963796, 2973557, 2991529, 2998127, 914419, 1206975, 1.70231e6, 1721770, 1730034, 1730871, 1731349, 1732781, 1.78158e6, 1.78227e6, 1.78493e6, 2199475, 2321365, 2322851, 2473316, 2797246, 2800339, 2.88987e6, 2.89661e6, 2968938]
         ecg_events_time += ecg_events_corrected
         ecg_events_time.sort()
         #### remove
@@ -892,7 +892,7 @@ if __name__== '__main__':
 
     if sujet == 'MAZm':
         #### add
-        ecg_events_corrected = [7.9927e5, 8.6539e5, 9.9984e5, 1.01111e6, 1.16265e6, 1.28444e6, 1.35341e6]
+        ecg_events_corrected = [8.6539e5, 1.28444e6, 1.35341e6, 1285153, 1286958, 1287326, 1287692, 1288073, 1376352, 799279, 999758, 1011149, 1162670]
         ecg_events_time += ecg_events_corrected
         ecg_events_time.sort()   
         #### remove
