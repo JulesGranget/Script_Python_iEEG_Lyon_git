@@ -169,7 +169,8 @@ def get_PSD_LF_HF(RRI_resample, srate_resample, nwind, nfft, noverlap, win, cond
 # RR_val = RRI
 def get_stats_descriptors(RR_val) :
     SDNN = np.std(RR_val)
-    RMSSD = np.sqrt(np.mean([i**2 for i in RR_val]))
+
+    RMSSD = np.sqrt(np.mean((np.diff(RR_val)*1e3)**2))
 
     NN50 = []
     for RR in range(len(RR_val)) :
@@ -299,7 +300,7 @@ def ecg_analysis_homemade(cond, session_i):
     fig_list = [fig_RRI, fig_PSD, fig_poincarre, fig_verif, fig_dHR]
 
     #### df
-    res_tmp = [HRV_MeanNN*1e3, SDNN*1e3, RMSSD*1e3, pNN50*100, AUC_LF, AUC_HF, SD1*1e3, SD2*1e3]
+    res_tmp = [HRV_MeanNN*1e3, SDNN*1e3, RMSSD, pNN50*100, AUC_LF, AUC_HF, SD1*1e3, SD2*1e3]
     data_df = {}
     for i, dv in enumerate(res_list):
         data_df[dv] = [res_tmp[i]]
