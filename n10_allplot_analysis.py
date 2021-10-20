@@ -687,7 +687,7 @@ if __name__ == '__main__':
 
             #### initiate for CxyRespi computation
             os.chdir(path_memmap)
-            PxxRespi_Cxy_p = np.memmap('CxyRespi_allplot.dat', dtype='float64', mode='w+', shape=(len(df_adjust_for_sujets.index.values),4))
+            PxxRespi_Cxy_p = np.memmap(sujet + '_CxyRespi_allplot.dat', dtype='float64', mode='w+', shape=(len(df_adjust_for_sujets.index.values),4))
 
             #### compute CxyRespi all plot
             joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(get_Coh_Respi_1plot)(plot_i_to_process) for plot_i_to_process in range(len(df_adjust_for_sujets.index.values)))
@@ -721,7 +721,7 @@ if __name__ == '__main__':
 
             #### remove memmap CxyRespi
             os.chdir(path_memmap)
-            os.remove('CxyRespi_allplot.dat')
+            os.remove(sujet + '_CxyRespi_allplot.dat')
 
 
         ######## TF & ITPC ########
