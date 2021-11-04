@@ -20,19 +20,24 @@ import scipy.signal
 
 enable_big_execute = True
 
+#### whole protocole
 #sujet = 'CHEe'
 #sujet = 'GOBc'
 #sujet = 'MAZm'
-#sujet = 'MUGa' # uniquement FR_CV
-sujet = 'TREt'
+#sujet = 'TREt'
 
+#### FR_CV only
+#sujet = 'MUGa'
+sujet = 'BANc'
+#sujet = 'KOFs'
+#sujet = 'LEMl'
 #sujet = 'pat_02459_0912' # uniquement FR_CV
 #sujet = 'pat_02476_0929' # uniquement FR_CV
 #sujet = 'pat_02495_0949' # uniquement FR_CV
 
 #sujet = 'DEBUG'
 
-sujet_list = ['CHEe', 'GOBc', 'MAZm', 'MUGa', 'TREt', 'pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949']
+sujet_list = ['CHEe', 'GOBc', 'MAZm', 'TREt', 'MUGa', 'BANc', 'KOFs', 'LEMl', 'pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949']
 
 conditions_allsubjects = ['RD_CV', 'RD_FV', 'RD_SV', 'RD_AV', 'FR_CV', 'FR_MV']
 
@@ -141,8 +146,11 @@ aux_chan = {
 'CHEe' : {'nasal': 'p7+', 'ventral' : 'p8+', 'ECG' : 'ECG'}, # OK
 'GOBc' : {'nasal': 'p13+', 'ventral' : 'p14+', 'ECG' : 'ECG'}, # OK
 'MAZm' : {'nasal': 'p7+', 'ventral' : 'p8+', 'ECG' : 'ECG'}, # OK
-'MUGa' : {'nasal': 'p20+', 'ventral' : 'p19+', 'ECG' : 'ECG'}, # OK
 'TREt' : {'nasal': 'p19+', 'ventral' : 'p20+', 'ECG' : 'ECG1'}, # OK
+'MUGa' : {'nasal': 'p20+', 'ventral' : 'p19+', 'ECG' : 'ECG'}, # OK
+'BANc' : {'nasal': 'p19+', 'ventral' : None, 'ECG' : 'ECG'}, # OK
+'KOFs' : {'nasal': 'p7+', 'ventral' : None, 'ECG' : 'ECG'}, # OK
+'LEMl' : {'nasal': 'p17+', 'ventral' : None, 'ECG' : 'ECG1'}, # OK
 
 'DEBUG' : {'nasal': 'p20+', 'ventral' : 'p19+', 'ECG' : 'ECG'}, # OK
 
@@ -157,8 +165,11 @@ sujet_ecg_adjust = {
 'CHEe' : 'inverse',
 'GOBc' : 'inverse',
 'MAZm' : 'inverse',
-'MUGa' : 'normal',
 'TREt' : 'normal',
+'MUGa' : 'normal',
+'BANc' : 'inverse',
+'KOFs' : 'normal',
+'LEMl' : 'inverse',
 }
 
 

@@ -249,9 +249,15 @@ def extract_data_trc():
 
     print('#### AUX IDENTIFICATION ####')
     nasal_i = chan_list.index(aux_chan.get(sujet).get('nasal'))
-    ventral_i = chan_list.index(aux_chan.get(sujet).get('ventral'))
     ecg_i = chan_list.index(aux_chan.get(sujet).get('ECG'))
-    data_aux = np.stack((data[nasal_i, :], data[ventral_i, :], data[ecg_i, :]), axis = 0)
+    
+    if aux_chan.get(sujet).get('ventral') == None:
+        _data_ventral = np.zeros((data[nasal_i, :].shape[0]))
+        data_aux = np.stack((data[nasal_i, :], _data_ventral, data[ecg_i, :]), axis = 0)
+    else:
+        ventral_i = chan_list.index(aux_chan.get(sujet).get('ventral'))
+        data_aux = np.stack((data[nasal_i, :], data[ventral_i, :], data[ecg_i, :]), axis = 0)
+
     chan_list_aux = ['nasal', 'ventral', 'ECG']
 
     data = data_rmv_second.copy()
@@ -796,14 +802,6 @@ if __name__== '__main__':
         trig_load = {'name' : trig_name, 'time' : trig_time}
         trig = pd.DataFrame(trig_load)
 
-    if sujet == 'MUGa':
-        
-        trig_name = ['CV_start', 'CV_stop']
-        trig_time = [17400,       98700]
-
-        trig_load = {'name' : trig_name, 'time' : trig_time}
-        trig = pd.DataFrame(trig_load)    
-
     if sujet == 'TREt':
 
         trig_name = ['61',    '62',    'MV_start', 'MV_stop']
@@ -815,6 +813,38 @@ if __name__== '__main__':
         index_append = [i for i in range(len(trig.name), (len(trig.name)+len(trig_name)))]
         trig_append = pd.DataFrame(trig_load, index=index_append)
         trig = trig.append(trig_append)
+
+    if sujet == 'MUGa':
+        
+        trig_name = ['CV_start', 'CV_stop']
+        trig_time = [17400,       98700]
+
+        trig_load = {'name' : trig_name, 'time' : trig_time}
+        trig = pd.DataFrame(trig_load)    
+
+    if sujet == 'BANc':
+
+        trig_name = ['CV_start', 'CV_stop']
+        trig_time = [0,       data_aux[0,:].shape[0]]
+
+        trig_load = {'name' : trig_name, 'time' : trig_time}
+        trig = pd.DataFrame(trig_load)  
+
+    if sujet == 'KOFs':
+
+        trig_name = ['CV_start', 'CV_stop']
+        trig_time = [0,       data_aux[0,:].shape[0]]
+
+        trig_load = {'name' : trig_name, 'time' : trig_time}
+        trig = pd.DataFrame(trig_load)  
+
+    if sujet == 'LEMl':
+
+        trig_name = ['CV_start', 'CV_stop']
+        trig_time = [0,       data_aux[0,:].shape[0]]
+
+        trig_load = {'name' : trig_name, 'time' : trig_time}
+        trig = pd.DataFrame(trig_load)  
 
 
     # verif trig
@@ -917,7 +947,32 @@ if __name__== '__main__':
         ecg_events_to_remove = []
         [ecg_events_time.remove(i) for i in ecg_events_to_remove]  
 
+    if sujet == 'BANc':
+        #### add
+        ecg_events_corrected = [10209]
+        ecg_events_time += ecg_events_corrected
+        ecg_events_time.sort()
+        #### remove
+        ecg_events_to_remove = []
+        [ecg_events_time.remove(i) for i in ecg_events_to_remove]  
 
+    if sujet == 'KOFs':
+        #### add
+        ecg_events_corrected = []
+        ecg_events_time += ecg_events_corrected
+        ecg_events_time.sort()
+        #### remove
+        ecg_events_to_remove = []
+        [ecg_events_time.remove(i) for i in ecg_events_to_remove]  
+
+    if sujet == 'LEMl':
+        #### add
+        ecg_events_corrected = [92428]
+        ecg_events_time += ecg_events_corrected
+        ecg_events_time.sort()
+        #### remove
+        ecg_events_to_remove = []
+        [ecg_events_time.remove(i) for i in ecg_events_to_remove]  
 
 
 

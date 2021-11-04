@@ -1,3 +1,5 @@
+
+
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -245,7 +247,10 @@ if __name__ == '__main__':
     #sujet = 'GOBc'
     #sujet = 'MAZm'
     #sujet = 'MUGa'  
-    sujet = 'TREt' 
+    #sujet = 'TREt' 
+    #sujet = 'BANc'
+    #sujet = 'KOFs'
+    sujet = 'LEMl'
 
     ############################
     ######## LOAD DATA ########
@@ -323,8 +328,8 @@ if __name__ == '__main__':
         #cond = 'RD_FV' 
         #cond = 'RD_SV'
         #cond = 'RD_AV'
-        #cond = 'FR_CV'
-        cond = 'FR_MV'
+        cond = 'FR_CV'
+        #cond = 'FR_MV'
         
         session_i = 0
 
