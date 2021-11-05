@@ -28,16 +28,20 @@ enable_big_execute = True
 
 #### FR_CV only
 #sujet = 'MUGa'
-sujet = 'BANc'
+#sujet = 'BANc'
 #sujet = 'KOFs'
-#sujet = 'LEMl'
-#sujet = 'pat_02459_0912' # uniquement FR_CV
-#sujet = 'pat_02476_0929' # uniquement FR_CV
-#sujet = 'pat_02495_0949' # uniquement FR_CV
+sujet = 'LEMl'
+#sujet = 'pat_02459_0912'
+#sujet = 'pat_02476_0929'
+#sujet = 'pat_02495_0949'
 
 #sujet = 'DEBUG'
 
-sujet_list = ['CHEe', 'GOBc', 'MAZm', 'TREt', 'MUGa', 'BANc', 'KOFs', 'LEMl', 'pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949']
+#### whole protocole
+sujet_list = ['CHEe', 'GOBc', 'MAZm', 'TREt']
+
+#### FR_CV
+sujet_list_FR_CV = ['CHEe', 'GOBc', 'MAZm', 'TREt', 'MUGa', 'BANc', 'KOFs', 'LEMl', 'pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949']
 
 conditions_allsubjects = ['RD_CV', 'RD_FV', 'RD_SV', 'RD_AV', 'FR_CV', 'FR_MV']
 

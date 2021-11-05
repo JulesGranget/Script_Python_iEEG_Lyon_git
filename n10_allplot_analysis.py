@@ -33,10 +33,16 @@ def count_all_plot_location():
         anat_loca_dict[anat_loca_list[i]] = 0
         anat_lobe_dict[anat_lobe_list_non_sorted[i]] = 0
 
+    anat_loca_dict_FR_CV = anat_loca_dict.copy()
+    anat_lobe_dict_FR_CV = anat_lobe_dict.copy()
+    
     anat_ROI_noselect_dict = anat_loca_dict.copy()
     anat_lobe_noselect_dict = anat_lobe_dict.copy()
 
-    #### search for all subjects
+    anat_ROI_noselect_dict_FR_CV = anat_loca_dict.copy()
+    anat_lobe_noselect_dict_FR_CV = anat_lobe_dict.copy()
+
+    #### for whole protocole all subjects
     #sujet_i = sujet_list[0]
     for sujet_i in sujet_list:
 
@@ -69,6 +75,39 @@ def count_all_plot_location():
             print('ERROR : anatomical count is not correct, count != len chan_list')
             exit()
 
+    #### for FR_CV search for all subjects
+    #sujet_i = sujet_list_FR_CV[0]
+    for sujet_i in sujet_list_FR_CV:
+
+        os.chdir(os.path.join(path_anatomy, sujet_i))
+        plot_loca_df = pd.read_excel(sujet_i + '_plot_loca.xlsx')
+
+        chan_list_txt = open(sujet_i + '_chanlist_ieeg.txt', 'r')
+        chan_list_txt_readlines = chan_list_txt.readlines()
+        chan_list_ieeg = [i.replace('\n', '') for i in chan_list_txt_readlines]
+
+        #### exclude Paris subjects
+        if sujet_i[:3] == 'pat':
+            chan_list_ieeg_csv = chan_list_ieeg
+        else:
+            chan_list_ieeg_csv, trash = modify_name(chan_list_ieeg)
+
+        count_verif = 0
+
+        for nchan in chan_list_ieeg_csv:
+
+            loca_tmp = plot_loca_df['localisation_corrected'][plot_loca_df['plot'] == nchan].values[0]
+            lobe_tmp = plot_loca_df['lobes_corrected'][plot_loca_df['plot'] == nchan].values[0]
+            
+            anat_loca_dict_FR_CV[loca_tmp] = anat_loca_dict_FR_CV[loca_tmp] + 1
+            anat_lobe_dict_FR_CV[lobe_tmp] = anat_lobe_dict_FR_CV[lobe_tmp] + 1
+            count_verif += 1
+
+        #### verif count
+        if count_verif != len(chan_list_ieeg):
+            print('ERROR : anatomical count is not correct, count != len chan_list')
+            exit()
+
     #### for all plot, i. e. not included
     os.chdir(os.path.join(path_anatomy, 'allplot'))
     df_all_plot_noselect = pd.read_excel('plot_loca_all.xlsx')
@@ -77,46 +116,82 @@ def count_all_plot_location():
 
         ROI_tmp = df_all_plot_noselect['localisation_corrected'][i]
         lobe_tmp = df_all_plot_noselect['lobes_corrected'][i]
+        sujet_tmp = df_all_plot_noselect['subject'][i]
         
-        anat_ROI_noselect_dict[ROI_tmp] = anat_ROI_noselect_dict[ROI_tmp] + 1
-        anat_lobe_noselect_dict[lobe_tmp] = anat_lobe_noselect_dict[lobe_tmp] + 1
+        if sujet_tmp in sujet_list:
+            anat_ROI_noselect_dict[ROI_tmp] = anat_ROI_noselect_dict[ROI_tmp] + 1
+            anat_lobe_noselect_dict[lobe_tmp] = anat_lobe_noselect_dict[lobe_tmp] + 1
+
+        if sujet_tmp in sujet_list_FR_CV:
+            anat_ROI_noselect_dict_FR_CV[ROI_tmp] = anat_ROI_noselect_dict_FR_CV[ROI_tmp] + 1
+            anat_lobe_noselect_dict_FR_CV[lobe_tmp] = anat_lobe_noselect_dict_FR_CV[lobe_tmp] + 1
 
     df_data_ROI = {'ROI' : list(anat_loca_dict.keys()), 'ROI_Count_No_Included' : list(anat_ROI_noselect_dict.values()), 'ROI_Count_Included' : list(anat_loca_dict.values())}
     df_data_Lobes = {'Lobes' : list(anat_lobe_dict.keys()), 'Lobes_Count_No_Included' : list(anat_lobe_noselect_dict.values()), 'Lobes_Count_Included' : list(anat_lobe_dict.values())}
 
+    df_data_ROI_FR_CV = {'ROI' : list(anat_loca_dict.keys()), 'ROI_Count_No_Included' : list(anat_ROI_noselect_dict_FR_CV.values()), 'ROI_Count_Included' : list(anat_loca_dict_FR_CV.values())}
+    df_data_Lobes_FR_CV = {'Lobes' : list(anat_lobe_dict.keys()), 'Lobes_Count_No_Included' : list(anat_lobe_noselect_dict_FR_CV.values()), 'Lobes_Count_Included' : list(anat_lobe_dict_FR_CV.values())}
+
     df_ROI_count = pd.DataFrame(df_data_ROI)
     df_lobes_count = pd.DataFrame(df_data_Lobes)
+
+    df_ROI_count_FR_CV = pd.DataFrame(df_data_ROI_FR_CV)
+    df_lobes_count_FR_CV = pd.DataFrame(df_data_Lobes_FR_CV)
 
     #### save df
     os.chdir(os.path.join(path_anatomy, 'allplot'))
 
-    if os.path.exists('ROI_count.xlsx'):
-        os.remove('ROI_count.xlsx')
+    if os.path.exists('ROI_count_whole_protocol.xlsx'):
+        os.remove('ROI_count_whole_protocol.xlsx')
 
-    if os.path.exists('Lobes_count.xlsx'):
-        os.remove('Lobes_count.xlsx')  
+    if os.path.exists('Lobes_count_whole_protocol.xlsx'):
+        os.remove('Lobes_count_whole_protocol.xlsx')  
 
-    df_ROI_count.to_excel('ROI_count.xlsx')
-    df_lobes_count.to_excel('Lobes_count.xlsx')
+    if os.path.exists('ROI_count_FR_CV.xlsx'):
+        os.remove('ROI_count_FR_CV.xlsx')
 
-    #### save fig
+    if os.path.exists('Lobes_count_FR_CV.xlsx'):
+        os.remove('Lobes_count_FR_CV.xlsx')  
+
+    df_ROI_count.to_excel('ROI_count_whole_protocol.xlsx')
+    df_lobes_count.to_excel('Lobes_count_whole_protocol.xlsx')
+
+    df_ROI_count_FR_CV.to_excel('ROI_count_FR_CV.xlsx')
+    df_lobes_count_FR_CV.to_excel('Lobes_count_FR_CV.xlsx')
+
+    #### save fig whole protocol
     sns.catplot(x="ROI_Count_Included", y="ROI", kind='bar', palette="pastel", edgecolor=".6", data=df_ROI_count, height=10, aspect=1)
-    plt.savefig('ROI_count_included.png', dpi=600)
+    plt.savefig('ROI_count_whole_protocol_included.png', dpi=600)
     plt.close()
     
     sns.catplot(x="Lobes_Count_Included", y="Lobes", kind='bar', palette="pastel", edgecolor=".6", data=df_lobes_count, height=10, aspect=1)
-    plt.savefig('Lobes_Count_Included.png', dpi=600)
+    plt.savefig('Lobes_Count_whole_protocol_Included.png', dpi=600)
     plt.close()
 
     sns.catplot(x="ROI_Count_No_Included", y="ROI", kind='bar', palette="pastel", edgecolor=".6", data=df_ROI_count, height=10, aspect=1)
-    plt.savefig('ROI_Count_No_Included.png', dpi=600)
+    plt.savefig('ROI_Count_whole_protocol_No_Included.png', dpi=600)
     plt.close()
     
     sns.catplot(x="Lobes_Count_No_Included", y="Lobes", kind='bar', palette="pastel", edgecolor=".6", data=df_lobes_count, height=10, aspect=1)
-    plt.savefig('Lobes_Count_No_Included.png', dpi=600)
+    plt.savefig('Lobes_Count_whole_protocol_No_Included.png', dpi=600)
     plt.close()
     
+    #### save fig FR_CV
+    sns.catplot(x="ROI_Count_Included", y="ROI", kind='bar', palette="pastel", edgecolor=".6", data=df_ROI_count_FR_CV, height=10, aspect=1)
+    plt.savefig('ROI_count_FR_CV_included.png', dpi=600)
+    plt.close()
     
+    sns.catplot(x="Lobes_Count_Included", y="Lobes", kind='bar', palette="pastel", edgecolor=".6", data=df_lobes_count_FR_CV, height=10, aspect=1)
+    plt.savefig('Lobes_Count_FR_CV_Included.png', dpi=600)
+    plt.close()
+
+    sns.catplot(x="ROI_Count_No_Included", y="ROI", kind='bar', palette="pastel", edgecolor=".6", data=df_ROI_count_FR_CV, height=10, aspect=1)
+    plt.savefig('ROI_Count_FR_CV_No_Included.png', dpi=600)
+    plt.close()
+    
+    sns.catplot(x="Lobes_Count_No_Included", y="Lobes", kind='bar', palette="pastel", edgecolor=".6", data=df_lobes_count_FR_CV, height=10, aspect=1)
+    plt.savefig('Lobes_Count_FR_CV_No_Included.png', dpi=600)
+    plt.close()
 
 
 
@@ -155,8 +230,14 @@ def get_ROI_Lobes_list_and_Plots(cond):
     sujet_for_cond = []
 
     #### search for ROI & lobe that have been counted
-    #sujet_i = sujet_list[0]
-    for sujet_i in sujet_list:
+
+    if cond == 'FR_CV' :
+        sujet_list_selected = sujet_list_FR_CV
+    else:
+        sujet_list_selected = sujet_list
+
+    #sujet_i = sujet_list_selected[0]
+    for sujet_i in sujet_list_selected:
 
         os.chdir(os.path.join(path_prep, sujet_i, 'sections'))
         session_count_sujet_i = []
@@ -658,7 +739,7 @@ if __name__ == '__main__':
 
     ######## PREP ALLLOCA ANALYSIS ########
 
-    #cond = 'RD_CV'
+    #cond = 'FR_CV'
     for cond in conditions_allsubjects:
 
         print(cond)
