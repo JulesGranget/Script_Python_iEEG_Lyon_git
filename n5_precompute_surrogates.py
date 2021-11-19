@@ -29,6 +29,18 @@ def get_shuffle(x):
     x_shift = np.concatenate((x_cut2, x_cut1), axis=0)
 
     return x_shift
+    
+
+#def shuffle_sig_one_inversion(sig):
+#    half_size = sig.shape[0]//2
+#    ind = np.random.randint(low=0, high=half_size)
+#    sig2 = sig.copy()
+#    
+#    sig2[ind:ind+half_size] *= -1
+#    if np.random.rand() >=0.5:
+#        sig2 *= -1
+#
+#    return sig2, ind
 
 
 def precompute_surrogates_coh(band_prep, cond, session_i):

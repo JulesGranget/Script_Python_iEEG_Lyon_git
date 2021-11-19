@@ -23,9 +23,11 @@ def analyse_resp(resp_sig, sr, t_start, condition):
     
     # compute signal features
         # indicate if inspiration is '+' or '-'
-        # for abdominal belt inspi = '-'
+        # for abdominal belt iEEG inspi = '-'
+        # for abdominal belt EEG inspi = '-'
+        # for nasal thermistance inspi = '+'
     cycle_indexes = respirationtools.detect_respiration_cycles(resp_sig, sr, t_start=t_start, output = 'index',
-                                                    inspiration_sign = '-',
+                                                    inspiration_sign = '+',
                                                     # baseline
                                                     #baseline_with_average = False,
                                                     baseline_with_average = True,
@@ -134,8 +136,9 @@ def analyse_resp_debug(resp_sig, sr, t_start, condition, params):
     # compute signal features
         # indicate if inspiration is '+' or '-'
         # for abdominal belt inspi = '-'
+        # for nasal thermistance inspi = '+'
     cycle_indexes = respirationtools.detect_respiration_cycles(resp_sig, sr, t_start=t_start, output = 'index',
-                                                    inspiration_sign = '-',
+                                                    inspiration_sign = '+',
                                                     # baseline
                                                     #baseline_with_average = False,
                                                     baseline_with_average = params.get('baseline_with_average'),
