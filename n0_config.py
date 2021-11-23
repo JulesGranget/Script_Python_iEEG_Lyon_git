@@ -21,7 +21,7 @@ import scipy.signal
 enable_big_execute = True
 
 #### whole protocole
-#sujet = 'CHEe'
+sujet = 'CHEe'
 #sujet = 'GOBc'
 #sujet = 'MAZm'
 #sujet = 'TREt'
@@ -30,7 +30,7 @@ enable_big_execute = True
 #sujet = 'MUGa'
 #sujet = 'BANc'
 #sujet = 'KOFs'
-sujet = 'LEMl'
+#sujet = 'LEMl'
 #sujet = 'pat_02459_0912'
 #sujet = 'pat_02476_0929'
 #sujet = 'pat_02495_0949'
@@ -223,12 +223,12 @@ def get_params_spectral_analysis(srate):
 stretch_point_surrogates = 1000
 
 #### coh
-n_surrogates_coh = 10
+n_surrogates_coh = 1000
 freq_surrogates = [0, 2]
 percentile_coh = .95
 
 #### cycle freq
-n_surrogates_cyclefreq = 100
+n_surrogates_cyclefreq = 1000
 percentile_cyclefreq_up = .99
 percentile_cyclefreq_dw = .01
 

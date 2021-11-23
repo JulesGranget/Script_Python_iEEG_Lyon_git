@@ -21,7 +21,7 @@ debug = False
 ################################################
 
 
-def get_shuffle(x):
+def shuffle_CycleFreq(x):
 
     cut = int(np.random.randint(low=0, high=len(x), size=1))
     x_cut1 = x[:cut]
@@ -31,16 +31,16 @@ def get_shuffle(x):
     return x_shift
     
 
-#def shuffle_sig_one_inversion(sig):
-#    half_size = sig.shape[0]//2
-#    ind = np.random.randint(low=0, high=half_size)
-#    sig2 = sig.copy()
-#    
-#    sig2[ind:ind+half_size] *= -1
-#    if np.random.rand() >=0.5:
-#        sig2 *= -1
-#
-#    return sig2, ind
+def shuffle_Cxy(x):
+   half_size = x.shape[0]//2
+   ind = np.random.randint(low=0, high=half_size)
+   x_shift = x.copy()
+   
+   x_shift[ind:ind+half_size] *= -1
+   if np.random.rand() >=0.5:
+       x_shift *= -1
+
+   return x_shift
 
 
 def precompute_surrogates_coh(band_prep, cond, session_i):
@@ -82,8 +82,8 @@ def precompute_surrogates_coh(band_prep, cond, session_i):
             #if surr_i%100 == 0:
             #    print(surr_i) 
 
-            x_shift = get_shuffle(x)
-            #y_shift = get_shuffle(y)
+            x_shift = shuffle_Cxy(x)
+            #y_shift = shuffle_Cxy(y)
             hzCxy_tmp, Cxy = scipy.signal.coherence(x_shift, y, fs=srate, window=hannw, nperseg=None, noverlap=noverlap, nfft=nfft)
 
             surrogates_val_tmp[surr_i,:] = Cxy[mask_hzCxy]
@@ -134,8 +134,8 @@ def precompute_surrogates_cyclefreq(band_prep, cond, session_i, respfeatures_all
             #if surr_i%100 == 0:
             #    print(surr_i)
 
-            x_shift = get_shuffle(x)
-            #y_shift = get_shuffle(y)
+            x_shift = shuffle_CycleFreq(x)
+            #y_shift = shuffle_CycleFreq(y)
 
             x_stretch, mean_inspi_ratio = stretch_data(respfeatures_i, stretch_point_surrogates, x_shift, srate)
 
