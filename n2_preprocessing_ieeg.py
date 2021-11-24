@@ -279,7 +279,7 @@ def extract_data_trc():
 
 def compute_baseline(data, srate):
 
-    print('######## COMPUTE BASELINES ########')
+    print('#### COMPUTE BASELINES ####')
     
     #### generate all wavelets to conv
     wavelets_to_conv = {}
@@ -358,14 +358,11 @@ def compute_baseline(data, srate):
 
         for band in list(wavelets_to_conv.keys()):
 
-            tf_conv = np.zeros((wavelets_to_conv[band].shape[0],np.size(x)))
-
             for fi in range(wavelets_to_conv[band].shape[0]):
                 
-                tf_conv[fi,:] = abs(scipy.signal.fftconvolve(x, wavelets_to_conv[band][fi,:], 'same'))**2 
-
-            baseline_coeff = np.hstack((baseline_coeff, np.median(tf_conv, 1)))
-
+                fi_conv = abs(scipy.signal.fftconvolve(x, wavelets_to_conv[band][fi,:], 'same'))**2
+                baseline_coeff = np.append(baseline_coeff, np.median(fi_conv))
+        
         baseline_allchan[n_chan,:] = baseline_coeff
 
     joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(baseline_convolutions)(n_chan) for n_chan in range(np.size(data,0)))
