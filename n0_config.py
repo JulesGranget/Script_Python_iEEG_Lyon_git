@@ -213,7 +213,8 @@ prep_step_hf = {
 #### Pxx Cxy
 def get_params_spectral_analysis(srate):
     nwind = int( 20*srate ) # window length in seconds*srate
-    nfft = nwind*15 # if no zero padding nfft = nwind
+    zero_pad_coeff = 15
+    nfft = nwind*zero_pad_coeff # if no zero padding nfft = nwind
     noverlap = np.round(nwind/2) # number of points of overlap here 50%
     hannw = scipy.signal.windows.hann(nwind) # hann window
 

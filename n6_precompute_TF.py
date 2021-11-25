@@ -39,19 +39,34 @@ def compute_stretch_tf(tf, cond, session_i, respfeatures_allcond, stretch_point_
 
     return tf_mean_allchan
 
-
+#tf = tf_allchan
 #condition, resp_features, freq_band, stretch_point_TF = conditions[0], list(resp_features_allcond.values())[0], freq_band, stretch_point_TF
-def compute_stretch_tf_dB(tf, cond, session_i, respfeatures_allcond, stretch_point_TF):
+def compute_stretch_tf_dB(tf, cond, session_i, respfeatures_allcond, stretch_point_TF, band, band_prep, nfrex):
 
-    baseline = np.mean(tf, axis=2)
-    baseline = np.transpose(baseline)
+    #### load baseline
+    os.chdir(os.path.join(path_prep, sujet, 'baseline'))
+    baselines = np.load(sujet + '_baselines.npy')
 
+    baselines_i = np.arange(nfrex)
+    if band_prep == 'hf':
+        baselines_i += nfrex * len(freq_band_list[band_prep_list.index(band_prep)])
+
+    baselines_i += nfrex *list(freq_band_list[band_prep_list.index(band_prep)].keys()).index(band)
+
+    #### apply baseline
     for n_chan in range(np.size(tf,0)):
+
+        baselines_band = baselines[n_chan,baselines_i]
         
         for fi in range(np.size(tf,1)):
 
             activity = tf[n_chan,fi,:]
-            baseline_fi = baseline[fi,n_chan]
+            baseline_fi = baselines_band[fi]
+
+            #### verify baseline
+            #plt.plot(activity)
+            #plt.hlines(baseline_fi, xmin=0 , xmax=activity.shape[0], color='r')
+            #plt.show()
 
             tf[n_chan,fi,:] = 10*np.log10(activity/baseline_fi)
 
@@ -113,7 +128,7 @@ def precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_lis
     print('TF PRECOMPUTE')
 
     #### select prep to load
-    #band_prep_i, band_prep = 0, 'hf'
+    #band_prep_i, band_prep = 0, 'lf'
     for band_prep_i, band_prep in enumerate(band_prep_list):
 
         #### select data without aux chan
@@ -189,7 +204,7 @@ def precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_lis
 
             #### stretch
             print('STRETCH')
-            tf_allband_stretched = compute_stretch_tf_dB(tf_allchan, cond, session_i, respfeatures_allcond, stretch_point_TF)
+            tf_allband_stretched = compute_stretch_tf_dB(tf_allchan, cond, session_i, respfeatures_allcond, stretch_point_TF, band, band_prep, nfrex)
             
             #### save
             print('SAVE')
@@ -336,7 +351,7 @@ if __name__ == '__main__':
     print('######## PRECOMPUTE TF & ITPC ########')
 
     #### compute and save tf
-    #cond = conditions[0]
+    #cond = 'FR_CV'
     #session_i = 0
     for cond in conditions:
 

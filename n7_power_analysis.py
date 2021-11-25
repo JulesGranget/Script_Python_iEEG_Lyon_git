@@ -55,54 +55,36 @@ nwind, nfft, noverlap, hannw = get_params_spectral_analysis(srate)
 
 #### load surrogates
 def load_surrogates():
-    Cxy_surrogates_allcond = {}
-    cyclefreq_surrogates_allcond_lf = {}
-    cyclefreq_surrogates_allcond_hf = {}
+
     os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
+
+    surrogates_allcond = {'Cxy' : {}, 'cyclefreq_lf' : {}, 'cyclefreq_hf' : {}}
 
     for cond in conditions:
 
         if len(respfeatures_allcond.get(cond)) == 1:
 
-            data_load = []
-            data_load.append(np.load(sujet + '_' + cond + '_' + str(1) + '_Coh.npy'))
-            Cxy_surrogates_allcond[cond] = data_load
-
-            data_load = []
-            data_load.append(np.load(sujet + '_' + cond + '_' + str(1) + '_cyclefreq_lf.npy'))
-            cyclefreq_surrogates_allcond_lf[cond] = data_load
-
-            data_load = []
-            data_load.append(np.load(sujet + '_' + cond + '_' + str(1) + '_cyclefreq_hf.npy'))
-            cyclefreq_surrogates_allcond_hf[cond] = data_load
+            surrogates_allcond['Cxy'][cond] = [np.load(sujet + '_' + cond + '_' + str(1) + '_Coh.npy')]
+            surrogates_allcond['cyclefreq_lf'][cond] = [np.load(sujet + '_' + cond + '_' + str(1) + '_cyclefreq_lf.npy')]
+            surrogates_allcond['cyclefreq_hf'][cond] = [np.load(sujet + '_' + cond + '_' + str(1) + '_cyclefreq_hf.npy')]
 
         elif len(respfeatures_allcond.get(cond)) > 1:
 
-            data_load = []
+            data_load = {'Cxy' : [], 'cyclefreq_lf' : [], 'cyclefreq_hf' : []}
 
             for session_i in range(len(respfeatures_allcond.get(cond))):
 
-                data_load.append(np.load(sujet + '_' + cond + '_' + str(session_i+1) + '_Coh.npy'))
+                data_load['Cxy'].append(np.load(sujet + '_' + cond + '_' + str(session_i+1) + '_Coh.npy'))
+                data_load['cyclefreq_lf'].append(np.load(sujet + '_' + cond + '_' + str(session_i+1) + '_cyclefreq_lf.npy'))
+                data_load['cyclefreq_hf'].append(np.load(sujet + '_' + cond + '_' + str(session_i+1) + '_cyclefreq_hf.npy'))
             
-            Cxy_surrogates_allcond[cond] = data_load
+            surrogates_allcond['Cxy'][cond] = data_load['Cxy']
+            surrogates_allcond['cyclefreq_lf'][cond] = data_load['cyclefreq_lf']
+            surrogates_allcond['cyclefreq_hf'][cond] = data_load['cyclefreq_hf']
 
-            data_load = []
 
-            for session_i in range(len(respfeatures_allcond.get(cond))):
+    return surrogates_allcond
 
-                data_load.append(np.load(sujet + '_' + cond + '_' + str(session_i+1) + '_cyclefreq_lf.npy'))
-            
-            cyclefreq_surrogates_allcond_lf[cond] = data_load
-
-            data_load = []
-
-            for session_i in range(len(respfeatures_allcond.get(cond))):
-
-                data_load.append(np.load(sujet + '_' + cond + '_' + str(session_i+1) + '_cyclefreq_hf.npy'))
-            
-            cyclefreq_surrogates_allcond_hf[cond] = data_load
-
-    return Cxy_surrogates_allcond, cyclefreq_surrogates_allcond_lf, cyclefreq_surrogates_allcond_hf
 
 
 #### compute Pxx & Cxy & Cyclefreq
@@ -149,12 +131,11 @@ def compute_PxxCxyCyclefreq_for_cond(band_prep, cond, session_i, nb_point_by_cyc
 
 def compute_all_PxxCxyCyclefreq():
 
-    Pxx_allcond_lf = {}
-    Pxx_allcond_hf = {}
+    Pxx_allcond = {'lf' : {}, 'hf' : {}}
     Cxy_allcond = {}
-    cyclefreq_allcond_lf = {}
-    cyclefreq_allcond_hf = {}
+    cyclefreq_allcond = {'lf' : {}, 'hf' : {}}
 
+    #band_prep = band_prep_list[0]
     for band_prep in band_prep_list:
 
         print(band_prep)
@@ -163,33 +144,18 @@ def compute_all_PxxCxyCyclefreq():
 
             if ( len(respfeatures_allcond.get(cond)) == 1 ) & (band_prep == 'lf'):
 
-                Pxx_load = []
-                Cxy_load = []
-                cyclefreq_load = []
-
                 Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond = compute_PxxCxyCyclefreq_for_cond(band_prep ,cond, 0, stretch_point_surrogates)
 
-                Pxx_load.append(Pxx_for_cond)
-                Cxy_load.append(Cxy_for_cond)
-                cyclefreq_load.append(cyclefreq_for_cond)
-
-                Pxx_allcond_lf[cond] = Pxx_load
-                Cxy_allcond[cond] = Cxy_load
-                cyclefreq_allcond_lf[cond] = cyclefreq_load
+                Pxx_allcond['lf'][cond] = [Pxx_for_cond]
+                Cxy_allcond[cond] = [Cxy_for_cond]
+                cyclefreq_allcond['lf'][cond] = [cyclefreq_for_cond]
 
             elif ( len(respfeatures_allcond.get(cond)) == 1 ) & (band_prep == 'hf') :
 
-                Pxx_load = []
-                cyclefreq_load = []
-
                 Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond = compute_PxxCxyCyclefreq_for_cond(band_prep ,cond, 0, stretch_point_surrogates)
 
-                Pxx_load.append(Pxx_for_cond)
-                cyclefreq_load.append(cyclefreq_for_cond)
-
-                Pxx_allcond_hf[cond] = Pxx_load
-                cyclefreq_allcond_hf[cond] = cyclefreq_load
-
+                Pxx_allcond['hf'][cond] = [Pxx_for_cond]
+                cyclefreq_allcond['hf'][cond] = [cyclefreq_for_cond]
 
             elif (len(respfeatures_allcond.get(cond)) > 1) & (band_prep == 'lf'):
 
@@ -205,9 +171,9 @@ def compute_all_PxxCxyCyclefreq():
                     Cxy_load.append(Cxy_for_cond)
                     cyclefreq_load.append(cyclefreq_for_cond)
 
-                Pxx_allcond_lf[cond] = Pxx_load
+                Pxx_allcond['lf'][cond] = Pxx_load
                 Cxy_allcond[cond] = Cxy_load
-                cyclefreq_allcond_lf[cond] = cyclefreq_load
+                cyclefreq_allcond['lf'][cond] = cyclefreq_load
 
             elif (len(respfeatures_allcond.get(cond)) > 1) & (band_prep == 'hf'):
 
@@ -221,10 +187,10 @@ def compute_all_PxxCxyCyclefreq():
                     Pxx_load.append(Pxx_for_cond)
                     cyclefreq_load.append(cyclefreq_for_cond)
 
-                Pxx_allcond_hf[cond] = Pxx_load
-                cyclefreq_allcond_hf[cond] = cyclefreq_load
+                Pxx_allcond['hf'][cond] = Pxx_load
+                cyclefreq_allcond['hf'][cond] = cyclefreq_load
 
-    return Pxx_allcond_lf, Pxx_allcond_hf, Cxy_allcond, cyclefreq_allcond_lf, cyclefreq_allcond_hf
+    return Pxx_allcond, Cxy_allcond, cyclefreq_allcond
 
 
 
@@ -240,8 +206,10 @@ def compute_all_PxxCxyCyclefreq():
 
 print('######## COMPUTE PxxCxyCyclefreq ########')
 
-Cxy_surrogates_allcond, cyclefreq_surrogates_allcond_lf, cyclefreq_surrogates_allcond_hf = load_surrogates()
-Pxx_allcond_lf, Pxx_allcond_hf, Cxy_allcond, cyclefreq_allcond_lf, cyclefreq_allcond_hf = compute_all_PxxCxyCyclefreq()
+#### import and compute
+surrogates_allcond = load_surrogates() 
+
+Pxx_allcond, Cxy_allcond, cyclefreq_allcond = compute_all_PxxCxyCyclefreq()
 
 
 #### reduce data to one session
@@ -254,74 +222,54 @@ for cond in conditions:
         respfeatures_allcond_adjust[cond] = respfeatures_allcond[cond].copy()
 
     elif len(respfeatures_allcond.get(cond)) > 1:
-
-        data_to_short = []
-
-        for session_i in range(len(respfeatures_allcond.get(cond))):
-            
-            
-            if session_i == 0 :
-
-                data_to_short = [
-                                respfeatures_allcond.get(cond)[session_i], 
-                                Pxx_allcond_lf.get(cond)[session_i],
-                                Pxx_allcond_hf.get(cond)[session_i], 
-                                Cxy_allcond.get(cond)[session_i], 
-                                Cxy_surrogates_allcond.get(cond)[session_i], 
-                                cyclefreq_allcond_lf.get(cond)[session_i],
-                                cyclefreq_allcond_hf.get(cond)[session_i], 
-                                cyclefreq_surrogates_allcond_lf.get(cond)[session_i]
-                                ]
-
-            elif session_i > 0 :
-
-                data_replace = [
-                                (data_to_short[0] + respfeatures_allcond.get(cond)[session_i]) / 2, 
-                                (data_to_short[1] + Pxx_allcond_lf.get(cond)[session_i]) / 2, 
-                                (data_to_short[2] + Pxx_allcond_hf.get(cond)[session_i]) / 2, 
-                                (data_to_short[3] + Cxy_allcond.get(cond)[session_i]) / 2, 
-                                (data_to_short[4] + Cxy_surrogates_allcond.get(cond)[session_i]) / 2,   
-                                (data_to_short[5] + cyclefreq_allcond_lf.get(cond)[session_i]) / 2,
-                                (data_to_short[6] + cyclefreq_allcond_hf.get(cond)[session_i]) / 2,  
-                                (data_to_short[7] + cyclefreq_surrogates_allcond_lf.get(cond)[session_i]) / 2
-                                ]
-
-                data_to_short = data_replace.copy()
         
-        # to put in list
-        data_load = []
-        data_load.append(data_to_short[0])
-        respfeatures_allcond_adjust[cond] = data_load 
+        data_to_short = [
+                        respfeatures_allcond[cond], 
 
-        data_load = []
-        data_load.append(data_to_short[1])
-        Pxx_allcond_lf[cond] = data_load 
+                        Pxx_allcond['lf'][cond],
+                        Pxx_allcond['hf'][cond], 
 
-        data_load = []
-        data_load.append(data_to_short[2])
-        Pxx_allcond_hf[cond] = data_load 
+                        Cxy_allcond[cond], 
+                        surrogates_allcond['Cxy'][cond], 
 
-        data_load = []
-        data_load.append(data_to_short[3])
-        Cxy_allcond[cond] = data_load 
+                        cyclefreq_allcond['lf'][cond],
+                        cyclefreq_allcond['hf'][cond], 
+                        surrogates_allcond['cyclefreq_lf'][cond],
+                        surrogates_allcond['cyclefreq_hf'][cond]
+                        ]  
 
-        data_load = []
-        data_load.append(data_to_short[4])
-        Cxy_surrogates_allcond[cond] = data_load 
+        for data_short_i in range(len(data_to_short)):
 
-        data_load = []
-        data_load.append(data_to_short[5])
-        cyclefreq_allcond_lf[cond] = data_load 
+            if data_short_i == 0:
+                for session_i in range(len(respfeatures_allcond.get(cond))):
+                    if session_i == 0:
+                        _short = data_to_short[data_short_i][session_i]
+                    else:
+                        _short = (_short + data_to_short[data_short_i][session_i])/2
+                data_to_short[data_short_i] = [_short]
 
-        data_load = []
-        data_load.append(data_to_short[6])
-        cyclefreq_allcond_hf[cond] = data_load 
+            else:    
+                for session_i in range(len(respfeatures_allcond.get(cond))):
+                    if session_i == 0:
+                        _short = data_to_short[data_short_i][session_i]
+                    else:
+                        _short = (_short + data_to_short[data_short_i][session_i])/2
+                data_to_short[data_short_i] = [_short]
 
-        data_load = []
-        data_load.append(data_to_short[7])
-        cyclefreq_surrogates_allcond_lf[cond] = data_load 
+        #### fill values
+        respfeatures_allcond_adjust[cond] = data_to_short[0]
 
+        Pxx_allcond['lf'][cond] = data_to_short[1]
+        Pxx_allcond['hf'][cond] = data_to_short[2]
 
+        Cxy_allcond[cond] = data_to_short[3]
+        surrogates_allcond['Cxy'][cond] = data_to_short[4]
+
+        cyclefreq_allcond['lf'][cond] = data_to_short[5]
+        cyclefreq_allcond['hf'][cond] = data_to_short[6]
+        surrogates_allcond['cyclefreq_lf'][cond] = data_to_short[7]
+        surrogates_allcond['cyclefreq_hf'][cond] = data_to_short[8]
+            
 
 #### verif if one session only
 for cond in conditions :
@@ -329,17 +277,16 @@ for cond in conditions :
     verif_size = []
 
     verif_size.append(len(respfeatures_allcond_adjust[cond]) == 1)
-    verif_size.append(len(Pxx_allcond_lf[cond]) == 1)
-    verif_size.append(len(Pxx_allcond_hf[cond]) == 1)
+    verif_size.append(len(Pxx_allcond['lf'][cond]) == 1)
+    verif_size.append(len(Pxx_allcond['hf'][cond]) == 1)
     verif_size.append(len(Cxy_allcond[cond]) == 1)
-    verif_size.append(len(Cxy_surrogates_allcond[cond]) == 1)
-    verif_size.append(len(cyclefreq_allcond_lf[cond]) == 1)
-    verif_size.append(len(cyclefreq_allcond_hf[cond]) == 1)
-    verif_size.append(len(cyclefreq_surrogates_allcond_lf[cond]) == 1)
+    verif_size.append(len(surrogates_allcond['Cxy'][cond]) == 1)
+    verif_size.append(len(cyclefreq_allcond['lf'][cond]) == 1)
+    verif_size.append(len(cyclefreq_allcond['hf'][cond]) == 1)
+    verif_size.append(len(surrogates_allcond['cyclefreq_lf'][cond]) == 1)
 
     if verif_size.count(False) != 0 :
-        print('!!!! PROBLEM VERIF !!!!')
-        exit()
+        raise ValueError('!!!! PROBLEM VERIF !!!!')
 
     elif verif_size.count(False) == 0 :
         print('Verif OK')
@@ -389,29 +336,29 @@ def plot_save_PSD_Coh_lf(n_chan):
         #### plot
         ax = axs[0]
         ax.set_title(cond, fontweight='bold', rotation=0)
-        ax.semilogy(hzPxx,Pxx_allcond_lf.get(cond)[session_i][n_chan,:], color='k')
-        ax.vlines(respi_mean, ymin=0, ymax=max(Pxx_allcond_lf.get(cond)[session_i][n_chan,:]), color='r')
+        ax.semilogy(hzPxx, Pxx_allcond['lf'].get(cond)[session_i][n_chan,:], color='k')
+        ax.vlines(respi_mean, ymin=0, ymax=max(Pxx_allcond['lf'].get(cond)[session_i][n_chan,:]), color='r')
         ax.set_xlim(0,60)
 
         ax = axs[1]
-        ax.plot(hzPxx,Pxx_allcond_lf.get(cond)[session_i][n_chan,:], color='k')
+        ax.plot(hzPxx[remove_zero_pad:],Pxx_allcond['lf'].get(cond)[session_i][n_chan,:][remove_zero_pad:], color='k')
         ax.set_xlim(0, 2)
-        ax.vlines(respi_mean, ymin=0, ymax=max(Pxx_allcond_lf.get(cond)[session_i][n_chan,:]), color='r')
+        ax.vlines(respi_mean, ymin=0, ymax=max(Pxx_allcond['lf'].get(cond)[session_i][n_chan,:]), color='r')
 
         ax = axs[2]
         ax.plot(hzCxy,Cxy_allcond.get(cond)[session_i][n_chan,:], color='k')
-        ax.plot(hzCxy,Cxy_surrogates_allcond.get(cond)[session_i][n_chan,:], color='c')
+        ax.plot(hzCxy,surrogates_allcond['Cxy'].get(cond)[session_i][n_chan,:], color='c')
         ax.vlines(respi_mean, ymin=0, ymax=1, color='r')
 
         ax = axs[3]
-        ax.plot(cyclefreq_allcond_lf.get(cond)[session_i][n_chan,:], color='k')
-        ax.plot(cyclefreq_surrogates_allcond_lf.get(cond)[session_i][0, n_chan,:], color='b')
-        ax.plot(cyclefreq_surrogates_allcond_lf.get(cond)[session_i][1, n_chan,:], color='c', linestyle='dotted')
-        ax.plot(cyclefreq_surrogates_allcond_lf.get(cond)[session_i][2, n_chan,:], color='c', linestyle='dotted')
+        ax.plot(cyclefreq_allcond['lf'].get(cond)[session_i][n_chan,:], color='k')
+        ax.plot(surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][0, n_chan,:], color='b')
+        ax.plot(surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][1, n_chan,:], color='c', linestyle='dotted')
+        ax.plot(surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][2, n_chan,:], color='c', linestyle='dotted')
         if stretch_TF_auto:
-            ax.vlines(respi_ratio_allcond.get(cond)[session_i]*stretch_point_surrogates, ymin=np.min( cyclefreq_surrogates_allcond_lf.get(cond)[session_i][2, n_chan,:] ), ymax=np.max( cyclefreq_surrogates_allcond_lf.get(cond)[session_i][1, n_chan,:] ), colors='r')
+            ax.vlines(respi_ratio_allcond.get(cond)[session_i]*stretch_point_surrogates, ymin=np.min( surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][2, n_chan,:] ), ymax=np.max( surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][1, n_chan,:] ), colors='r')
         else:
-            ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=np.min( cyclefreq_surrogates_allcond_lf.get(cond)[session_i][2, n_chan,:] ), ymax=np.max( cyclefreq_surrogates_allcond_lf.get(cond)[session_i][1, n_chan,:] ), colors='r')
+            ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=np.min( surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][2, n_chan,:] ), ymax=np.max( surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][1, n_chan,:] ), colors='r')
 
     else:
 
@@ -428,29 +375,29 @@ def plot_save_PSD_Coh_lf(n_chan):
             #### plot
             ax = axs[0,c]
             ax.set_title(cond, fontweight='bold', rotation=0)
-            ax.semilogy(hzPxx,Pxx_allcond_lf.get(cond)[session_i][n_chan,:], color='k')
-            ax.vlines(respi_mean, ymin=0, ymax=max(Pxx_allcond_lf.get(cond)[session_i][n_chan,:]), color='r')
+            ax.semilogy(hzPxx,Pxx_allcond['lf'].get(cond)[session_i][n_chan,:], color='k')
+            ax.vlines(respi_mean, ymin=0, ymax=max(Pxx_allcond['lf'].get(cond)[session_i][n_chan,:]), color='r')
             ax.set_xlim(0,60)
 
             ax = axs[1,c]
-            ax.plot(hzPxx,Pxx_allcond_lf.get(cond)[session_i][n_chan,:], color='k')
+            ax.plot(hzPxx[remove_zero_pad:],Pxx_allcond['lf'].get(cond)[session_i][n_chan,:][remove_zero_pad:], color='k')
             ax.set_xlim(0, 2)
-            ax.vlines(respi_mean, ymin=0, ymax=max(Pxx_allcond_lf.get(cond)[session_i][n_chan,:]), color='r')
+            ax.vlines(respi_mean, ymin=0, ymax=max(Pxx_allcond['lf'].get(cond)[session_i][n_chan,:]), color='r')
 
             ax = axs[2,c]
             ax.plot(hzCxy,Cxy_allcond.get(cond)[session_i][n_chan,:], color='k')
-            ax.plot(hzCxy,Cxy_surrogates_allcond.get(cond)[session_i][n_chan,:], color='c')
+            ax.plot(hzCxy,surrogates_allcond['Cxy'].get(cond)[session_i][n_chan,:], color='c')
             ax.vlines(respi_mean, ymin=0, ymax=1, color='r')
 
             ax = axs[3,c]
-            ax.plot(cyclefreq_allcond_lf.get(cond)[session_i][n_chan,:], color='k')
-            ax.plot(cyclefreq_surrogates_allcond_lf.get(cond)[session_i][0, n_chan,:], color='b')
-            ax.plot(cyclefreq_surrogates_allcond_lf.get(cond)[session_i][1, n_chan,:], color='c', linestyle='dotted')
-            ax.plot(cyclefreq_surrogates_allcond_lf.get(cond)[session_i][2, n_chan,:], color='c', linestyle='dotted')
+            ax.plot(cyclefreq_allcond['lf'].get(cond)[session_i][n_chan,:], color='k')
+            ax.plot(surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][0, n_chan,:], color='b')
+            ax.plot(surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][1, n_chan,:], color='c', linestyle='dotted')
+            ax.plot(surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][2, n_chan,:], color='c', linestyle='dotted')
             if stretch_TF_auto:
-                ax.vlines(respi_ratio_allcond.get(cond)[session_i]*stretch_point_surrogates, ymin=np.min( cyclefreq_surrogates_allcond_lf.get(cond)[session_i][2, n_chan,:] ), ymax=np.max( cyclefreq_surrogates_allcond_lf.get(cond)[session_i][1, n_chan,:] ), colors='r')
+                ax.vlines(respi_ratio_allcond.get(cond)[session_i]*stretch_point_surrogates, ymin=np.min( surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][2, n_chan,:] ), ymax=np.max( surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][1, n_chan,:] ), colors='r')
             else:
-                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=np.min( cyclefreq_surrogates_allcond_lf.get(cond)[session_i][2, n_chan,:] ), ymax=np.max( cyclefreq_surrogates_allcond_lf.get(cond)[session_i][1, n_chan,:] ), colors='r')
+                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=np.min( surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][2, n_chan,:] ), ymax=np.max( surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][1, n_chan,:] ), colors='r')
                 
 
     #### save
@@ -489,19 +436,19 @@ def plot_save_PSD_Coh_hf(n_chan):
             #### plot
             ax = axs[0]
             ax.set_title(cond, fontweight='bold', rotation=0)
-            ax.semilogy(hzPxx,Pxx_allcond_hf.get(cond)[session_i][n_chan,:], color='k')
-            ax.vlines(respi_mean, ymin=0, ymax=max(Pxx_allcond_hf.get(cond)[session_i][n_chan,:]), color='r')
+            ax.semilogy(hzPxx,Pxx_allcond['hf'].get(cond)[session_i][n_chan,:], color='k')
+            ax.vlines(respi_mean, ymin=0, ymax=max(Pxx_allcond['hf'].get(cond)[session_i][n_chan,:]), color='r')
             ax.set_xlim(45,120)
 
             ax = axs[1]
-            ax.plot(cyclefreq_allcond_hf.get(cond)[session_i][n_chan,:], color='k')
-            ax.plot(cyclefreq_surrogates_allcond_hf.get(cond)[session_i][0, n_chan,:], color='b')
-            ax.plot(cyclefreq_surrogates_allcond_hf.get(cond)[session_i][1, n_chan,:], color='c', linestyle='dotted')
-            ax.plot(cyclefreq_surrogates_allcond_hf.get(cond)[session_i][2, n_chan,:], color='c', linestyle='dotted')
+            ax.plot(cyclefreq_allcond['hf'].get(cond)[session_i][n_chan,:], color='k')
+            ax.plot(surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][0, n_chan,:], color='b')
+            ax.plot(surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][1, n_chan,:], color='c', linestyle='dotted')
+            ax.plot(surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][2, n_chan,:], color='c', linestyle='dotted')
             if stretch_TF_auto:
-                ax.vlines(respi_ratio_allcond.get(cond)[session_i]*stretch_point_surrogates, ymin=np.min( cyclefreq_surrogates_allcond_hf.get(cond)[session_i][2, n_chan,:] ), ymax=np.max( cyclefreq_surrogates_allcond_hf.get(cond)[session_i][1, n_chan,:] ), colors='r')
+                ax.vlines(respi_ratio_allcond.get(cond)[session_i]*stretch_point_surrogates, ymin=np.min( surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][2, n_chan,:] ), ymax=np.max( surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][1, n_chan,:] ), colors='r')
             else:
-                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=np.min( cyclefreq_surrogates_allcond_hf.get(cond)[session_i][2, n_chan,:] ), ymax=np.max( cyclefreq_surrogates_allcond_hf.get(cond)[session_i][1, n_chan,:] ), colors='r')
+                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=np.min( surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][2, n_chan,:] ), ymax=np.max( surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][1, n_chan,:] ), colors='r')
 
     else:
 
@@ -515,19 +462,19 @@ def plot_save_PSD_Coh_hf(n_chan):
             #### plot
             ax = axs[0,c]
             ax.set_title(cond, fontweight='bold', rotation=0)
-            ax.semilogy(hzPxx,Pxx_allcond_hf.get(cond)[session_i][n_chan,:], color='k')
-            ax.vlines(respi_mean, ymin=0, ymax=max(Pxx_allcond_hf.get(cond)[session_i][n_chan,:]), color='r')
+            ax.semilogy(hzPxx,Pxx_allcond['hf'].get(cond)[session_i][n_chan,:], color='k')
+            ax.vlines(respi_mean, ymin=0, ymax=max(Pxx_allcond['hf'].get(cond)[session_i][n_chan,:]), color='r')
             ax.set_xlim(45,120)
 
             ax = axs[1,c]
-            ax.plot(cyclefreq_allcond_hf.get(cond)[session_i][n_chan,:], color='k')
-            ax.plot(cyclefreq_surrogates_allcond_hf.get(cond)[session_i][0, n_chan,:], color='b')
-            ax.plot(cyclefreq_surrogates_allcond_hf.get(cond)[session_i][1, n_chan,:], color='c', linestyle='dotted')
-            ax.plot(cyclefreq_surrogates_allcond_hf.get(cond)[session_i][2, n_chan,:], color='c', linestyle='dotted')
+            ax.plot(cyclefreq_allcond['hf'].get(cond)[session_i][n_chan,:], color='k')
+            ax.plot(surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][0, n_chan,:], color='b')
+            ax.plot(surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][1, n_chan,:], color='c', linestyle='dotted')
+            ax.plot(surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][2, n_chan,:], color='c', linestyle='dotted')
             if stretch_TF_auto:
-                ax.vlines(respi_ratio_allcond.get(cond)[session_i]*stretch_point_surrogates, ymin=np.min( cyclefreq_surrogates_allcond_hf.get(cond)[session_i][2, n_chan,:] ), ymax=np.max( cyclefreq_surrogates_allcond_hf.get(cond)[session_i][1, n_chan,:] ), colors='r')
+                ax.vlines(respi_ratio_allcond.get(cond)[session_i]*stretch_point_surrogates, ymin=np.min( surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][2, n_chan,:] ), ymax=np.max( surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][1, n_chan,:] ), colors='r')
             else:
-                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=np.min( cyclefreq_surrogates_allcond_hf.get(cond)[session_i][2, n_chan,:] ), ymax=np.max( cyclefreq_surrogates_allcond_hf.get(cond)[session_i][1, n_chan,:] ), colors='r')
+                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=np.min( surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][2, n_chan,:] ), ymax=np.max( surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][1, n_chan,:] ), colors='r')
 
 
     #### save
@@ -669,7 +616,7 @@ for cond in conditions:
 
 
 ################################
-######## SAVE TF ########
+######## PLOT & SAVE TF ########
 ################################
 
 
@@ -677,7 +624,8 @@ for cond in conditions:
 
 print('######## SAVE TF ########')
 
-
+#n_chan = 0
+#freq_band_i, freq_band = 0, freq_band_list[0]
 def save_TF_n_chan(n_chan):
 
     os.chdir(os.path.join(path_results, sujet, 'TF', 'summary'))
@@ -690,309 +638,77 @@ def save_TF_n_chan(n_chan):
     time = range(stretch_point_TF)
     frex = np.size(tf_stretch_allcond.get(conditions[0]).get(list(freq_band.keys())[0]),1)
 
-    if len(conditions) == 1:
+    #### determine plot scale
+    scales = {'vmin_val' : np.array(()), 'vmax_val' : np.array(()), 'median_val' : np.array(())}
 
-        if freq_band_i == 0:
+    for c, cond in enumerate(conditions):
 
-            #### plot
-            fig, axs = plt.subplots(nrows=4, ncols=len(conditions))
-            plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
+        for i, (band, freq) in enumerate(freq_band.items()) :
 
-            for c, cond in enumerate(conditions):
-                
-                #### plot
-                if c == 0:
-                        
-                    for i, (band, freq) in enumerate(freq_band.items()) :
+            data = tf_stretch_allcond[cond][band][n_chan, :, :]
+            frex = np.linspace(freq[0], freq[1], np.size(data,0))
 
-                        data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
-                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                    
-                        if i == 0 :
+            scales['vmin_val'] = np.append(scales['vmin_val'], np.min(data))
+            scales['vmax_val'] = np.append(scales['vmax_val'], np.max(data))
+            scales['median_val'] = np.append(scales['median_val'], np.median(data))
 
-                            ax = axs[i]
-                            ax.set_title(cond, fontweight='bold', rotation=0)
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.set_ylabel(band)
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
+    median_diff = np.max([np.abs(np.min(scales['vmin_val']) - np.median(scales['median_val'])), np.abs(np.max(scales['vmax_val']) - np.median(scales['median_val']))])
 
-                        else :
+    vmin = np.median(scales['median_val']) - median_diff
+    vmax = np.median(scales['median_val']) + median_diff
 
-                            ax = axs[i]
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.set_ylabel(band)
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-
-                else:
-
-                    for i, (band, freq) in enumerate(freq_band.items()) :
-
-                        data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
-                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                    
-                        if i == 0 :
-
-                            ax = axs[i]
-                            ax.set_title(cond, fontweight='bold', rotation=0)
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-
-                        else :
-
-                            ax = axs[i]
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-                    
-                
-            #### save
-            fig.savefig(sujet + '_' + chan_name + '_lf.jpeg', dpi=600)
-            plt.close()
-
-
-        elif freq_band_i == 1:
-
-            #### plot
-            fig, axs = plt.subplots(nrows=2, ncols=len(conditions))
-            plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
-
-            for c, cond in enumerate(conditions):
-                
-                #### plot
-                if c == 0:
-                        
-                    for i, (band, freq) in enumerate(freq_band.items()) :
-
-                        data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
-                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                    
-                        if i == 0 :
-
-                            ax = axs[i]
-                            ax.set_title(cond, fontweight='bold', rotation=0)
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.set_ylabel(band)
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-
-                        else :
-
-                            ax = axs[i]
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.set_ylabel(band)
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-
-                else:
-
-                    for i, (band, freq) in enumerate(freq_band.items()) :
-
-                        data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
-                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                    
-                        if i == 0 :
-
-                            ax = axs[i]
-                            ax.set_title(cond, fontweight='bold', rotation=0)
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-
-                        else :
-
-                            ax = axs[i]
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-                    
-                
-            #### save
-            fig.savefig(sujet + '_' + chan_name + '_hf.jpeg', dpi=600)
-            plt.close()
-
-
-
+    #### plot
+    if freq_band_i == 0:
+        fig, axs = plt.subplots(nrows=4, ncols=len(conditions))
     else:
+        fig, axs = plt.subplots(nrows=2, ncols=len(conditions))
+    
+    plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
 
-        if freq_band_i == 0:
+    for c, cond in enumerate(conditions):
+        
+        #### plot
+        for i, (band, freq) in enumerate(freq_band.items()) :
 
-            #### plot
-            fig, axs = plt.subplots(nrows=4, ncols=len(conditions))
-            plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
+            data = tf_stretch_allcond[cond][band][n_chan, :, :]
+            frex = np.linspace(freq[0], freq[1], np.size(data,0))
+        
+            if len(conditions) == 1:
+                ax = axs[i]
+            else:
+                ax = axs[i,c]
 
-            for c, cond in enumerate(conditions):
-                
-                #### plot
-                if c == 0:
-                        
-                    for i, (band, freq) in enumerate(freq_band.items()) :
+            if i == 0 :
+                ax.set_title(cond, fontweight='bold', rotation=0)
 
-                        data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
-                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                    
-                        if i == 0 :
+            ax.pcolormesh(time, frex, data, vmin=vmin, vmax=vmax, shading='gouraud', cmap=plt.get_cmap('seismic'))
 
-                            ax = axs[i,c]
-                            ax.set_title(cond, fontweight='bold', rotation=0)
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.set_ylabel(band)
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
+            if c == 0:
+                ax.set_ylabel(band)
 
-                        else :
+            if stretch_TF_auto:
+                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='g')
+            else:
+                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='g')
+    #plt.show()
 
-                            ax = axs[i,c]
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.set_ylabel(band)
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
+    #### save
+    if freq_band_i == 0:
+        fig.savefig(sujet + '_' + chan_name + '_lf.jpeg', dpi=600)
+    else:
+        fig.savefig(sujet + '_' + chan_name + '_hf.jpeg', dpi=600)
+    plt.close()
 
-                else:
-
-                    for i, (band, freq) in enumerate(freq_band.items()) :
-
-                        data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
-                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                    
-                        if i == 0 :
-
-                            ax = axs[i,c]
-                            ax.set_title(cond, fontweight='bold', rotation=0)
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-
-                        else :
-
-                            ax = axs[i,c]
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-                    
-                
-            #### save
-            fig.savefig(sujet + '_' + chan_name + '_lf.jpeg', dpi=600)
-            plt.close()
-
-
-        elif freq_band_i == 1:
-
-            #### plot
-            fig, axs = plt.subplots(nrows=2, ncols=len(conditions))
-            plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
-
-            for c, cond in enumerate(conditions):
-                
-                #### plot
-                if c == 0:
-                        
-                    for i, (band, freq) in enumerate(freq_band.items()) :
-
-                        data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
-                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                    
-                        if i == 0 :
-
-                            ax = axs[i,c]
-                            ax.set_title(cond, fontweight='bold', rotation=0)
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.set_ylabel(band)
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-
-                        else :
-
-                            ax = axs[i,c]
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.set_ylabel(band)
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-
-                else:
-
-                    for i, (band, freq) in enumerate(freq_band.items()) :
-
-                        data = tf_stretch_allcond.get(cond).get(band)[n_chan, :, :]
-                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                    
-                        if i == 0 :
-
-                            ax = axs[i,c]
-                            ax.set_title(cond, fontweight='bold', rotation=0)
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-
-                        else :
-
-                            ax = axs[i,c]
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-                    
-                
-            #### save
-            fig.savefig(sujet + '_' + chan_name + '_hf.jpeg', dpi=600)
-            plt.close()
-
-    return
 
 
 #### compute
+#freq_band_i, freq_band = 0, freq_band_list[0]
 for freq_band_i, freq_band in enumerate(freq_band_list): 
 
+    print(band_prep_list[freq_band_i])
     joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(save_TF_n_chan)(n_chan) for n_chan in range(len(chan_list_ieeg)))
+
+
 
 
 
@@ -1109,19 +825,16 @@ for cond in conditions:
 
 
 
-################################
-######## SAVE ITPC ########
-################################
-
-
-
+########################################
+######## PLOT & SAVE ITPC ########
+########################################
 
 print('######## SAVE ITPC ########')
 
 def save_itpc_n_chan(n_chan):       
     
     os.chdir(os.path.join(path_results, sujet, 'ITPC', 'summary'))
-    
+
     chan_name = chan_list_ieeg[n_chan]
 
     if n_chan/len(chan_list_ieeg) % .2 <= .01:
@@ -1130,307 +843,70 @@ def save_itpc_n_chan(n_chan):
     time = range(stretch_point_TF)
     frex = np.size(tf_itpc_allcond.get(conditions[0]).get(list(freq_band.keys())[0]),1)
 
-    if len(conditions) == 1:
+    #### determine plot scale
+    scales = {'vmin_val' : np.array(()), 'vmax_val' : np.array(()), 'median_val' : np.array(())}
 
-        if freq_band_i == 0:
+    for c, cond in enumerate(conditions):
 
-            #### plot
-            fig, axs = plt.subplots(nrows=4, ncols=len(conditions))
-            plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
+        for i, (band, freq) in enumerate(freq_band.items()) :
 
-            for c, cond in enumerate(conditions):
-                
-                #### plot
-                if c == 0:
-                        
-                    for i, (band, freq) in enumerate(freq_band.items()) :
+            data = tf_stretch_allcond[cond][band][n_chan, :, :]
+            frex = np.linspace(freq[0], freq[1], np.size(data,0))
 
-                        data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
-                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                    
-                        if i == 0 :
+            scales['vmin_val'] = np.append(scales['vmin_val'], np.min(data))
+            scales['vmax_val'] = np.append(scales['vmax_val'], np.max(data))
+            scales['median_val'] = np.append(scales['median_val'], np.median(data))
 
-                            ax = axs[i]
-                            ax.set_title(cond, fontweight='bold', rotation=0)
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.set_ylabel(band)
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
+    median_diff = np.max([np.abs(np.min(scales['vmin_val']) - np.median(scales['median_val'])), np.abs(np.max(scales['vmax_val']) - np.median(scales['median_val']))])
 
-                        else :
+    vmin = np.median(scales['median_val']) - median_diff
+    vmax = np.median(scales['median_val']) + median_diff
 
-                            ax = axs[i]
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.set_ylabel(band)
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-
-                else:
-
-                    for i, (band, freq) in enumerate(freq_band.items()) :
-
-                        data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
-                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                    
-                        if i == 0 :
-
-                            ax = axs[i]
-                            ax.set_title(cond, fontweight='bold', rotation=0)
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-
-                        else :
-
-                            ax = axs[i]
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-                    
-                
-            #### save
-            fig.savefig(sujet + '_' + chan_name + '_lf.jpeg', dpi=600)
-            plt.close()
-
-        elif freq_band_i == 1:
-
-            #### plot
-            fig, axs = plt.subplots(nrows=2, ncols=len(conditions))
-            plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
-
-            for c, cond in enumerate(conditions):
-                
-                #### plot
-                if c == 0:
-                        
-                    for i, (band, freq) in enumerate(freq_band.items()) :
-
-                        data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
-                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                    
-                        if i == 0 :
-
-                            ax = axs[i]
-                            ax.set_title(cond, fontweight='bold', rotation=0)
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.set_ylabel(band)
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-
-                        else :
-
-                            ax = axs[i]
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.set_ylabel(band)
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-
-                else:
-
-                    for i, (band, freq) in enumerate(freq_band.items()) :
-
-                        data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
-                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                    
-                        if i == 0 :
-
-                            ax = axs[i]
-                            ax.set_title(cond, fontweight='bold', rotation=0)
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-
-                        else :
-
-                            ax = axs[i]
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-                    
-                
-            #### save
-            fig.savefig(sujet + '_' + chan_name + '_hf.jpeg', dpi=600)
-            plt.close()
-
+    #### plot
+    if freq_band_i == 0:
+        fig, axs = plt.subplots(nrows=4, ncols=len(conditions))
     else:
+        fig, axs = plt.subplots(nrows=2, ncols=len(conditions))
+    
+    plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
 
-        if freq_band_i == 0:
+    for c, cond in enumerate(conditions):
+        
+        #### plot
+        for i, (band, freq) in enumerate(freq_band.items()) :
 
-            #### plot
-            fig, axs = plt.subplots(nrows=4, ncols=len(conditions))
-            plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
+            data = tf_itpc_allcond[cond][band][n_chan, :, :]
+            frex = np.linspace(freq[0], freq[1], np.size(data,0))
+        
+            if len(conditions) == 1:
+                ax = axs[i]
+            else:
+                ax = axs[i,c]
 
-            for c, cond in enumerate(conditions):
-                
-                #### plot
-                if c == 0:
-                        
-                    for i, (band, freq) in enumerate(freq_band.items()) :
+            if i == 0 :
+                ax.set_title(cond, fontweight='bold', rotation=0)
 
-                        data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
-                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                    
-                        if i == 0 :
+            ax.pcolormesh(time, frex, data, vmin=vmin, vmax=vmax, shading='gouraud', cmap=plt.get_cmap('seismic'))
 
-                            ax = axs[i,c]
-                            ax.set_title(cond, fontweight='bold', rotation=0)
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.set_ylabel(band)
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
+            if c == 0:
+                ax.set_ylabel(band)
 
-                        else :
+            if stretch_TF_auto:
+                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='g')
+            else:
+                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='g')
+    #plt.show()     
 
-                            ax = axs[i,c]
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.set_ylabel(band)
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
+    #### save
+    if freq_band_i == 0:
+        fig.savefig(sujet + '_' + chan_name + '_lf.jpeg', dpi=600)
+    else:
+        fig.savefig(sujet + '_' + chan_name + '_hf.jpeg', dpi=600)
+    plt.close()
 
-                else:
-
-                    for i, (band, freq) in enumerate(freq_band.items()) :
-
-                        data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
-                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                    
-                        if i == 0 :
-
-                            ax = axs[i,c]
-                            ax.set_title(cond, fontweight='bold', rotation=0)
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-
-                        else :
-
-                            ax = axs[i,c]
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-                    
-                
-            #### save
-            fig.savefig(sujet + '_' + chan_name + '_lf.jpeg', dpi=600)
-            plt.close()
-
-        elif freq_band_i == 1:
-
-            #### plot
-            fig, axs = plt.subplots(nrows=2, ncols=len(conditions))
-            plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
-
-            for c, cond in enumerate(conditions):
-                
-                #### plot
-                if c == 0:
-                        
-                    for i, (band, freq) in enumerate(freq_band.items()) :
-
-                        data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
-                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                    
-                        if i == 0 :
-
-                            ax = axs[i,c]
-                            ax.set_title(cond, fontweight='bold', rotation=0)
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.set_ylabel(band)
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-
-                        else :
-
-                            ax = axs[i,c]
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            ax.set_ylabel(band)
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-
-                else:
-
-                    for i, (band, freq) in enumerate(freq_band.items()) :
-
-                        data = tf_itpc_allcond.get(cond).get(band)[n_chan, :, :]
-                        frex = np.linspace(freq[0], freq[1], np.size(data,0))
-                    
-                        if i == 0 :
-
-                            ax = axs[i,c]
-                            ax.set_title(cond, fontweight='bold', rotation=0)
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-
-                        else :
-
-                            ax = axs[i,c]
-                            ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                            if stretch_TF_auto:
-                                ax.vlines(respi_ratio_allcond.get(cond)[0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            else:
-                                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                            #plt.show()
-                    
-                
-            #### save
-            fig.savefig(sujet + '_' + chan_name + '_hf.jpeg', dpi=600)
-            plt.close()
-
-    return
 
 for freq_band_i, freq_band in enumerate(freq_band_list): 
 
     joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(save_itpc_n_chan)(n_chan) for n_chan in range(len(chan_list_ieeg)))
-
-
-
-
-
 
 
