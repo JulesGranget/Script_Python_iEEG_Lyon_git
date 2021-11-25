@@ -397,9 +397,9 @@ def plot_save_PSD_Coh_lf(n_chan):
             if stretch_TF_auto:
                 ax.vlines(respi_ratio_allcond.get(cond)[session_i]*stretch_point_surrogates, ymin=np.min( surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][2, n_chan,:] ), ymax=np.max( surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][1, n_chan,:] ), colors='r')
             else:
-                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=np.min( surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][2, n_chan,:] ), ymax=np.max( surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][1, n_chan,:] ), colors='r')
-                
-
+                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=np.min( surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][2, n_chan,:] ), ymax=np.max( surrogates_allcond['cyclefreq_lf'].get(cond)[session_i][1, n_chan,:] ), colors='r') 
+    #plt.show()
+    
     #### save
     fig.savefig(sujet + '_' + chan_name + '_lf.jpeg', dpi=600)
     plt.close()
