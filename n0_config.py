@@ -211,14 +211,21 @@ prep_step_hf = {
 ########################################
 
 #### Pxx Cxy
+
+zero_pad_coeff = 15
+
 def get_params_spectral_analysis(srate):
     nwind = int( 20*srate ) # window length in seconds*srate
-    zero_pad_coeff = 15
     nfft = nwind*zero_pad_coeff # if no zero padding nfft = nwind
     noverlap = np.round(nwind/2) # number of points of overlap here 50%
     hannw = scipy.signal.windows.hann(nwind) # hann window
 
     return nwind, nfft, noverlap, hannw
+
+#### plot Pxx Cxy  
+if zero_pad_coeff - 5 <= 0:
+    remove_zero_pad = 0
+remove_zero_pad = zero_pad_coeff - 5
 
 #### stretch
 stretch_point_surrogates = 1000

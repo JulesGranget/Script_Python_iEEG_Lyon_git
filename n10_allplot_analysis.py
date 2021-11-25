@@ -506,7 +506,7 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process):
                 dict_ITPC_for_ROI_to_process[band] = (dict_ITPC_for_ROI_to_process[band] + ITPC_load[plot_tmp_i,:,:])/2
 
     #### plot
-
+    #TF_type = 'TF'
     for TF_type in ['TF', 'ITPC']:
 
         if TF_type == 'TF':
@@ -524,8 +524,28 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process):
             
             plt.suptitle(ROI_to_process)
             dict_freq_to_plot = freq_band_list[band_prep_i]
+
+            #### find scale
+            scales = {'vmin_val' : np.array(()), 'vmax_val' : np.array(()), 'median_val' : np.array(())}
                             
             # i, (band, freq) = 0, ('theta', [2 ,10])
+            for i, (band, freq) in enumerate(list(dict_freq_to_plot.items())) :
+
+                if TF_type == 'TF':
+                    data = dict_TF_for_ROI_to_process[band]
+                if TF_type == 'ITPC':
+                    data = dict_ITPC_for_ROI_to_process[band]
+
+                scales['vmin_val'] = np.append(scales['vmin_val'], np.min(data))
+                scales['vmax_val'] = np.append(scales['vmax_val'], np.max(data))
+                scales['median_val'] = np.append(scales['median_val'], np.median(data))
+
+            median_diff = np.max([np.abs(np.min(scales['vmin_val']) - np.median(scales['median_val'])), np.abs(np.max(scales['vmax_val']) - np.median(scales['median_val']))])
+
+            vmin = np.median(scales['median_val']) - median_diff
+            vmax = np.median(scales['median_val']) + median_diff
+
+
             for i, (band, freq) in enumerate(list(dict_freq_to_plot.items())) :
 
                 if TF_type == 'TF':
@@ -535,23 +555,14 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process):
                 
                 frex = np.linspace(freq[0], freq[1], data.shape[0])
                 time = np.arange(stretch_point_TF)
-            
-                if i == 0 :
 
-                    ax = axs[i]
+                ax = axs[i]
+                if i == 0:
                     ax.set_title(f'n_sujet : {len(sujet_that_participate)}, n_plot : {len(plot_to_process)}, length : {int(np.sum(len_recorded))} min')
-                    ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                    ax.set_ylabel(band)
-                    ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                    #plt.show()
-
-                else :
-
-                    ax = axs[i]
-                    ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                    ax.set_ylabel(band)
-                    ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                    #plt.show()
+                ax.pcolormesh(time, frex, data, vmin=vmin, vmax=vmax, shading='gouraud', cmap=plt.get_cmap('seismic'))
+                ax.set_ylabel(band)
+                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='g')
+                #plt.show()
                             
             #### save
             if band_prep == 'lf':
@@ -673,6 +684,26 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process):
             
             plt.suptitle(Lobe_to_process)
             dict_freq_to_plot = freq_band_list[band_prep_i]
+
+            #### find scale
+            scales = {'vmin_val' : np.array(()), 'vmax_val' : np.array(()), 'median_val' : np.array(())}
+                            
+            # i, (band, freq) = 0, ('theta', [2 ,10])
+            for i, (band, freq) in enumerate(list(dict_freq_to_plot.items())) :
+
+                if TF_type == 'TF':
+                    data = dict_TF_for_Lobe_to_process[band]
+                if TF_type == 'ITPC':
+                    data = dict_ITPC_for_Lobe_to_process[band]
+
+                scales['vmin_val'] = np.append(scales['vmin_val'], np.min(data))
+                scales['vmax_val'] = np.append(scales['vmax_val'], np.max(data))
+                scales['median_val'] = np.append(scales['median_val'], np.median(data))
+
+            median_diff = np.max([np.abs(np.min(scales['vmin_val']) - np.median(scales['median_val'])), np.abs(np.max(scales['vmax_val']) - np.median(scales['median_val']))])
+
+            vmin = np.median(scales['median_val']) - median_diff
+            vmax = np.median(scales['median_val']) + median_diff
                             
             # i, (band, freq) = 0, ('theta', [2 ,10])
             for i, (band, freq) in enumerate(list(dict_freq_to_plot.items())) :
@@ -685,23 +716,14 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process):
                 frex = np.linspace(freq[0], freq[1], data.shape[0])
                 time = np.arange(stretch_point_TF)
             
+                ax = axs[i]
                 if i == 0 :
-
-                    ax = axs[i]
                     ax.set_title(f'n_sujet : {len(sujet_that_participate)}, n_plot : {len(plot_to_process)}, length : {int(np.sum(len_recorded))} min')
-                    ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                    ax.set_ylabel(band)
-                    ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                    #plt.show()
-
-                else :
-
-                    ax = axs[i]
-                    ax.pcolormesh(time, frex, data, vmin=np.min(data), vmax=np.max(data), shading='auto')
-                    ax.set_ylabel(band)
-                    ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='r')
-                    #plt.show()
-                            
+                ax.pcolormesh(time, frex, data, vmin=vmin, vmax=vmax, shading='gouraud', cmap=plt.get_cmap('seismic'))
+                ax.set_ylabel(band)
+                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='g')
+                #plt.show()
+                        
             #### save
             if band_prep == 'lf':
                 fig.savefig(Lobe_to_process + '_lf.jpeg', dpi=600)
