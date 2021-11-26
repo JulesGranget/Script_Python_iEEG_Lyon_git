@@ -625,8 +625,8 @@ for cond in conditions:
 print('######## SAVE TF ########')
 
 #n_chan = 0
-#freq_band_i, freq_band = 0, freq_band_list[0]
-def save_TF_n_chan(n_chan):
+#freq_band_i, freq_band = 1, freq_band_list[1]
+def save_TF_n_chan(n_chan, freq_band_i, freq_band):
 
     os.chdir(os.path.join(path_results, sujet, 'TF', 'summary'))
     
@@ -668,8 +668,17 @@ def save_TF_n_chan(n_chan):
     
     plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
 
+    #### for plotting l_gamma down
+    if freq_band_i == 1:
+        keys_list_reversed = list(freq_band.keys())
+        keys_list_reversed.reverse()
+        freq_band_reversed = {}
+        for key_i in keys_list_reversed:
+            freq_band_reversed[key_i] = freq_band[key_i]
+        freq_band = freq_band_reversed
+
     for c, cond in enumerate(conditions):
-        
+
         #### plot
         for i, (band, freq) in enumerate(freq_band.items()) :
 
@@ -709,7 +718,7 @@ def save_TF_n_chan(n_chan):
 for freq_band_i, freq_band in enumerate(freq_band_list): 
 
     print(band_prep_list[freq_band_i])
-    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(save_TF_n_chan)(n_chan) for n_chan in range(len(chan_list_ieeg)))
+    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(save_TF_n_chan)(n_chan, freq_band_i, freq_band) for n_chan in range(len(chan_list_ieeg)))
 
 
 
@@ -837,7 +846,7 @@ print('######## SAVE ITPC ########')
 
 #n_chan = 16
 #freq_band_i, freq_band = 0, freq_band_list[0]
-def save_itpc_n_chan(n_chan):       
+def save_itpc_n_chan(n_chan, freq_band_i, freq_band):       
     
     os.chdir(os.path.join(path_results, sujet, 'ITPC', 'summary'))
 
@@ -879,6 +888,15 @@ def save_itpc_n_chan(n_chan):
     
     plt.suptitle(sujet + '_' + chan_name + '_' + dict_loca.get(chan_name))
 
+    #### for plotting l_gamma down
+    if freq_band_i == 1:
+        keys_list_reversed = list(freq_band.keys())
+        keys_list_reversed.reverse()
+        freq_band_reversed = {}
+        for key_i in keys_list_reversed:
+            freq_band_reversed[key_i] = freq_band[key_i]
+        freq_band = freq_band_reversed
+
     for c, cond in enumerate(conditions):
         
         #### plot
@@ -917,6 +935,6 @@ def save_itpc_n_chan(n_chan):
 for freq_band_i, freq_band in enumerate(freq_band_list): 
 
     print(band_prep_list[freq_band_i])
-    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(save_itpc_n_chan)(n_chan) for n_chan in range(len(chan_list_ieeg)))
+    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(save_itpc_n_chan)(n_chan, freq_band_i, freq_band) for n_chan in range(len(chan_list_ieeg)))
 
 
