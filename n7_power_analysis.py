@@ -645,6 +645,9 @@ def save_TF_n_chan(n_chan):
 
         for i, (band, freq) in enumerate(freq_band.items()) :
 
+            if band == 'whole' or band == 'l_gamma':
+                continue
+
             data = tf_stretch_allcond[cond][band][n_chan, :, :]
             frex = np.linspace(freq[0], freq[1], np.size(data,0))
 
@@ -717,6 +720,7 @@ for freq_band_i, freq_band in enumerate(freq_band_list):
 ######## LOAD ITPC ########
 ################################
 
+print('######## LOAD ITPC ########')
 
 #### load and reduce to all cond
 os.chdir(os.path.join(path_precompute, sujet, 'ITPC'))
@@ -752,7 +756,7 @@ for cond in conditions:
         #### impose good order in dict
         for freq_band in freq_band_list:
             for band, freq in freq_band.items():
-                tf_stretch_onecond[band] = 0
+                tf_itpc_onecond[band] = 0
 
         #### file load
         for file in load_file:
@@ -831,6 +835,8 @@ for cond in conditions:
 
 print('######## SAVE ITPC ########')
 
+#n_chan = 16
+#freq_band_i, freq_band = 0, freq_band_list[0]
 def save_itpc_n_chan(n_chan):       
     
     os.chdir(os.path.join(path_results, sujet, 'ITPC', 'summary'))
@@ -850,7 +856,10 @@ def save_itpc_n_chan(n_chan):
 
         for i, (band, freq) in enumerate(freq_band.items()) :
 
-            data = tf_stretch_allcond[cond][band][n_chan, :, :]
+            if band == 'whole' or band == 'l_gamma':
+                continue
+            
+            data = tf_itpc_allcond[cond][band][n_chan, :, :]
             frex = np.linspace(freq[0], freq[1], np.size(data,0))
 
             scales['vmin_val'] = np.append(scales['vmin_val'], np.min(data))
@@ -907,6 +916,7 @@ def save_itpc_n_chan(n_chan):
 
 for freq_band_i, freq_band in enumerate(freq_band_list): 
 
+    print(band_prep_list[freq_band_i])
     joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(save_itpc_n_chan)(n_chan) for n_chan in range(len(chan_list_ieeg)))
 
 

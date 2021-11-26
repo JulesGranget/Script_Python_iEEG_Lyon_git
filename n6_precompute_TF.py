@@ -49,7 +49,7 @@ def compute_stretch_tf_dB(tf, cond, session_i, respfeatures_allcond, stretch_poi
 
     baselines_i = np.arange(nfrex)
     if band_prep == 'hf':
-        baselines_i += nfrex * len(freq_band_list[band_prep_list.index(band_prep)])
+        baselines_i += nfrex * len(freq_band_list[0])
 
     baselines_i += nfrex *list(freq_band_list[band_prep_list.index(band_prep)].keys()).index(band)
 
@@ -128,13 +128,13 @@ def precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_lis
     print('TF PRECOMPUTE')
 
     #### select prep to load
-    #band_prep_i, band_prep = 0, 'lf'
+    #band_prep_i, band_prep = 1, 'hf'
     for band_prep_i, band_prep in enumerate(band_prep_list):
 
         #### select data without aux chan
         data = load_data(band_prep, cond, session_i)[:len(chan_list_ieeg),:]
 
-        freq_band = freq_band_list[band_prep_i]
+        freq_band = freq_band_list[band_prep_i] 
 
         #band, freq = list(freq_band.items())[0]
         for band, freq in freq_band.items():
