@@ -21,7 +21,7 @@ import scipy.signal
 enable_big_execute = True
 
 #### whole protocole
-sujet = 'CHEe'
+sujet = 'CHEe' #OK
 #sujet = 'GOBc'
 #sujet = 'MAZm'
 #sujet = 'TREt'
