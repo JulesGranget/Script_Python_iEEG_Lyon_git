@@ -316,8 +316,6 @@ print('######## SAVEFIG FC ########')
 
 #### sort matrix
 
-
-
 def sort_mat(mat):
 
     mat_sorted = np.zeros((np.size(mat,0), np.size(mat,1)))
@@ -357,9 +355,7 @@ for i, name_i in enumerate(chan_name_sorted):
             continue
             
 
-
-
-    #### count for cond subpolt
+#### count for cond subpolt
 if len(conditions) == 1:
     nrows, ncols = 1, 0
 elif len(conditions) == 2:
@@ -372,6 +368,26 @@ elif len(conditions) == 5:
     nrows, ncols = 3, 2
 elif len(conditions) == 6:
     nrows, ncols = 3, 3
+
+
+#### identify scale
+scale = {'ispc' : {'min' : {}, 'max' : {}}, 'pli' : {'min' : {}, 'max' : {}}}
+for band, freq in freq_band_fc_analysis.items():
+
+    band_ispc = {'min' : [], 'max' : []}
+    band_pli = {'min' : [], 'max' : []}
+
+    for cond_i, cond in enumerate(conditions):
+        band_ispc['max'].append(np.max(ispc_allband_reduced[band][cond]))
+        band_ispc['min'].append(np.min(ispc_allband_reduced[band][cond]))
+        
+        band_pli['max'].append(np.max(pli_allband_reduced[band][cond]))
+        band_pli['min'].append(np.min(pli_allband_reduced[band][cond]))
+
+    scale['ispc']['max'][band] = np.max(band_ispc['max'])
+    scale['ispc']['min'][band] = np.min(band_ispc['min'])
+    scale['pli']['max'][band] = np.max(band_pli['max'])
+    scale['pli']['min'][band] = np.min(band_pli['min'])
 
 
 #### ISPC
@@ -404,7 +420,7 @@ for band, freq in freq_band_fc_analysis.items():
             cond = conditions[col_i + row_i]
             if ncols != 0:
                 ax = axs[row_i, col_i]
-                ax.matshow(sort_mat(ispc_allband_reduced[band][cond]))
+                ax.matshow(sort_mat(ispc_allband_reduced[band][cond]), vmin=scale['ispc']['min'][band], vmax=scale['ispc']['max'][band])
                 ax.set_title(cond)
             else:
                 plt.matshow(sort_mat(ispc_allband_reduced[band][cond]))
@@ -449,7 +465,7 @@ for band, freq in freq_band_fc_analysis.items():
             cond = conditions[col_i + row_i]
             if ncols != 0:
                 ax = axs[row_i, col_i]
-                ax.matshow(pli_allband_reduced.get(band).get(cond))
+                ax.matshow(pli_allband_reduced.get(band).get(cond), vmin=scale['pli']['min'][band], vmax=scale['pli']['max'][band])
                 ax.set_title(cond)
             else:
                 plt.matshow(pli_allband_reduced.get(band).get(cond))
