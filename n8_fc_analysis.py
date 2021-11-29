@@ -316,26 +316,48 @@ print('######## SAVEFIG FC ########')
 
 #### sort matrix
 
-def sort_ispc(mat):
+
+
+def sort_mat(mat):
 
     mat_sorted = np.zeros((np.size(mat,0), np.size(mat,1)))
-    #### for rows
-    for i_before_sort, i_sort in enumerate(df_sorted.index.values):
-        mat_sorted[i_before_sort,:] = mat[i_sort,:]
-
-    #### for columns
-    for i_before_sort, i_sort in enumerate(df_sorted.index.values):
-        mat_sorted[:,i_before_sort] = mat[:,i_sort]
+    for i_before_sort_r, i_sort_r in enumerate(df_sorted.index.values):
+        for i_before_sort_c, i_sort_c in enumerate(df_sorted.index.values):
+            mat_sorted[i_sort_r,i_sort_c] = mat[i_before_sort_r,i_before_sort_c]
 
     return mat_sorted
 
+#### verify sorting
+#mat = pli_allband_reduced.get(band).get(cond)
+#mat_sorted = sort_mat(mat)
+#plt.matshow(mat_sorted)
+#plt.show()
 
-
-#### ISPC
+#### prepare sort
 os.chdir(os.path.join(path_results, sujet, 'FC', 'ISPC', 'figures'))
 
 df_sorted = df_loca.sort_values(['lobes', 'ROI'])
 chan_name_sorted = df_sorted['ROI'].values.tolist()
+
+
+chan_name_sorted_mat = []
+rep_count = 0
+for i, name_i in enumerate(chan_name_sorted):
+    if i == 0:
+        chan_name_sorted_mat.append(name_i)
+        continue
+    else:
+        if name_i == chan_name_sorted[i-(rep_count+1)]:
+            chan_name_sorted_mat.append('')
+            rep_count += 1
+            continue
+        if name_i != chan_name_sorted[i-(rep_count+1)]:
+            chan_name_sorted_mat.append(name_i)
+            rep_count = 0
+            continue
+            
+
+
 
     #### count for cond subpolt
 if len(conditions) == 1:
@@ -351,68 +373,92 @@ elif len(conditions) == 5:
 elif len(conditions) == 6:
     nrows, ncols = 3, 3
 
-if ncols == 0:
 
-    #band_prep_i, band_prep, nchan, band, freq = 0, 'lf', 0, 'theta', [2, 10]
-    for band, freq in freq_band_fc_analysis.items():
+#### ISPC
+#band_prep_i, band_prep, nchan, band, freq = 0, 'lf', 0, 'theta', [2, 10]
+for band, freq in freq_band_fc_analysis.items():
 
-        fig = plt.figure(facecolor='black')
+    #### graph
+    fig = plt.figure(facecolor='black')
+    if ncols == 0:
         for cond_i, cond in enumerate(conditions):
-            mne.viz.plot_connectivity_circle(sort_ispc(ispc_allband_reduced.get(band).get(cond)), node_names=chan_name_sorted, n_lines=None, title=cond, show=False, padding=7, fig=fig)
-        plt.suptitle('ISPC_' + band, color='w')
-        fig.set_figheight(10)
-        fig.set_figwidth(12)
-        #fig.show()
-
-        fig.savefig(sujet + '_ISPC_' + band, dpi = 600)
-
-else:
-
-    #band_prep_i, band_prep, nchan, band, freq = 0, 'lf', 0, 'theta', [2, 10]
-    for band, freq in freq_band_fc_analysis.items():
-
-        fig = plt.figure(facecolor='black')
+            mne.viz.plot_connectivity_circle(sort_mat(ispc_allband_reduced.get(band).get(cond)), node_names=chan_name_sorted, n_lines=None, title=cond, show=False, padding=7, fig=fig)
+    else:
         for cond_i, cond in enumerate(conditions):
-            mne.viz.plot_connectivity_circle(sort_ispc(ispc_allband_reduced.get(band).get(cond)), node_names=chan_name_sorted, n_lines=None, title=cond, show=False, padding=7, fig=fig, subplot=(nrows, ncols, cond_i+1))
-        plt.suptitle('ISPC_' + band, color='w')
-        fig.set_figheight(10)
-        fig.set_figwidth(12)
-        #fig.show()
+            mne.viz.plot_connectivity_circle(sort_mat(ispc_allband_reduced.get(band).get(cond)), node_names=chan_name_sorted, n_lines=None, title=cond, show=False, padding=7, fig=fig, subplot=(nrows, ncols, cond_i+1))
+    plt.suptitle('ISPC_' + band, color='w')
+    fig.set_figheight(10)
+    fig.set_figwidth(12)
+    #fig.show()
 
-        fig.savefig(sujet + '_ISPC_' + band, dpi = 600)
+    fig.savefig(sujet + '_ISPC_' + band + '_graph', dpi = 100)
+
+    #### matrix
+    if ncols == 0:
+        fig = plt.figure(figsize=(20,10)) 
+    else:
+        fig, axs = plt.subplots(ncols=ncols, nrows=nrows, figsize=(20,10))
+
+    for row_i in range(nrows):
+        for col_i in range(ncols):
+            cond = conditions[col_i + row_i]
+            if ncols != 0:
+                ax = axs[row_i, col_i]
+                ax.matshow(sort_mat(ispc_allband_reduced[band][cond]))
+                ax.set_title(cond)
+            else:
+                plt.matshow(sort_mat(ispc_allband_reduced[band][cond]))
+            ax.set_yticks(range(len(df_loca['ROI'].values)))
+            ax.set_yticklabels(chan_name_sorted_mat)
+                
+    plt.suptitle('ISPC_' + band)
+    #plt.show()
+                
+    fig.savefig(sujet + '_ISPC_' + band + '_mat', dpi = 100)
 
 
 #### PLI
 
 os.chdir(os.path.join(path_results, sujet, 'FC', 'PLI', 'figures'))
 
-if ncols == 0:
+#band_prep_i, band_prep, nchan, band, freq = 0, 'lf', 0, 'theta', [2, 10]
+for band, freq in freq_band_fc_analysis.items():
 
-    #band_prep_i, band_prep, nchan, band, freq = 0, 'lf', 0, 'theta', [2, 10]
-    for band, freq in freq_band_fc_analysis.items():
-
-        fig = plt.figure(facecolor='black')
+    fig = plt.figure(facecolor='black')
+    if ncols == 0:
         for cond_i, cond in enumerate(conditions):
-            mne.viz.plot_connectivity_circle(sort_ispc(pli_allband_reduced.get(band).get(cond)), node_names=chan_name_sorted, n_lines=None, title=cond, show=False, padding=7, fig=fig)
-        plt.suptitle('PLI_' + band, color='w')
-        fig.set_figheight(10)
-        fig.set_figwidth(12)
-        #fig.show()
-
-        fig.savefig(sujet + '_PLI_' + band, dpi = 600)
-
-else:
-
-    #band_prep_i, band_prep, nchan, band, freq = 0, 'lf', 0, 'theta', [2, 10]
-    for band, freq in freq_band_fc_analysis.items():
-
-        fig = plt.figure(facecolor='black')
+            mne.viz.plot_connectivity_circle(sort_mat(pli_allband_reduced.get(band).get(cond)), node_names=chan_name_sorted, n_lines=None, title=cond, show=False, padding=7, fig=fig)
+    else:
         for cond_i, cond in enumerate(conditions):
-            mne.viz.plot_connectivity_circle(sort_ispc(pli_allband_reduced.get(band).get(cond)), node_names=chan_name_sorted, n_lines=None, title=cond, show=False, padding=7, fig=fig, subplot=(nrows, ncols, cond_i+1))
-        plt.suptitle('PLI_' + band, color='w')
-        fig.set_figheight(10)
-        fig.set_figwidth(12)
-        #fig.show()
+            mne.viz.plot_connectivity_circle(sort_mat(pli_allband_reduced.get(band).get(cond)), node_names=chan_name_sorted, n_lines=None, title=cond, show=False, padding=7, fig=fig, subplot=(nrows, ncols, cond_i+1))
+    plt.suptitle('PLI_' + band, color='w')
+    fig.set_figheight(10)
+    fig.set_figwidth(12)
+    #fig.show()
 
-        fig.savefig(sujet + '_PLI_' + band, dpi = 600)
+    fig.savefig(sujet + '_PLI_' + band + '_graph', dpi = 100)
+
+    #### matrix
+    if ncols == 0:
+        fig = plt.figure(figsize=(20,10)) 
+    else:
+        fig, axs = plt.subplots(ncols=ncols, nrows=nrows, figsize=(20,10))
+
+    for row_i in range(nrows):
+        for col_i in range(ncols):
+            cond = conditions[col_i + row_i]
+            if ncols != 0:
+                ax = axs[row_i, col_i]
+                ax.matshow(pli_allband_reduced.get(band).get(cond))
+                ax.set_title(cond)
+            else:
+                plt.matshow(pli_allband_reduced.get(band).get(cond))
+            ax.set_yticks(range(len(df_loca['ROI'].values)))
+            ax.set_yticklabels(chan_name_sorted_mat)
+                
+    plt.suptitle('PLI_' + band)
+    #plt.show()
+                
+    fig.savefig(sujet + '_PLI_' + band + '_mat', dpi = 100)
+
 

@@ -22,9 +22,9 @@ enable_big_execute = True
 
 #### whole protocole
 sujet = 'CHEe' #OK
-#sujet = 'GOBc'
-#sujet = 'MAZm'
-#sujet = 'TREt'
+#sujet = 'GOBc' #OK
+#sujet = 'MAZm' #OK
+#sujet = 'TREt' 
 
 #### FR_CV only
 #sujet = 'MUGa'
@@ -94,7 +94,7 @@ if PC_ID == 'pc-valentin':
     path_main_workdir = '/home/valentin/smb4k/CRNLDATA/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/Script_Python_iEEG_Lyon_git'
     path_general = '/home/valentin/smb4k/CRNLDATA/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/'
     path_memmap = '/home/valentin/smb4k/CRNLDATA/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/Mmap'
-    n_core = 10
+    n_core = 6
 
 if PC_ID == 'nodeGPU':
 

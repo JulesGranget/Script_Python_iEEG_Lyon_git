@@ -18,7 +18,8 @@ os.chdir(path_main_workdir)
 os.system('python3 n8_fc_analysis.py')
 
 print('######## COMPUTING TIME ########')
-print(time.time()-start, 'seconds')
+computation_time = (time.time()-start)/3600
+print(computation_time, 'heures')
 print('################################')
 
 
