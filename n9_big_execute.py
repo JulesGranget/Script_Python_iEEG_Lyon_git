@@ -8,13 +8,13 @@ from n0_config import *
 
 start = time.time()
 
-os.chdir(path_perso_repo)
+os.chdir(path_main_workdir)
 os.system('python3 n5_precompute_surrogates.py')
-os.chdir(path_perso_repo)
+os.chdir(path_main_workdir)
 os.system('python3 n6_precompute_TF.py')
-os.chdir(path_perso_repo)
+os.chdir(path_main_workdir)
 os.system('python3 n7_power_analysis.py')
-os.chdir(path_perso_repo)
+os.chdir(path_main_workdir)
 os.system('python3 n8_fc_analysis.py')
 
 print('######## COMPUTING TIME ########')
