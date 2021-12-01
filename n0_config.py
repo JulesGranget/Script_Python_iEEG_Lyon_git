@@ -68,11 +68,10 @@ PC_ID = socket.gethostname()
 if PC_ID == 'LAPTOP-EI7OSP7K':
 
     PC_working = 'Jules_Home'
-    path_main_workdir = 'C:\\Users\\jules\\Desktop\\Codage Informatique\\Script_Python_iEEG_Lyon_git'
     if perso_repo_computation:
-        path_perso_repo = 'D:\\LPPR_CMO_PROJECT\\Lyon\\iEEG'
+        path_main_workdir = 'D:\\LPPR_CMO_PROJECT\\Lyon\\iEEG'
     else:    
-        path_perso_repo = 'D:\\LPPR_CMO_PROJECT\\Lyon\\iEEG'
+        path_main_workdir = 'D:\\LPPR_CMO_PROJECT\\Lyon\\iEEG'
     path_general = 'D:\\LPPR_CMO_PROJECT\\Lyon\\iEEG'
     path_memmap = 'D:\\LPPR_CMO_PROJECT\\Lyon\\iEEG\\Mmap'
     n_core = 4
@@ -80,11 +79,10 @@ if PC_ID == 'LAPTOP-EI7OSP7K':
 if PC_ID == 'DESKTOP-3IJUK7R':
 
     PC_working = 'Jules_Labo_Win'
-    path_main_workdir = 'C:\\Users\\jules\\Desktop\\Script_Python_iEEG_Lyon_git'
     if perso_repo_computation:
-        path_perso_repo = 'D:\\LPPR_CMO_PROJECT\\Lyon'
+        path_main_workdir = 'D:\\LPPR_CMO_PROJECT\\Lyon'
     else:    
-        path_perso_repo = 'D:\\LPPR_CMO_PROJECT\\Lyon'
+        path_main_workdir = 'D:\\LPPR_CMO_PROJECT\\Lyon'
     path_general = 'D:\\LPPR_CMO_PROJECT\\Lyon'
     path_memmap = 'D:\\LPPR_CMO_PROJECT\\Lyon\\Mmap'
     n_core = 2
@@ -92,11 +90,10 @@ if PC_ID == 'DESKTOP-3IJUK7R':
 if PC_ID == 'pc-jules':
 
     PC_working = 'Jules_Labo_Linux'
-    path_main_workdir = '/home/jules/smb4k/CRNLDATA/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/Script_Python_iEEG_Lyon_git'
     if perso_repo_computation:
-        path_perso_repo = '/home/jules/Bureau/perso_repo_computation/Script_Python_iEEG_Lyon_git'
+        path_main_workdir = '/home/jules/Bureau/perso_repo_computation/Script_Python_iEEG_Lyon_git'
     else:    
-        path_perso_repo = '/home/jules/smb4k/CRNLDATA/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ'
+        path_main_workdir = '/home/jules/smb4k/CRNLDATA/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ'
     path_general = '/home/jules/smb4k/CRNLDATA/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ'
     path_memmap = '/home/jules/smb4k/CRNLDATA/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/Mmap'
     n_core = 6
@@ -104,11 +101,10 @@ if PC_ID == 'pc-jules':
 if PC_ID == 'pc-valentin':
 
     PC_working = 'Valentin_Labo_Linux'
-    path_main_workdir = '/home/valentin/smb4k/CRNLDATA/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/Script_Python_iEEG_Lyon_git'
     if perso_repo_computation:
-        path_perso_repo = '/home/valentin/Bureau/perso_repo_computation/Script_Python_iEEG_Lyon_git'
+        path_main_workdir = '/home/valentin/Bureau/perso_repo_computation/Script_Python_iEEG_Lyon_git'
     else:    
-        path_perso_repo = '/home/valentin/smb4k/CRNLDATA/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ'
+        path_main_workdir = '/home/valentin/smb4k/CRNLDATA/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ'
     path_general = '/home/valentin/smb4k/CRNLDATA/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ'
     path_memmap = '/home/valentin/smb4k/CRNLDATA/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/Mmap'
     n_core = 6
@@ -117,7 +113,6 @@ if PC_ID == 'nodeGPU':
 
     PC_working = 'nodeGPU'
     path_main_workdir = '/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/Script_Python_iEEG_Lyon_git'
-    path_perso_repo = '/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ'
     path_general = '/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ'
     path_memmap = '/mnt/data/julesgranget'
     n_core = 40
