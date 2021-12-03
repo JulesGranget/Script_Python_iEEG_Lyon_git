@@ -6,7 +6,7 @@ import scipy.signal
 ######## MODULES ########
 ################################
 
-# anaconda
+# anaconda (numpy, scipy, pandas, matplotlib, glob2, joblib)
 # neurokit2 as nk
 # respirationtools
 # mne
@@ -22,15 +22,15 @@ enable_big_execute = True
 perso_repo_computation = True
 
 #### whole protocole
-#sujet = 'CHEe' #OK
-#sujet = 'GOBc' # OK
-#sujet = 'MAZm' # OK
-sujet = 'TREt' 
+#sujet = 'CHEe'
+#sujet = 'GOBc' 
+#sujet = 'MAZm' 
+#sujet = 'TREt' 
 
 #### FR_CV only
 #sujet = 'MUGa'
 #sujet = 'BANc'
-#sujet = 'KOFs'
+sujet = 'KOFs'
 #sujet = 'LEMl'
 #sujet = 'pat_02459_0912'
 #sujet = 'pat_02476_0929'
