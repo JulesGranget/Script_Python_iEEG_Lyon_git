@@ -6,7 +6,7 @@ import scipy.signal
 ######## MODULES ########
 ################################
 
-# anaconda (numpy, scipy, pandas, matplotlib, glob2, joblib)
+# anaconda (numpy, scipy, pandas, matplotlib, glob2, joblib, xlrd)
 # neurokit2 as nk
 # respirationtools
 # mne
@@ -115,9 +115,15 @@ if PC_ID == 'nodeGPU':
     path_main_workdir = '/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/Script_Python_iEEG_Lyon_git'
     path_general = '/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ'
     path_memmap = '/mnt/data/julesgranget'
-    n_core = 40
+    n_core = 10
 
+else:
 
+    PC_working = 'crnl_cluster'
+    path_main_workdir = '/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/Script_Python_iEEG_Lyon_git'
+    path_general = '/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ'
+    path_memmap = '/mnt/data/julesgranget'
+    n_core = -1
 
 path_data = os.path.join(path_general, 'Data', 'raw_data')
 path_prep = os.path.join(path_general, 'Analyses', 'preprocessing')
