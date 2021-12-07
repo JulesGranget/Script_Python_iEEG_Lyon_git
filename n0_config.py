@@ -19,18 +19,18 @@ import scipy.signal
 ################################
 
 enable_big_execute = True
-perso_repo_computation = True
+perso_repo_computation = False
 
 #### whole protocole
 #sujet = 'CHEe'
 #sujet = 'GOBc' 
 #sujet = 'MAZm' 
-#sujet = 'TREt' 
+sujet = 'TREt' 
 
 #### FR_CV only
 #sujet = 'MUGa'
 #sujet = 'BANc'
-sujet = 'KOFs'
+#sujet = 'KOFs'
 #sujet = 'LEMl'
 #sujet = 'pat_02459_0912'
 #sujet = 'pat_02476_0929'
@@ -76,7 +76,7 @@ if PC_ID == 'LAPTOP-EI7OSP7K':
     path_memmap = 'D:\\LPPR_CMO_PROJECT\\Lyon\\iEEG\\Mmap'
     n_core = 4
 
-if PC_ID == 'DESKTOP-3IJUK7R':
+elif PC_ID == 'DESKTOP-3IJUK7R':
 
     PC_working = 'Jules_Labo_Win'
     if perso_repo_computation:
@@ -87,7 +87,7 @@ if PC_ID == 'DESKTOP-3IJUK7R':
     path_memmap = 'D:\\LPPR_CMO_PROJECT\\Lyon\\Mmap'
     n_core = 2
 
-if PC_ID == 'pc-jules':
+elif PC_ID == 'pc-jules':
 
     PC_working = 'Jules_Labo_Linux'
     if perso_repo_computation:
@@ -98,7 +98,7 @@ if PC_ID == 'pc-jules':
     path_memmap = '/home/jules/smb4k/CRNLDATA/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/Mmap'
     n_core = 6
 
-if PC_ID == 'pc-valentin':
+elif PC_ID == 'pc-valentin':
 
     PC_working = 'Valentin_Labo_Linux'
     if perso_repo_computation:
@@ -109,7 +109,7 @@ if PC_ID == 'pc-valentin':
     path_memmap = '/home/valentin/smb4k/CRNLDATA/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/Mmap'
     n_core = 6
 
-if PC_ID == 'nodeGPU':
+elif PC_ID == 'nodeGPU':
 
     PC_working = 'nodeGPU'
     path_main_workdir = '/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/Script_Python_iEEG_Lyon_git'
