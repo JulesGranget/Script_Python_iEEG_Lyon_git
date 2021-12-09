@@ -17,6 +17,23 @@ debug = False
 ######## ALLPLOT ANATOMY ######## 
 ########################################
 
+def get_all_ROI_and_Lobes_name():
+
+    os.chdir(os.path.join(path_anatomy, 'nomenclature'))
+
+    nomenclature_df = pd.read_excel('Freesurfer_Parcellisation_Destrieux.xlsx')
+    
+    #### fill dict with anat names
+    anat_loca_dict = {}
+    anat_lobe_dict = {}
+    anat_loca_list = nomenclature_df['Our correspondances'].values
+    anat_lobe_list_non_sorted = nomenclature_df['Lobes'].values
+    for i in range(len(anat_loca_list)):
+        anat_loca_dict[anat_loca_list[i]] = {'TF' : {}, 'ITPC' : {}}
+        anat_lobe_dict[anat_lobe_list_non_sorted[i]] = {'TF' : {}, 'ITPC' : {}}
+
+    return anat_loca_dict, anat_lobe_dict
+
 
 def count_all_plot_location():
 
@@ -303,8 +320,8 @@ def get_ROI_Lobes_list_and_Plots(cond):
 # plot_i_to_process = 5
 def get_Coh_Respi_1plot(plot_i_to_process):
         
-    if plot_i_to_process/len(df_all_plot_noselect.index.values) % .2 <= .01:
-        print('{:.2f}'.format(plot_i_to_process/len(df_all_plot_noselect.index.values)))
+    if plot_i_to_process/len(df_adjust_for_sujets.index.values) % .2 <= .01:
+        print('{:.2f}'.format(plot_i_to_process/len(df_adjust_for_sujets.index.values)))
 
     #### identify if proccessed
     if (df_all_plot_noselect['subject'][plot_i_to_process] + '_' + df_all_plot_noselect['plot'][plot_i_to_process] in all_proccessed_plot) == False:
@@ -415,7 +432,7 @@ def get_Coh_Respi_1plot(plot_i_to_process):
 
 
 # ROI_to_process = 'postcentral'
-def get_TF_and_ITPC_for_ROI(ROI_to_process):
+def get_TF_and_ITPC_for_ROI(ROI_to_process, cond):
 
     #### identify if proccessed
     if (ROI_to_process in ROI_to_include) != True:
@@ -423,7 +440,6 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process):
 
     if ROI_to_include.index(ROI_to_process)/len(ROI_to_include) % .2 <= .01:
         print('{:.2f}'.format(ROI_to_include.index(ROI_to_process)/len(ROI_to_include)))
-
 
     #### plot to compute
     plot_to_process = ROI_dict_plots[ROI_to_process]
@@ -505,6 +521,13 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process):
 
                 dict_ITPC_for_ROI_to_process[band] = (dict_ITPC_for_ROI_to_process[band] + ITPC_load[plot_tmp_i,:,:])/2
 
+    #### fill for allband allcond plotting
+    ROI_i_tmp = list(ROI_list_allband.keys()).index(ROI_to_process)
+    cond_i = conditions_allsubjects.index(cond)
+    for i, band_i in enumerate(dict_TF_for_ROI_to_process.keys()):
+        ROI_TF_allband_allcond[ROI_i_tmp, cond_i, i, :, :] = dict_TF_for_ROI_to_process[band]
+        ROI_ITPC_allband_allcond[ROI_i_tmp, cond_i, i, :, :] = dict_ITPC_for_ROI_to_process[band]
+
     #### plot
     #TF_type = 'TF'
     for TF_type in ['TF', 'ITPC']:
@@ -530,6 +553,9 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process):
                             
             # i, (band, freq) = 0, ('theta', [2 ,10])
             for i, (band, freq) in enumerate(list(dict_freq_to_plot.items())) :
+
+                if band == 'whole' or band == 'l_gamma':
+                    continue
 
                 if TF_type == 'TF':
                     data = dict_TF_for_ROI_to_process[band]
@@ -577,7 +603,7 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process):
 
 
 # Lobe_to_process = 'Occipital'
-def get_TF_and_ITPC_for_Lobe(Lobe_to_process):
+def get_TF_and_ITPC_for_Lobe(Lobe_to_process, cond):
 
     #### identify if proccessed
     if (Lobe_to_process in lobe_to_include) != True:
@@ -665,6 +691,13 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process):
 
                 dict_ITPC_for_Lobe_to_process[band] = (dict_ITPC_for_Lobe_to_process[band] + ITPC_load[plot_tmp_i,:,:])/2
 
+    #### fill for allband allcond plotting
+    Lobe_i_tmp = list(Lobe_list_allband.keys()).index(Lobe_to_process)
+    cond_i = conditions_allsubjects.index(cond)
+    for i, band_i in enumerate(dict_TF_for_Lobe_to_process.keys()):
+        Lobes_TF_allband_allcond[Lobe_i_tmp, cond_i, i, :, :] = dict_TF_for_Lobe_to_process[band]
+        Lobes_ITPC_allband_allcond[Lobe_i_tmp, cond_i, i, :, :] = dict_ITPC_for_Lobe_to_process[band]
+
     #### plot
 
     for TF_type in ['TF', 'ITPC']:
@@ -690,6 +723,9 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process):
                             
             # i, (band, freq) = 0, ('theta', [2 ,10])
             for i, (band, freq) in enumerate(list(dict_freq_to_plot.items())) :
+
+                if band == 'whole' or band == 'l_gamma':
+                    continue
 
                 if TF_type == 'TF':
                     data = dict_TF_for_Lobe_to_process[band]
@@ -733,6 +769,221 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process):
 
 
 
+################################################
+######## PLOT & SAVE ALLPLOT ALLCOND ########
+################################################
+
+
+def plot_allband_allcond():
+
+    #### load TF & ITPC
+    os.chdir(os.path.join(path_results, 'allplot', 'allcond', 'mat'))
+
+    ROI_TF_allband_allcond = np.load('ROI_TF_allband_allcond.npy')
+    Lobes_TF_allband_allcond = np.load('Lobes_TF_allband_allcond.npy')
+    ROI_ITPC_allband_allcond = np.load('ROI_ITPC_allband_allcond.npy')
+    Lobes_ITPC_allband_allcond = np.load('Lobes_ITPC_allband_allcond.npy')
+
+    #### get allband
+    band_list_allband = []
+    for band_prep_i in range(len(freq_band_list)):
+        [band_list_allband.append(band_i) for band_i in list(freq_band_list[band_prep_i].keys())]
+
+    #### load into dict
+    ROI_list_allband, Lobe_list_allband = get_all_ROI_and_Lobes_name()
+    
+    for ROI_i, ROI in enumerate(list(ROI_list_allband.keys())):
+
+        for cond_i, cond in enumerate(conditions_allsubjects):
+
+            ROI_list_allband[ROI]['TF'][cond] = {}
+            ROI_list_allband[ROI]['ITPC'][cond] = {}
+
+            for band_i, band in enumerate(band_list_allband): 
+                
+                ROI_list_allband[ROI]['TF'][cond][band] = ROI_TF_allband_allcond[ROI_i, cond_i, band_i, :, :]
+                ROI_list_allband[ROI]['ITPC'][cond][band] = ROI_ITPC_allband_allcond[ROI_i, cond_i, band_i, :, :]
+
+    for Lobe_i, Lobe in enumerate(list(Lobe_list_allband.keys())):
+
+        for cond_i, cond in enumerate(conditions_allsubjects):
+
+            Lobe_list_allband[Lobe]['TF'][cond] = {}
+            Lobe_list_allband[Lobe]['ITPC'][cond] = {}
+
+            for band_i, band in enumerate(band_list_allband): 
+                
+                Lobe_list_allband[Lobe]['TF'][cond][band] = Lobes_TF_allband_allcond[Lobe_i, cond_i, band_i, :, :]
+                Lobe_list_allband[Lobe]['ITPC'][cond][band] = Lobes_ITPC_allband_allcond[Lobe_i, cond_i, band_i, :, :]
+
+    #### free space
+    del ROI_TF_allband_allcond
+    del Lobes_TF_allband_allcond
+    del ROI_ITPC_allband_allcond
+    del Lobes_ITPC_allband_allcond
+
+    #### plot & save ROI
+    #ROI = list(ROI_list_allband.keys())[0]
+    def plot_and_save_allband_allcond_ROI(ROI):
+
+        if list(ROI_list_allband.keys()).index(ROI)/len(list(ROI_list_allband.keys())) % .2 <= .01:
+            print('{:.2f}'.format(list(ROI_list_allband.keys()).index(ROI)/len(list(ROI_list_allband.keys()))))
+
+        # TF_type = 'TF'
+        for TF_type in ['TF', 'ITPC']:
+
+            if TF_type == 'TF':
+                os.chdir(os.path.join(path_results, 'allplot', 'allcond', 'TF', 'ROI'))
+            if TF_type == 'ITPC':
+                os.chdir(os.path.join(path_results, 'allplot', 'allcond', 'ITPC', 'ROI'))
+
+            #### find scale
+            scales = {'vmin_val' : np.array(()), 'vmax_val' : np.array(()), 'median_val' : np.array(())}
+                                
+            for cond in conditions_allsubjects:
+                # i, (band, freq) = 0, ('theta', [2 ,10])
+                for band in list(ROI_list_allband[ROI][TF_type][cond].keys()) :
+
+                    if band == 'whole' or band == 'l_gamma':
+                        continue
+
+                    if TF_type == 'TF':
+                        data = ROI_list_allband[ROI]['TF'][cond][band]
+                    elif TF_type == 'ITPC':
+                        data = ROI_list_allband[ROI]['ITPC'][cond][band]
+
+                    scales['vmin_val'] = np.append(scales['vmin_val'], np.min(data))
+                    scales['vmax_val'] = np.append(scales['vmax_val'], np.max(data))
+                    scales['median_val'] = np.append(scales['median_val'], np.median(data))
+
+                median_diff = np.max([np.abs(np.min(scales['vmin_val']) - np.median(scales['median_val'])), np.abs(np.max(scales['vmax_val']) - np.median(scales['median_val']))])
+
+            vmin = np.median(scales['median_val']) - median_diff
+            vmax = np.median(scales['median_val']) + median_diff
+
+            del scales
+        
+            # band_prep_i, band_prep = 0, 'lf'
+            for band_prep_i, band_prep in enumerate(band_prep_list):
+
+                if band_prep == 'lf':
+                    fig, axs = plt.subplots(nrows=4, ncols=len(conditions_allsubjects))
+                if band_prep == 'hf':
+                    fig, axs = plt.subplots(nrows=2, ncols=len(conditions_allsubjects))
+                
+                plt.suptitle(ROI)
+                dict_freq_to_plot = freq_band_list[band_prep_i]
+
+                for cond_i, cond in enumerate(conditions_allsubjects):
+                                
+                    # i, (band, freq) = 0, ('theta', [2 ,10])
+                    for i, (band, freq) in enumerate(list(dict_freq_to_plot.items())) :
+
+                        if TF_type == 'TF':
+                            data = ROI_list_allband[ROI]['TF'][cond][band]
+                        if TF_type == 'ITPC':
+                            data = ROI_list_allband[ROI]['ITPC'][cond][band]
+
+                        frex = np.linspace(freq[0], freq[1], data.shape[0])
+                        time = np.arange(stretch_point_TF)
+                    
+                        ax = axs[i, cond_i]
+                        if i == 0 :
+                            ax.set_title(cond)
+                        if cond_i == 0:
+                            ax.set_ylabel(band)
+                        ax.pcolormesh(time, frex, data, vmin=vmin, vmax=vmax, shading='gouraud', cmap=plt.get_cmap('seismic'))
+                        ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='g')
+                        #plt.show()
+                            
+                #### save
+                if band_prep == 'lf':
+                    fig.savefig(ROI + '_all_lf.jpeg', dpi=600)
+                if band_prep == 'hf':
+                    fig.savefig(ROI + '_all_hf.jpeg', dpi=600)
+                plt.close()
+
+    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(plot_and_save_allband_allcond_ROI)(ROI) for ROI in list(ROI_list_allband.keys()))
+
+    #### plot & save Lobes
+    def plot_and_save_allband_allcond_Lobe(Lobe):
+
+        print(Lobe)
+
+        for TF_type in ['TF', 'ITPC']:
+
+                if TF_type == 'TF':
+                    os.chdir(os.path.join(path_results, 'allplot', 'allcond', 'TF', 'Lobes'))
+                if TF_type == 'ITPC':
+                    os.chdir(os.path.join(path_results, 'allplot', 'allcond', 'ITPC', 'Lobes'))
+
+                #### find scale
+                scales = {'vmin_val' : np.array(()), 'vmax_val' : np.array(()), 'median_val' : np.array(())}
+                                
+                for cond in conditions_allsubjects:
+                    
+                    for band in list(Lobe_list_allband[Lobe][TF_type][cond].keys()) :
+
+                        if band == 'whole' or band == 'l_gamma':
+                            continue
+
+                        if TF_type == 'TF':
+                            data = Lobe_list_allband[Lobe]['TF'][cond][band]
+                        if TF_type == 'ITPC':
+                            data = Lobe_list_allband[Lobe]['ITPC'][cond][band]
+
+                        scales['vmin_val'] = np.append(scales['vmin_val'], np.min(data))
+                        scales['vmax_val'] = np.append(scales['vmax_val'], np.max(data))
+                        scales['median_val'] = np.append(scales['median_val'], np.median(data))
+
+                    median_diff = np.max([np.abs(np.min(scales['vmin_val']) - np.median(scales['median_val'])), np.abs(np.max(scales['vmax_val']) - np.median(scales['median_val']))])
+
+                    vmin = np.median(scales['median_val']) - median_diff
+                    vmax = np.median(scales['median_val']) + median_diff
+            
+                # band_prep_i, band_prep = 0, 'lf'
+                for band_prep_i, band_prep in enumerate(band_prep_list):
+
+                    if band_prep == 'lf':
+                        fig, axs = plt.subplots(nrows=4, ncols=len(conditions_allsubjects))
+                    if band_prep == 'hf':
+                        fig, axs = plt.subplots(nrows=2, ncols=len(conditions_allsubjects))
+                    
+                    plt.suptitle(Lobe)
+                    dict_freq_to_plot = freq_band_list[band_prep_i]
+
+                    for cond_i, cond in enumerate(conditions_allsubjects):
+                                    
+                        # i, (band, freq) = 0, ('theta', [2 ,10])
+                        for i, (band, freq) in enumerate(list(dict_freq_to_plot.items())) :
+
+                            if TF_type == 'TF':
+                                data = Lobe_list_allband[Lobe]['TF'][cond][band]
+                            if TF_type == 'ITPC':
+                                data = Lobe_list_allband[Lobe]['ITPC'][cond][band]
+
+                            frex = np.linspace(freq[0], freq[1], data.shape[0])
+                            time = np.arange(stretch_point_TF)
+                        
+                            ax = axs[i, cond_i]
+                            if i == 0 :
+                                ax.set_title(cond)
+                            if cond_i == 0:
+                                ax.set_ylabel(band)
+                            ax.pcolormesh(time, frex, data, vmin=vmin, vmax=vmax, shading='gouraud', cmap=plt.get_cmap('seismic'))
+                            ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='g')
+                            #plt.show()
+                                
+                    #### save
+                    if band_prep == 'lf':
+                        fig.savefig(Lobe + '_all_lf.jpeg', dpi=600)
+                    if band_prep == 'hf':
+                        fig.savefig(Lobe + '_all_hf.jpeg', dpi=600)
+                    plt.close()
+
+    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(plot_and_save_allband_allcond_Lobe)(Lobe) for Lobe in list(Lobe_list_allband.keys()))
+
+
 
 
 ################################
@@ -750,8 +1001,10 @@ if __name__ == '__main__':
 
     #### analysis
     
-    CxyRespi_exe = True
-    TF_ITPC_exe = True
+    CxyRespi_exe = False
+    TF_ITPC_exe = False
+    allband_allplot_compute_exe = False
+    allband_allplot_plot_exe = True
     
     ######## ANATOMY ########
 
@@ -761,6 +1014,18 @@ if __name__ == '__main__':
 
     ######## PREP ALLLOCA ANALYSIS ########
 
+    #### initiate for allband allcond TF & ITPC
+    if allband_allplot_compute_exe:
+        ROI_list_allband, Lobe_list_allband = get_all_ROI_and_Lobes_name()
+        len_ROI, len_Lobes = len(list(ROI_list_allband.keys())), len(list(Lobe_list_allband.keys()))
+
+        os.chdir(path_memmap)
+        ROI_TF_allband_allcond = np.memmap('_ROI_TF_allband_allcond.dat', dtype='float64', mode='w+', shape=(len_ROI, len(conditions_allsubjects), 6, nfrex_hf, stretch_point_TF))
+        Lobes_TF_allband_allcond = np.memmap('_Lobes_TF_allband_allcond.dat', dtype='float64', mode='w+', shape=(len_Lobes, len(conditions_allsubjects), 6, nfrex_hf, stretch_point_TF))
+        ROI_ITPC_allband_allcond = np.memmap('_ROI_ITPC_allband_allcond.dat', dtype='float64', mode='w+', shape=(len_ROI, len(conditions_allsubjects), 6, nfrex_hf, stretch_point_TF))
+        Lobes_ITPC_allband_allcond = np.memmap('_Lobes_ITPC_allband_allcond.dat', dtype='float64', mode='w+', shape=(len_Lobes, len(conditions_allsubjects), 6, nfrex_hf, stretch_point_TF))
+
+    #### compute allcond allband
     #cond = 'FR_CV'
     for cond in conditions_allsubjects:
 
@@ -833,11 +1098,31 @@ if __name__ == '__main__':
 
             #### compute TF & ITPC for ROI
             print('#### TF and ITPC for ROI ####')
-            joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(get_TF_and_ITPC_for_ROI)(ROI_to_process) for ROI_to_process in ROI_to_include)
+            joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(get_TF_and_ITPC_for_ROI)(ROI_to_process, cond) for ROI_to_process in ROI_to_include)
 
             #### compute TF & ITPC for Lobes
             print('#### TF and ITPC for Lobe ####')
-            joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(get_TF_and_ITPC_for_Lobe)(Lobe_to_process) for Lobe_to_process in lobe_to_include)
+            joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(get_TF_and_ITPC_for_Lobe)(Lobe_to_process, cond) for Lobe_to_process in lobe_to_include)
+
+    ######## SAVE ALL TF & ITPC ########
+
+    if allband_allplot_compute_exe:
+        os.chdir(os.path.join(path_results, 'allplot', 'allcond', 'mat'))
+        np.save('ROI_TF_allband_allcond.npy', ROI_TF_allband_allcond)
+        np.save('Lobes_TF_allband_allcond.npy', Lobes_TF_allband_allcond)
+        np.save('ROI_ITPC_allband_allcond.npy', ROI_ITPC_allband_allcond)
+        np.save('Lobes_ITPC_allband_allcond.npy', Lobes_ITPC_allband_allcond)
+
+        os.chdir(path_memmap)
+        os.remove('_ROI_TF_allband_allcond.dat')
+        os.remove('_Lobes_TF_allband_allcond.dat')
+        os.remove('_ROI_ITPC_allband_allcond.dat')
+        os.remove('_Lobes_ITPC_allband_allcond.dat')
+
+    if allband_allplot_plot_exe:
+
+        print('#### TF and ITPC for Allcond Allband ####')
+        plot_allband_allcond()
 
 
 

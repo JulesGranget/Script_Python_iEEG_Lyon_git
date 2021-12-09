@@ -25,7 +25,7 @@ perso_repo_computation = False
 #sujet = 'CHEe'
 #sujet = 'GOBc' 
 #sujet = 'MAZm' 
-sujet = 'TREt' 
+#sujet = 'TREt' 
 
 #### FR_CV only
 #sujet = 'MUGa'
@@ -33,7 +33,7 @@ sujet = 'TREt'
 #sujet = 'KOFs'
 #sujet = 'LEMl'
 #sujet = 'pat_02459_0912'
-#sujet = 'pat_02476_0929'
+sujet = 'pat_02476_0929'
 #sujet = 'pat_02495_0949'
 
 #sujet = 'DEBUG'
@@ -115,7 +115,7 @@ elif PC_ID == 'nodeGPU':
     path_main_workdir = '/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/Script_Python_iEEG_Lyon_git'
     path_general = '/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ'
     path_memmap = '/mnt/data/julesgranget'
-    n_core = 10
+    n_core = 15
 
 else:
 
