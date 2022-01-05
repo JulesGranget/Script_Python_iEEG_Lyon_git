@@ -1,0 +1,402 @@
+
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.signal
+import pandas as pd
+import joblib
+import seaborn as sns
+import xarray as xr
+
+from n0_config import *
+from n0bis_analysis_functions import *
+from n10_allplot_analysis import ROI_list
+
+
+debug = False
+
+
+
+########################################
+######## ALLPLOT ANATOMY ######## 
+########################################
+
+def get_all_ROI_and_Lobes_name():
+
+    os.chdir(os.path.join(path_anatomy, 'nomenclature'))
+
+    nomenclature_df = pd.read_excel('Freesurfer_Parcellisation_Destrieux.xlsx')
+    
+    #### fill dict with anat names
+    anat_loca_dict = {}
+    anat_lobe_dict = {}
+    anat_loca_list = nomenclature_df['Our correspondances'].values
+    anat_lobe_list_non_sorted = nomenclature_df['Lobes'].values
+    for i in range(len(anat_loca_list)):
+        anat_loca_dict[anat_loca_list[i]] = {'TF' : {}, 'ITPC' : {}}
+        anat_lobe_dict[anat_lobe_list_non_sorted[i]] = {'TF' : {}, 'ITPC' : {}}
+
+    return anat_loca_dict, anat_lobe_dict
+
+
+
+########################################
+######## PREP ALLPLOT ANALYSIS ########
+########################################
+
+
+#cond = 'FR_CV'
+def get_ROI_Lobes_list_and_Plots(cond):
+
+    #### generate anat list
+    os.chdir(os.path.join(path_anatomy, 'nomenclature'))
+
+    nomenclature_df = pd.read_excel('Freesurfer_Parcellisation_Destrieux.xlsx')
+
+    ROI_list = list(nomenclature_df['Our correspondances'].values)
+    lobe_list = []
+    [lobe_list.append(lobe_i) for lobe_i in nomenclature_df['Lobes'].values if (lobe_i in lobe_list) == False]
+
+    #### fill dict with anat names
+    ROI_dict = {}
+    ROI_dict_plots = {}
+    lobe_dict = {}
+    lobe_dict_plots = {}
+    anat_lobe_list_non_sorted = nomenclature_df['Lobes'].values
+    for i in range(len(ROI_list)):
+        ROI_dict[ROI_list[i]] = 0
+        ROI_dict_plots[ROI_list[i]] = []
+        lobe_dict[anat_lobe_list_non_sorted[i]] = 0
+        lobe_dict_plots[anat_lobe_list_non_sorted[i]] = []
+
+    #### initiate for cond
+    sujet_for_cond = []
+
+    #### search for ROI & lobe that have been counted
+
+    if cond == 'FR_CV' :
+        sujet_list_selected = sujet_list_FR_CV
+    else:
+        sujet_list_selected = sujet_list
+
+    #sujet_i = sujet_list_selected[0]
+    for sujet_i in sujet_list_selected:
+
+        os.chdir(os.path.join(path_prep, sujet_i, 'sections'))
+        session_count_sujet_i = []
+        for file_i in os.listdir():
+            if file_i.find(cond) != -1:
+                session_count_sujet_i.append(file_i)
+            else:
+                continue
+        if len(session_count_sujet_i) == 0:
+            continue
+        else:
+            sujet_for_cond.append(sujet_i)
+
+        os.chdir(os.path.join(path_anatomy, sujet_i))
+        plot_loca_df = pd.read_excel(sujet_i + '_plot_loca.xlsx')
+
+        chan_list_txt = open(sujet_i + '_chanlist_ieeg.txt', 'r')
+        chan_list_txt_readlines = chan_list_txt.readlines()
+        chan_list_ieeg = [i.replace('\n', '') for i in chan_list_txt_readlines]
+
+        #### exclude Paris subjects
+        if sujet_i[:3] == 'pat':
+            chan_list_ieeg_csv = chan_list_ieeg
+        else:
+            chan_list_ieeg_csv, trash = modify_name(chan_list_ieeg)
+
+        count_verif = 0
+
+        for nchan in chan_list_ieeg_csv:
+
+            ROI_tmp = plot_loca_df['localisation_corrected'][plot_loca_df['plot'] == nchan].values[0]
+            lobe_tmp = plot_loca_df['lobes_corrected'][plot_loca_df['plot'] == nchan].values[0]
+            
+            ROI_dict[ROI_tmp] = ROI_dict[ROI_tmp] + 1
+            lobe_dict[lobe_tmp] = lobe_dict[lobe_tmp] + 1
+            count_verif += 1
+
+            ROI_dict_plots[ROI_tmp].append([sujet_i, nchan])
+            lobe_dict_plots[lobe_tmp].append([sujet_i, nchan])
+
+        #### verif count
+        if count_verif != len(chan_list_ieeg):
+            print('ERROR : anatomical count is not correct, count != len chan_list')
+            exit()
+
+    ROI_to_include = [ROI_i for ROI_i in ROI_list if ROI_dict[ROI_i] > 0]
+    lobe_to_include = [Lobe_i for Lobe_i in lobe_list if lobe_dict[Lobe_i] > 0]
+
+    return sujet_for_cond, ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots
+
+
+
+
+
+
+
+
+################################################
+######## XARRAY FOR EVERY SUBJECTS ########
+################################################
+
+#### open all plot
+def identify_plot_to_compute_for_sujet(sujet_i):
+
+    plot_to_compute = []
+
+    os.chdir(os.path.join(path_anatomy, sujet_i))
+    plot_loca_df = pd.read_excel(sujet_i + '_plot_loca.xlsx')
+
+    chan_list_txt = open(sujet_i + '_chanlist_ieeg.txt', 'r')
+    chan_list_txt_readlines = chan_list_txt.readlines()
+    chan_list_ieeg = [i.replace('\n', '') for i in chan_list_txt_readlines]
+
+    #### exclude Paris subjects
+    if sujet_i[:3] == 'pat':
+        chan_list_ieeg_csv = chan_list_ieeg
+    else:
+        chan_list_ieeg_csv, trash = modify_name(chan_list_ieeg)
+
+    #nchan = chan_list_ieeg_csv[0]
+    for i, nchan in enumerate(chan_list_ieeg_csv):
+
+        loca_tmp = plot_loca_df['localisation_corrected'][plot_loca_df['plot'] == nchan].values[0]
+        lobe_tmp = plot_loca_df['lobes_corrected'][plot_loca_df['plot'] == nchan].values[0]
+        plot_tmp = chan_list_ieeg[i]
+
+        plot_to_compute.append([sujet_i, plot_tmp, loca_tmp, lobe_tmp])
+
+    return plot_to_compute
+
+
+
+
+
+
+#sujet_tmp, plot_tmp, cond = 'GOBc', "B'10", 'RD_CV'
+def compute_Pxx_Cxy_for_one_plot(sujet_tmp, plot_tmp, cond):
+
+    #### load Cxy params
+    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions_for_sujet(sujet_tmp, conditions_allsubjects)
+    band_prep = 'lf'
+    nwind, nfft, noverlap, hannw = get_params_spectral_analysis(srate)
+
+    #### load data
+    os.chdir(os.path.join(path_prep, sujet_tmp, 'sections'))
+    listdir_file = os.listdir()
+    file_to_load = [listdir_i for listdir_i in listdir_file if listdir_i.find(cond) != -1 and listdir_i.find(band_prep) != -1]
+    session_count = len(file_to_load)
+
+    #### compute Coh for all session
+    hzPxx = np.linspace(0,srate/2,int(nfft/2+1))
+    hzCxy = np.linspace(0,srate/2,int(nfft/2+1))
+    mask_hzCxy = (hzCxy>=freq_surrogates[0]) & (hzCxy<freq_surrogates[1])
+    hzCxy = hzCxy[mask_hzCxy]
+
+    Cxy_for_cond = np.zeros((session_count, len(hzCxy)))
+    Pxx_for_cond = np.zeros((session_count, len(hzPxx)))
+
+    Cxy_surrogates = np.zeros((session_count, len(hzCxy)))
+    os.chdir(os.path.join(path_precompute, sujet_tmp, 'PSD_Coh'))
+
+    for session_i in range(session_count):
+
+        respi_chan_i = chan_list.index('nasal')
+        plot_tmp_i = chan_list.index(plot_tmp)
+        respi = load_data_sujet(sujet_tmp, band_prep, cond, session_i)[respi_chan_i,:]
+        data_tmp = load_data_sujet(sujet_tmp, band_prep, cond, session_i)
+
+        x = data_tmp[plot_tmp_i,:]
+        y = respi
+        hzPxx, Pxx = scipy.signal.welch(y,fs=srate,window=hannw,nperseg=nwind,noverlap=noverlap,nfft=nfft)
+        hzPxx, Cxy = scipy.signal.coherence(x, y, fs=srate, window=hannw, nperseg=None, noverlap=noverlap, nfft=nfft)
+
+        Cxy_for_cond[session_i, :] = Cxy[mask_hzCxy]
+        Pxx_for_cond[session_i, :] = Pxx
+
+        #### surrogates
+        data_load = np.load(sujet_tmp + '_' + cond + '_' + str(1) + '_Coh.npy')
+        plot_tmp_i = chan_list.index(plot_tmp)
+        Cxy_surrogates[session_i,:] = data_load[plot_tmp_i,:]
+
+    #### reduce all sessions
+    Cxy_for_cond = np.mean(Cxy_for_cond, axis=0)
+    Pxx_for_cond = np.mean(Pxx_for_cond, axis=0)
+    Cxy_surrogates = np.mean(Cxy_surrogates, axis=0)
+
+    #### adjust for srate
+    if srate != 512 :
+        nwind, nfft, noverlap, hannw = get_params_spectral_analysis(512)
+        hzPxx = np.linspace(0,srate/2,int(nfft/2+1))
+        Pxx_for_cond = Pxx_for_cond[:len(hzPxx)]
+
+    return Pxx_for_cond, Cxy_for_cond, Cxy_surrogates
+
+
+
+
+#sujet_i = sujet_list[0]
+def compute_PxxCxy_all_cond_for_1_subject(sujet_i):
+
+    print('#### ' + sujet_i)
+
+    #### verif computation
+    os.chdir(os.path.join(path_precompute, sujet_i, 'PSD_Coh'))
+    if os.path.exists(os.path.join(path_precompute, sujet_i, 'PSD_Coh', f'{sujet_i}_xr_Pxx.nc')) and os.path.exists(os.path.join(path_precompute, sujet_i, 'PSD_Coh', f'{sujet_i}_xr_Cxy.nc')):
+        print('ALREADY COMPUTED')
+        return 
+    
+    #### load subject params
+    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions_for_sujet(sujet_i, conditions_allsubjects)
+    if srate != 512:
+        srate = 512
+    band_prep = 'lf'
+
+    plot_to_compute = identify_plot_to_compute_for_sujet(sujet_i)
+
+    ROI_list = [plot_to_compute_i[2] for plot_to_compute_i in plot_to_compute]
+
+    #### matrix preparation
+    #### load Cxy params
+    nwind, nfft, noverlap, hannw = get_params_spectral_analysis(srate)
+    hzPxx = np.linspace(0,srate/2,int(nfft/2+1))
+    hzCxy = np.linspace(0,srate/2,int(nfft/2+1))
+    mask_hzCxy = (hzCxy>=freq_surrogates[0]) & (hzCxy<freq_surrogates[1])
+    hzCxy = hzCxy[mask_hzCxy]
+
+    Pxx_sujet_tmp = np.zeros((len(conditions), len(plot_to_compute), len(hzPxx)))
+    Cxy_sujet_tmp = np.zeros((len(conditions), len(plot_to_compute), 2, len(hzCxy)))
+
+    for cond in conditions:
+
+        print(cond)
+
+        PxxCxy_cond_tmp = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_Pxx_Cxy_for_one_plot)(sujet_i, plot_tmp_info[1], cond) for plot_tmp_info in plot_to_compute)
+
+        # reorganize result
+        for i in range(len(PxxCxy_cond_tmp)):
+            Pxx_sujet_tmp[conditions.index(cond), i,:] = PxxCxy_cond_tmp[i][0]
+            Cxy_sujet_tmp[conditions.index(cond), i, 0, :] = PxxCxy_cond_tmp[i][1]
+            Cxy_sujet_tmp[conditions.index(cond), i, 1, :] = PxxCxy_cond_tmp[i][2]
+            
+        del PxxCxy_cond_tmp
+
+    #### generate xarray
+
+    data_Pxx = Pxx_sujet_tmp
+    data_Cxy = Cxy_sujet_tmp
+
+    dims_Pxx = ['cond', 'ROI', 'freq']
+    dims_Cxy = ['cond', 'ROI', 'data', 'freq']
+    coords_Pxx = {'cond':conditions, 'ROI':ROI_list, 'freq':hzPxx}
+    coords_Cxy = {'cond':conditions, 'ROI':ROI_list, 'data':['Cxy', 'surrogates'], 'freq':hzCxy}
+    name = f'xr_PxxCxy_{sujet_i}'
+
+    xr_Pxx = xr.DataArray(data=data_Pxx, dims=dims_Pxx, coords=coords_Pxx)
+    xr_Cxy = xr.DataArray(data=data_Cxy, dims=dims_Cxy, coords=coords_Cxy)
+
+    #### save
+    os.chdir(os.path.join(path_precompute, sujet_i, 'PSD_Coh'))
+    xr_Pxx.to_netcdf(f'{sujet_i}_xr_Pxx.nc')
+    xr_Cxy.to_netcdf(f'{sujet_i}_xr_Cxy.nc')
+
+
+
+
+
+
+
+################################################
+######## XARRAY FOR ALL SUBJECTS ########
+################################################
+
+def load_allsubject_array():
+
+    #### load data
+    #data_type = 'Pxx'
+    for data_type in ['Pxx', 'Cxy']:
+
+        if data_type == 'Pxx':
+
+            sujet_i = sujet_list[0]
+            os.chdir(os.path.join(path_precompute, sujet_i, 'PSD_Coh'))
+            xr_Pxx_allsubject = xr.open_dataset(sujet_i + '_xr_Pxx.nc')
+
+            #sujet_i = 'GOBc'
+            for sujet_i in sujet_list[1:]:
+
+                os.chdir(os.path.join(path_precompute, sujet_i, 'PSD_Coh'))
+                xr_tmp = xr.open_dataset(sujet_i + '_xr_Pxx.nc')
+
+                xr_Pxx_allsubject = xr.concat([xr_Pxx_allsubject, xr_tmp], 'ROI')
+
+        if data_type == 'Cxy':
+
+            sujet_i = sujet_list[0]
+            os.chdir(os.path.join(path_precompute, sujet_i, 'PSD_Coh'))
+            xr_Cxy_allsubject = xr.open_dataset(sujet_i + '_xr_Cxy.nc')
+
+            #sujet_i = 'GOBc'
+            for sujet_i in sujet_list[1:]:
+
+                os.chdir(os.path.join(path_precompute, sujet_i, 'PSD_Coh'))
+                xr_tmp = xr.open_dataset(sujet_i + '_xr_Cxy.nc')
+
+                xr_Cxy_allsubject = xr.concat([xr_Cxy_allsubject, xr_tmp], 'ROI')
+
+    xr_Pxx_allsubject = xr_Pxx_allsubject.to_array()
+    xr_Cxy_allsubject = xr_Cxy_allsubject.to_array()
+
+    return xr_Pxx_allsubject, xr_Cxy_allsubject
+
+        
+
+
+
+
+
+
+
+
+
+
+################################
+######## EXECUTE ########
+################################
+
+
+if __name__ == '__main__':
+
+    #### compute xarray
+    for sujet_i in sujet_list:
+
+        compute_PxxCxy_all_cond_for_1_subject(sujet_i)
+
+    #### xarray all sujet   
+    xr_Pxx_allsubject, xr_Cxy_allsubject = load_allsubject_array()
+
+    #### plot
+
+    for cond in conditions_allsubjects:
+
+        xr_Cxy_allsubject.sel(cond=cond, data='Cxy').mean(dim='ROI').plot(label=cond)
+        xr_Cxy_allsubject.sel(cond=cond, data='surrogates').mean(dim='ROI').plot(label=cond)
+        plt.legend()
+        plt.show()
+    
+    for cond in conditions_allsubjects:
+
+        xr_Pxx_allsubject.sel(cond=cond).mean(dim='ROI').plot(label=cond)
+
+
+    xr_Cxy_groupby = xr_Cxy_allsubject.groupby('ROI').mean('ROI')
+
+    for cond in conditions_allsubjects:
+
+        xr_Cxy_groupby.sel(cond=cond, data='Cxy').plot(label=cond)
+        xr_Cxy_groupby.sel(cond=cond, data='surrogates').plot(label=cond)
+    
+

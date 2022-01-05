@@ -22,7 +22,7 @@ enable_big_execute = True
 perso_repo_computation = False
 
 #### whole protocole
-#sujet = 'CHEe'
+sujet = 'CHEe'
 #sujet = 'GOBc' 
 #sujet = 'MAZm' 
 #sujet = 'TREt' 
@@ -33,7 +33,7 @@ perso_repo_computation = False
 #sujet = 'KOFs'
 #sujet = 'LEMl'
 #sujet = 'pat_02459_0912'
-sujet = 'pat_02476_0929'
+#sujet = 'pat_02476_0929'
 #sujet = 'pat_02495_0949'
 
 #sujet = 'DEBUG'
