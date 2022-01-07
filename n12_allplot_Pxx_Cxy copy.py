@@ -380,23 +380,87 @@ if __name__ == '__main__':
 
     #### plot
 
-    for cond in conditions_allsubjects:
+    anat_loca_dict, anat_lobe_dict = get_all_ROI_and_Lobes_name()
+    ROI_list = list(anat_loca_dict.keys())
+    ROI_list = xr_Pxx_allsubject.groupby('ROI').mean('ROI')['ROI'].data
 
-        xr_Cxy_allsubject.sel(cond=cond, data='Cxy').mean(dim='ROI').plot(label=cond)
-        xr_Cxy_allsubject.sel(cond=cond, data='surrogates').mean(dim='ROI').plot(label=cond)
-        plt.legend()
-        plt.show()
-    
-    for cond in conditions_allsubjects:
 
-        xr_Pxx_allsubject.sel(cond=cond).mean(dim='ROI').plot(label=cond)
+    #### Cxy 
 
+    os.chdir(os.path.join(path_results, 'allplot', 'allcond', 'PSD_Coh'))
 
     xr_Cxy_groupby = xr_Cxy_allsubject.groupby('ROI').mean('ROI')
 
-    for cond in conditions_allsubjects:
+    #ROI = ROI_list[0]
+    for ROI in ROI_list:
 
-        xr_Cxy_groupby.sel(cond=cond, data='Cxy').plot(label=cond)
-        xr_Cxy_groupby.sel(cond=cond, data='surrogates').plot(label=cond)
-    
+        fig, axs = plt.subplots(ncols=6)
+
+        for cond_i, cond in enumerate(conditions_allsubjects):
+
+            xr_Cxy_groupby.sel(cond=cond, data='Cxy', ROI=ROI).plot(label='Cxy', ax=axs[cond_i], ylim=(0,1))
+            xr_Cxy_groupby.sel(cond=cond, data='surrogates', ROI=ROI).plot(label='surrogates', ax=axs[cond_i], ylim=(0,1))
+            ax = axs[cond_i]
+            ax.set_title(cond)
+
+        plt.suptitle(ROI)
+        plt.legend()
+        fig.set_figwidth(15)
+        #plt.show()
+
+        fig.savefig(ROI + '_Cxy.jpeg')
+
+        plt.close()
+
+    #### Pxx
+
+    os.chdir(os.path.join(path_results, 'allplot', 'allcond', 'PSD_Coh'))
+
+    xr_Pxx_groupby = xr_Pxx_allsubject.groupby('ROI').mean('ROI')
+
+    band_to_analyze = {'theta' : [4, 8], 'alpha' : [8, 12], 'beta' : [12, 30]}
+
+    #band, freq = 'theta', [4, 8]
+    for ROI_i_i, ROI_i in enumerate(ROI_list):
+
+        df_band_dict = {'cond' : [], 'band' : [], 'Pxx' : np.array(())}
+            
+        for cond_i, cond in enumerate(conditions_allsubjects):
+
+            Pxx_raw = []
+
+            for band_i, (band, freq) in enumerate(band_to_analyze.items()):
+
+                Pxx_tmp = xr_Pxx_groupby.sel(cond=cond, ROI=ROI_i, freq=slice(freq[0], freq[1])).data
+                Pxx_raw.append(Pxx_tmp[0])
+
+            #### normalize
+            for band_i, (band, freq) in enumerate(band_to_analyze.items()):
+
+                Pxx_fill = Pxx_raw[band_i] / np.mean(Pxx_raw[-1])
+                df_band_dict['Pxx'] = np.append(df_band_dict['Pxx'], Pxx_fill)
+                [df_band_dict['cond'].append(cond) for i in range(Pxx_fill.shape[0])]
+                [df_band_dict['band'].append(band) for i in range(Pxx_fill.shape[0])]
+
+        df_band = pd.DataFrame(df_band_dict, columns=['Pxx', 'cond', 'band'])
+
+        fig = plt.figure()
+        
+        sns.barplot(data=df_band, x="cond", y='Pxx', hue="band")
+        plt.suptitle(ROI_i + '\n norm beta band')
+        #plt.show()
+
+        fig.savefig(ROI_i + '_Pxx.jpeg')
+
+        plt.close()
+
+
+
+
+
+
+
+
+
+
 
