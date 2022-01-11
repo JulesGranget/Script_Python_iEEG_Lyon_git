@@ -123,7 +123,7 @@ else:
     path_main_workdir = '/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/Script_Python_iEEG_Lyon_git'
     path_general = '/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ'
     path_memmap = '/mnt/data/julesgranget'
-    n_core = -1
+    n_core = 15
 
 path_data = os.path.join(path_general, 'Data', 'raw_data')
 path_prep = os.path.join(path_general, 'Analyses', 'preprocessing')
