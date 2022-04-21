@@ -23,18 +23,18 @@ perso_repo_computation = False
 
 #### whole protocole
 sujet = 'CHEe'
-#sujet = 'GOBc' 
-#sujet = 'MAZm' 
-#sujet = 'TREt' 
+# sujet = 'GOBc' 
+# sujet = 'MAZm' 
+# sujet = 'TREt' 
 
 #### FR_CV only
-#sujet = 'MUGa'
-#sujet = 'BANc'
-#sujet = 'KOFs'
-#sujet = 'LEMl'
-#sujet = 'pat_02459_0912'
-#sujet = 'pat_02476_0929'
-#sujet = 'pat_02495_0949'
+# sujet = 'MUGa'
+# sujet = 'BANc'
+# sujet = 'KOFs'
+# sujet = 'LEMl'
+# sujet = 'pat_02459_0912'
+# sujet = 'pat_02476_0929'
+# sujet = 'pat_02495_0949'
 
 #sujet = 'DEBUG'
 
@@ -50,6 +50,15 @@ condition_diff = [['FV','SV']]
 
 band_prep_list = ['lf', 'hf']
 freq_band_list = [{'theta' : [2,10], 'alpha' : [8,14], 'beta' : [10,40], 'whole' : [2,50]}, {'l_gamma' : [50, 80], 'h_gamma' : [80, 120]}]
+
+freq_band_dict_FC = {'wb' : {'theta' : [4,8], 'alpha' : [8,12], 'beta' : [12,40]},
+                'lf' : {'theta' : [4,8], 'alpha' : [8,12], 'beta' : [12,40], 'whole' : [2,50]},
+                'hf' : {'l_gamma' : [50, 80], 'h_gamma' : [80, 120]} }
+
+freq_band_dict = {'wb' : {'theta' : [2,10], 'alpha' : [8,14], 'beta' : [10,40]},
+                'lf' : {'theta' : [2,10], 'alpha' : [8,14], 'beta' : [10,40], 'whole' : [2,50]},
+                'hf' : {'l_gamma' : [50, 80], 'h_gamma' : [80, 120]} }
+
 
 
 
@@ -132,6 +141,11 @@ path_results = os.path.join(path_general, 'Analyses', 'results')
 path_respfeatures = os.path.join(path_general, 'Analyses', 'results') 
 path_anatomy = os.path.join(path_general, 'Analyses', 'anatomy') 
 
+path_slurm = os.path.join(path_general, 'Script_slurm')
+
+#### slurm params
+mem_crnl_cluster = '10G'
+n_core_slurms = 10
 
 
 ################################################
@@ -278,6 +292,7 @@ nfrex_hf = 50
 nfrex_lf = 50
 ncycle_list_lf = [7, 15]
 ncycle_list_hf = [20, 30]
+ncycle_list_wb = [7, 30]
 srate_dw = 10
 
 
@@ -297,7 +312,7 @@ coh_computation_interval = .02 #Hz around respi
 #### band to remove
 freq_band_fc_analysis = {'theta' : [4, 8], 'alpha' : [9,12], 'beta' : [15,40], 'l_gamma' : [50, 80], 'h_gamma' : [80, 120]}
 
-
+percentile_thresh = 90
 
 
 ################################

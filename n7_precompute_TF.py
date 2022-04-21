@@ -44,24 +44,16 @@ def compute_stretch_tf(tf, cond, session_i, respfeatures_allcond, stretch_point_
 def compute_stretch_tf_dB(tf, cond, session_i, respfeatures_allcond, stretch_point_TF, band, band_prep, nfrex):
 
     #### load baseline
-    os.chdir(os.path.join(path_prep, sujet, 'baseline'))
-    baselines = np.load(sujet + '_baselines.npy')
-
-    baselines_i = np.arange(nfrex)
-    if band_prep == 'hf':
-        baselines_i += nfrex * len(freq_band_list[0])
-
-    baselines_i += nfrex *list(freq_band_list[band_prep_list.index(band_prep)].keys()).index(band)
+    os.chdir(os.path.join(path_precompute, sujet, 'baselines'))
+    baselines = np.load(f'{sujet}_{band}_baselines.npy')
 
     #### apply baseline
     for n_chan in range(np.size(tf,0)):
-
-        baselines_band = baselines[n_chan,baselines_i]
         
         for fi in range(np.size(tf,1)):
 
             activity = tf[n_chan,fi,:]
-            baseline_fi = baselines_band[fi]
+            baseline_fi = baselines[n_chan, fi]
 
             #### verify baseline
             #plt.plot(activity)
@@ -123,9 +115,12 @@ def compute_stretch_tf_itpc(tf, cond, session_i, respfeatures_allcond, stretch_p
 ################################
 
 
-def precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_list, band_prep_list):
+def precompute_tf(cond, session_i, freq_band_list, band_prep_list):
 
     print('TF PRECOMPUTE')
+
+    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(conditions_allsubjects)
+    respfeatures_allcond = load_respfeatures(conditions)
 
     #### select prep to load
     #band_prep_i, band_prep = 1, 'hf'
@@ -149,37 +144,7 @@ def precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_lis
             print('COMPUTE')
 
             #### select wavelet parameters
-            if band_prep == 'lf':
-                wavetime = np.arange(-2,2,1/srate)
-                nfrex = nfrex_lf
-                ncycle_list = np.linspace(ncycle_list_lf[0], ncycle_list_lf[1], nfrex) 
-
-            if band_prep == 'hf':
-                wavetime = np.arange(-.5,.5,1/srate)
-                nfrex = nfrex_hf
-                ncycle_list = np.linspace(ncycle_list_hf[0], ncycle_list_hf[1], nfrex)
-
-            #### compute wavelets
-            frex  = np.linspace(freq[0],freq[1],nfrex)
-            wavelets = np.zeros((nfrex,len(wavetime)) ,dtype=complex)
-
-            # create Morlet wavelet family
-            for fi in range(0,nfrex):
-                
-                s = ncycle_list[fi] / (2*np.pi*frex[fi])
-                gw = np.exp(-wavetime**2/ (2*s**2)) 
-                sw = np.exp(1j*(2*np.pi*frex[fi]*wavetime))
-                mw =  gw * sw
-
-                wavelets[fi,:] = mw
-                
-            # plot all the wavelets
-            if debug == True:
-                plt.pcolormesh(wavetime,frex,np.real(wavelets))
-                plt.xlabel('Time (s)')
-                plt.ylabel('Frequency (Hz)')
-                plt.title('Real part of wavelets')
-                plt.show()
+            wavelets, nfrex = get_wavelets(band_prep, freq)
 
             os.chdir(path_memmap)
             tf_allchan = np.memmap(sujet + '_precompute_convolutions.dat', dtype=np.float64, mode='w+', shape=(np.size(data,0), nfrex, np.size(data,1)))
@@ -215,7 +180,7 @@ def precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_lis
             os.remove(sujet + '_precompute_convolutions.dat')
 
 
-
+    print('done')
 
 
 ################################
@@ -224,9 +189,12 @@ def precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_lis
 
 
 
-def precompute_tf_itpc(cond, session_i, srate_dw, respfeatures_allcond, freq_band_list, band_prep_list):
+def precompute_tf_itpc(cond, session_i, freq_band_list, band_prep_list):
 
     print('ITPC PRECOMPUTE')
+
+    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(conditions_allsubjects)
+    respfeatures_allcond = load_respfeatures(conditions)
     
     #### select prep to load
     for band_prep_i, band_prep in enumerate(band_prep_list):
@@ -248,37 +216,7 @@ def precompute_tf_itpc(cond, session_i, srate_dw, respfeatures_allcond, freq_ban
             print(band, ' : ', freq)
 
             #### select wavelet parameters
-            if band_prep == 'lf':
-                wavetime = np.arange(-2,2,1/srate)
-                nfrex = nfrex_lf
-                ncycle_list = np.linspace(ncycle_list_lf[0], ncycle_list_lf[1], nfrex) 
-
-            if band_prep == 'hf':
-                wavetime = np.arange(-.5,.5,1/srate)
-                nfrex = nfrex_hf
-                ncycle_list = np.linspace(ncycle_list_hf[0], ncycle_list_hf[1], nfrex)
-
-            #### compute wavelets
-            frex  = np.linspace(freq[0],freq[1],nfrex)
-            wavelets = np.zeros((nfrex,len(wavetime)) ,dtype=complex)
-
-            # create Morlet wavelet family
-            for fi in range(0,nfrex):
-                
-                s = ncycle_list[fi] / (2*np.pi*frex[fi])
-                gw = np.exp(-wavetime**2/ (2*s**2)) 
-                sw = np.exp(1j*(2*np.pi*frex[fi]*wavetime))
-                mw =  gw * sw
-
-                wavelets[fi,:] = mw
-                
-            # plot all the wavelets
-            if debug == True:
-                plt.pcolormesh(wavetime,frex,np.real(wavelets))
-                plt.xlabel('Time (s)')
-                plt.ylabel('Frequency (Hz)')
-                plt.title('Real part of wavelets')
-                plt.show()
+            wavelets, nfrex = get_wavelets(band_prep, freq)
 
             #### compute itpc
             print('COMPUTE, STRETCH & ITPC')
@@ -326,7 +264,7 @@ def precompute_tf_itpc(cond, session_i, srate_dw, respfeatures_allcond, freq_ban
             del itpc_allchan
 
 
-
+    print('done')
 
 
 ########################################
@@ -359,15 +297,19 @@ if __name__ == '__main__':
 
         if len(respfeatures_allcond[cond]) == 1:
     
-            precompute_tf(cond, 0, srate_dw, respfeatures_allcond, freq_band_list, band_prep_list)
-            precompute_tf_itpc(cond, 0, srate_dw, respfeatures_allcond, freq_band_list, band_prep_list)
+            # precompute_tf(cond, 0, freq_band_list, band_prep_list)
+            execute_function_in_slurm_bash('n7_precompute_TF', 'precompute_tf', [cond, 0, freq_band_list, band_prep_list])
+            # precompute_tf_itpc(cond, 0, freq_band_list, band_prep_list)
+            execute_function_in_slurm_bash('n7_precompute_TF', 'precompute_tf_itpc', [cond, 0, freq_band_list, band_prep_list])
         
         elif len(respfeatures_allcond[cond]) > 1:
 
             for session_i in range(len(respfeatures_allcond[cond])):
 
-                precompute_tf(cond, session_i, srate_dw, respfeatures_allcond, freq_band_list, band_prep_list)
-                precompute_tf_itpc(cond, session_i, srate_dw, respfeatures_allcond, freq_band_list, band_prep_list)
+                # precompute_tf(cond, session_i, freq_band_list, band_prep_list)
+                execute_function_in_slurm_bash('n7_precompute_TF', 'precompute_tf', [cond, session_i, freq_band_list, band_prep_list])
+                # precompute_tf_itpc(cond, session_i, freq_band_list, band_prep_list)
+                execute_function_in_slurm_bash('n7_precompute_TF', 'precompute_tf_itpc', [cond, session_i, freq_band_list, band_prep_list])
 
 
 

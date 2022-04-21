@@ -272,109 +272,6 @@ def extract_data_trc():
 
 
 
-########################################
-######## COMPUTE BASELINE ######## 
-########################################
-
-
-def compute_baseline(data, srate):
-
-    print('#### COMPUTE BASELINES ####')
-    
-    #### generate all wavelets to conv
-    wavelets_to_conv = {}
-    
-    #band_prep, band_prep_i = 'lf', 0
-    for band_prep_i, band_prep in enumerate(band_prep_list):
-        
-        #### select wavelet parameters
-        if band_prep == 'lf':
-            wavetime = np.arange(-2,2,1/srate)
-            nfrex = nfrex_lf
-            ncycle_list = np.linspace(ncycle_list_lf[0], ncycle_list_lf[1], nfrex) 
-
-        if band_prep == 'hf':
-            wavetime = np.arange(-.5,.5,1/srate)
-            nfrex = nfrex_hf
-            ncycle_list = np.linspace(ncycle_list_hf[0], ncycle_list_hf[1], nfrex)
-
-        #band, freq = 'theta', [2, 10]
-        for band, freq in freq_band_list[band_prep_i].items():
-
-            #### compute wavelets
-            frex  = np.linspace(freq[0],freq[1],nfrex)
-            wavelets = np.zeros((nfrex,len(wavetime)) ,dtype=complex)
-
-            # create Morlet wavelet family
-            for fi in range(0,nfrex):
-                
-                s = ncycle_list[fi] / (2*np.pi*frex[fi])
-                gw = np.exp(-wavetime**2/ (2*s**2)) 
-                sw = np.exp(1j*(2*np.pi*frex[fi]*wavetime))
-                mw =  gw * sw
-
-                wavelets[fi,:] = mw
-                
-            # plot all the wavelets
-            if debug == True:
-                plt.pcolormesh(wavetime,frex,np.real(wavelets))
-                plt.xlabel('Time (s)')
-                plt.ylabel('Frequency (Hz)')
-                plt.title('Real part of wavelets')
-                plt.show()
-
-            wavelets_to_conv[band] = wavelets
-
-    # plot all the wavelets
-    if debug == True:
-        for band in list(wavelets_to_conv.keys()):
-            wavelets2plot = wavelets_to_conv[band]
-            plt.pcolormesh(np.arange(wavelets2plot.shape[1]),np.arange(wavelets2plot.shape[0]),np.real(wavelets2plot))
-            plt.xlabel('Time (s)')
-            plt.ylabel('Frequency (Hz)')
-            plt.title(band)
-            plt.show()
-
-    #### compute convolutions
-
-        #### count frequencies to compute
-    n_fi2conv = 0
-    for band in list(wavelets_to_conv.keys()):
-        n_fi2conv += wavelets_to_conv[band].shape[0]
-
-    os.chdir(path_memmap)
-    baseline_allchan = np.memmap(sujet + '_baseline_convolutions.dat', dtype=np.float64, mode='w+', shape=(data.shape[0], n_fi2conv))
-
-        #### compute
-    #n_chan = 0
-    def baseline_convolutions(n_chan):
-
-        if n_chan/np.size(data,0) % .2 <= .01:
-            print("{:.2f}".format(n_chan/np.size(data,0)))
-
-        x = data[n_chan,:]
-
-        baseline_coeff = np.array(())
-
-        for band in list(wavelets_to_conv.keys()):
-
-            for fi in range(wavelets_to_conv[band].shape[0]):
-                
-                fi_conv = abs(scipy.signal.fftconvolve(x, wavelets_to_conv[band][fi,:], 'same'))**2
-                baseline_coeff = np.append(baseline_coeff, np.median(fi_conv))
-        
-        baseline_allchan[n_chan,:] = baseline_coeff
-
-    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(baseline_convolutions)(n_chan) for n_chan in range(np.size(data,0)))
-
-    #### save baseline
-    os.chdir(os.path.join(path_prep, sujet, 'baseline'))
-    np.save(sujet + '_baselines.npy', baseline_allchan)
-
-    #### remove memmap
-    os.chdir(path_memmap)
-    os.remove(sujet + '_baseline_convolutions.dat')
-
 
 ################################
 ######## COMPARISON ########
@@ -961,13 +858,6 @@ if __name__== '__main__':
         plt.xlim(0,2)
         plt.show()
 
-
-    ################################
-    ######## BASELINE ########
-    ################################
-
-
-    compute_baseline(data, srate)
 
 
     ################################

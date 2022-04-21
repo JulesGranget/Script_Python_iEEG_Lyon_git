@@ -14,6 +14,7 @@ debug = False
 
 
 
+
 ########################################
 ######## COMPUTE RESPI FEATURES ########
 ########################################
@@ -62,10 +63,11 @@ def analyse_resp(resp_sig, sr, t_start, condition):
         # respi signal with inspi expi markers
     ax = axs[0]
     ax.plot(times, resp_sig)
-    ax.plot(times[cycle_indexes[:, 0]], resp_sig[cycle_indexes[:, 0]], ls='None', marker='o', color='r')
-    ax.plot(times[cycle_indexes[:, 1]], resp_sig[cycle_indexes[:, 1]], ls='None', marker='o', color='g')
+    ax.plot(times[cycle_indexes[:, 0]], resp_sig[cycle_indexes[:, 0]], ls='None', marker='o', color='r', label='inspi')
+    ax.plot(times[cycle_indexes[:, 1]], resp_sig[cycle_indexes[:, 1]], ls='None', marker='o', color='g', label='expi')
     #ax.set_xlim(0,120)
     ax.set_ylabel('resp')
+    ax.legend()
     
 
         # instantaneous frequency
@@ -246,14 +248,19 @@ if __name__ == '__main__':
     ############################
 
     from n0_config import *
-    #sujet = 'CHEe'
-    #sujet = 'GOBc'
-    #sujet = 'MAZm'
-    #sujet = 'MUGa'  
+    #### whole protocole
+    # sujet = 'CHEe'
+    sujet = 'GOBc' 
+    #sujet = 'MAZm' 
     #sujet = 'TREt' 
-    #sujet = 'BANc'
-    #sujet = 'KOFs'
-    sujet = 'LEMl'
+
+    #### FR_CV only
+    #sujet = 'MUGa'
+    #sujet = 'BANc'halation 
+    #sujet = 'LEMl'
+    #sujet = 'pat_02459_0912'
+    #sujet = 'pat_02476_0929'
+    #sujet = 'pat_02495_0949'
 
     ############################
     ######## LOAD DATA ########
@@ -329,9 +336,9 @@ if __name__ == '__main__':
         cond_len
         #cond = 'RD_CV' 
         #cond = 'RD_FV' 
-        #cond = 'RD_SV'
+        cond = 'RD_SV'
         #cond = 'RD_AV'
-        cond = 'FR_CV'
+        #cond = 'FR_CV'
         #cond = 'FR_MV'
         
         session_i = 0

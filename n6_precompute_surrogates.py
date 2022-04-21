@@ -43,7 +43,7 @@ def shuffle_Cxy(x):
    return x_shift
 
 
-def precompute_surrogates_coh(band_prep, cond, session_i):
+def precompute_surrogates_coh(sujet, band_prep, cond, session_i):
     
     os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
     
@@ -102,12 +102,16 @@ def precompute_surrogates_coh(band_prep, cond, session_i):
 
     np.save(sujet + '_' + cond + '_' + str(session_i+1) + '_Coh.npy', surrogates_n_chan)
 
+    print('done')
 
 
 
-def precompute_surrogates_cyclefreq(band_prep, cond, session_i, respfeatures_allcond):
+
+def precompute_surrogates_cyclefreq(sujet, band_prep, cond, session_i):
     
     print(cond)
+
+    respfeatures_allcond = load_respfeatures(conditions_allsubjects)
 
     os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
 
@@ -163,10 +167,10 @@ def precompute_surrogates_cyclefreq(band_prep, cond, session_i, respfeatures_all
     
     np.save(sujet + '_' + cond + '_' + str(session_i+1) + '_cyclefreq_' +  band_prep + '.npy', surrogates_n_chan)
 
+    print('done')
 
 
-if enable_big_execute:
-    __name__ = '__main__'
+
 
 
 if __name__ == '__main__':
@@ -193,21 +197,25 @@ if __name__ == '__main__':
         #cond = 'FR_CV'
         for cond in conditions:
 
-            if len(respfeatures_allcond.get(cond)) == 1:
+            if len(respfeatures_allcond[cond]) == 1:
 
-                precompute_surrogates_cyclefreq(band_prep, cond, 0, respfeatures_allcond)
+                # precompute_surrogates_cyclefreq(sujet, band_prep, cond, 0)
+                execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_surrogates_cyclefreq', [sujet, band_prep, cond, 0])
 
                 if band_prep == 'lf':
-                    precompute_surrogates_coh(band_prep, cond, 0)
+                    # precompute_surrogates_coh(sujet, band_prep, cond, 0)
+                    execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_surrogates_coh', [sujet, band_prep, cond, 0])
 
-            elif len(respfeatures_allcond.get(cond)) > 1:
+            elif len(respfeatures_allcond[cond]) > 1:
 
-                for session_i in range(len(respfeatures_allcond.get(cond))):
+                for session_i in range(len(respfeatures_allcond[cond])):
 
-                    precompute_surrogates_cyclefreq(band_prep, cond, session_i, respfeatures_allcond)
+                    # precompute_surrogates_cyclefreq(sujet, band_prep, cond, session_i)
+                    execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_surrogates_cyclefreq', [sujet, band_prep, cond, session_i])
 
                     if band_prep == 'lf':
-                        precompute_surrogates_coh(band_prep, cond, session_i)
+                        # precompute_surrogates_coh(sujet, band_prep, cond, session_i)
+                        execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_surrogates_coh', [sujet, band_prep, cond, session_i])
 
 
 
