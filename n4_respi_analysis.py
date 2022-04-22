@@ -3,10 +3,14 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from pytest import raises
 import scipy.signal
 import mne
 import pandas as pd
 import respirationtools
+
+from bycycle.cyclepoints import find_extrema, find_zerox
+from bycycle.plts import plot_cyclepoints_array
 
 from n0_config import *
 
@@ -235,6 +239,202 @@ def analyse_resp_debug(resp_sig, sr, t_start, condition, params):
 
 
 
+#sig = respi_sig
+def detection_bycycle(sig, srate):
+
+    if debug:
+        plt.plot(sig)
+        plt.show()
+
+    #### filter
+    sig_low = mne.filter.filter_data(sig, srate, l_freq, h_freq, filter_length='auto', verbose='CRITICAL')
+
+    if debug:
+        plt.plot(sig)
+        plt.plot(sig_low)
+        plt.show()
+
+    #### detect
+    peaks, troughs = find_extrema(sig_low, srate, f_theta)
+    rises, decays = find_zerox(sig_low, peaks, troughs)
+
+    #### adjust detection
+    if np.where(decays < rises[0])[0].shape[0] != 0:
+        point_delete = np.where(decays < rises[0])[0][-1]
+        decays = decays[point_delete+1:]
+
+    if np.where(peaks < rises[0])[0].shape[0] != 0:
+        point_delete = np.where(peaks < rises[0])[0][-1]
+        peaks = peaks[point_delete+1:]
+
+    if np.where(troughs < rises[0])[0].shape[0] != 0:
+        point_delete = np.where(troughs < rises[0])[0][-1]
+        troughs = troughs[point_delete+1:]
+
+    if np.where(rises > troughs[-1])[0].shape[0] != 0:
+        point_delete = np.where(rises > troughs[-1])[0][0]
+        rises = rises[:point_delete]
+
+    if np.where(peaks > troughs[-1])[0].shape[0] != 0:
+        point_delete = np.where(peaks > troughs[-1])[0][0]
+        peaks = peaks[:point_delete]
+
+    if np.where(decays > troughs[-1])[0].shape[0] != 0:
+        point_delete = np.where(decays > troughs[-1])[0][0]
+        decays = decays[:point_delete]
+
+    #### verif
+    shapes_verif = [rises.shape[0], decays.shape[0], peaks.shape[0], troughs.shape[0]]
+    if np.mean(shapes_verif) != int(np.mean(shapes_verif)):
+        raise ValueError('incorrect detection')
+
+    #### generate df
+    data_detection = {'cycle_num' : range(rises.shape[0]), 'inspi_index' : rises, 'expi_index' : decays, 
+    'inspi_time' : rises/srate, 'expi_time' : decays/srate, 'peaks' : peaks, 'troughs' : troughs}
+    
+    df_detection_raw = pd.DataFrame(data_detection, columns=['cycle_num', 'inspi_index', 'expi_index', 'inspi_time', 'expi_time', 'peaks', 'troughs'])
+
+    df_detection_raw['cycle_duration'] = np.append(np.diff(df_detection_raw['inspi_time']), np.round( np.mean( np.diff(df_detection_raw['inspi_time'])), 2 ) )
+    df_detection_raw['insp_duration'] = df_detection_raw['expi_time'] - df_detection_raw['inspi_time']
+    df_detection_raw['exp_duration'] = df_detection_raw['cycle_duration'] - df_detection_raw['insp_duration']
+    df_detection_raw['cycle_freq'] = 1/df_detection_raw['cycle_duration']
+
+    df_detection_raw['insp_amplitude'] = sig[df_detection_raw['peaks'].values] - sig[df_detection_raw['inspi_index'].values]
+    df_detection_raw['exp_amplitude'] = np.abs(sig[df_detection_raw['troughs'].values] - sig[df_detection_raw['expi_index'].values])
+    df_detection_raw['total_amplitude'] = df_detection_raw['insp_amplitude'] + df_detection_raw['exp_amplitude']
+
+    #### verif
+    if debug:
+        plot_cyclepoints_array(sig_low, srate, peaks=df_detection_raw['peaks'], troughs=df_detection_raw['troughs'], 
+        rises=df_detection_raw['inspi_index'], decays=df_detection_raw['expi_index'])
+        plt.show()
+
+    #### supress cycle freq based
+    mean_freq = np.mean(df_detection_raw['cycle_freq'].values)
+    std_freq = np.std(df_detection_raw['cycle_freq'].values)
+
+    delete_i = np.where( (df_detection_raw['cycle_freq'].values > mean_freq + SD_delete_cycles_freq*std_freq) | (df_detection_raw['cycle_freq'].values < mean_freq - SD_delete_cycles_freq*std_freq) )[0]
+
+    df_detection_deleted = df_detection_raw.loc[delete_i]
+
+    df_detection_clean_freq = df_detection_raw.drop(delete_i)
+    df_detection_clean_freq['cycle_num'] = range(df_detection_clean_freq['cycle_num'].values.shape[0])
+
+    #### reset index
+    df_detection_clean_freq.index = np.arange(df_detection_clean_freq['cycle_num'].values.shape[0])
+
+    #### supress cycle amp based
+    mean_amp = np.mean(df_detection_clean_freq['total_amplitude'].values)
+    std_amp = np.std(df_detection_clean_freq['total_amplitude'].values)
+
+    delete_i = np.where( (df_detection_clean_freq['total_amplitude'].values > mean_amp + SD_delete_cycles_amp*std_amp) | (df_detection_clean_freq['total_amplitude'].values < mean_amp - SD_delete_cycles_amp*std_amp) )[0]
+
+    df_detection_deleted = pd.concat([df_detection_deleted, df_detection_clean_freq.loc[delete_i]])
+
+    df_detection = df_detection_clean_freq.drop(delete_i)
+    df_detection['cycle_num'] = range(df_detection['cycle_num'].values.shape[0])
+
+    #### reset index
+    df_detection.index = np.arange(df_detection['cycle_num'].values.shape[0])
+
+
+    #### verif
+    if debug:
+        plot_cyclepoints_array(sig_low, srate, peaks=df_detection['peaks'], troughs=df_detection['troughs'], 
+        rises=df_detection['inspi_index'], decays=df_detection['expi_index'])
+        plt.show()
+        
+        plot_cyclepoints_array(sig_low, srate, peaks=df_detection_deleted['peaks'], troughs=df_detection_deleted['troughs'], 
+        rises=df_detection_deleted['inspi_index'], decays=df_detection_deleted['expi_index'])
+        plt.show()
+
+    return df_detection
+
+
+
+
+
+#df_detection, respi_sig = df_detection_clean, raw_allcond[cond][session_i].get_data()[respi_i, :]
+def correct_resp_features(respi_sig, df_detection, srate):
+
+    cycle_indexes = np.concatenate((df_detection['inspi_index'].values.reshape(-1,1), df_detection['expi_index'].values.reshape(-1,1)), axis=1)
+    cycle_freq = df_detection['cycle_freq'].values
+    cycle_amplitudes = df_detection['total_amplitude'].values
+
+    fig0, axs = plt.subplots(nrows=3, sharex=True)
+    plt.suptitle(cond)
+    times = np.arange(respi_sig.size)/srate
+    
+        # respi signal with inspi expi markers
+    ax = axs[0]
+    ax.plot(times, respi_sig)
+    ax.plot(times[cycle_indexes[:, 0]], respi_sig[cycle_indexes[:, 0]], ls='None', marker='o', color='r', label='inspi')
+    ax.plot(times[cycle_indexes[:, 1]], respi_sig[cycle_indexes[:, 1]], ls='None', marker='o', color='g', label='expi')
+    ax.set_ylabel('resp')
+    ax.legend()
+    
+
+        # instantaneous frequency
+    ax = axs[1]
+    ax.plot(times[cycle_indexes[:, 0]], cycle_freq)
+    ax.set_ylim(0, max(cycle_freq)*1.1)
+    ax.axhline(np.median(cycle_freq), color='m', linestyle='--', label='median={:.3f}'.format(np.median(cycle_freq)))
+    ax.legend()
+    ax.set_ylabel('freq')
+
+        # instantaneous amplitude
+    ax = axs[2]
+    ax.plot(times[cycle_indexes[:, 0]], cycle_amplitudes)
+    ax.axhline(np.median(cycle_amplitudes), color='m', linestyle='--', label='median={:.3f}'.format(np.median(cycle_amplitudes)))
+    ax.set_ylabel('amplitude')
+    ax.legend()
+    # plt.show()
+
+    plt.close()
+    
+    
+    # respi cycle features
+
+    fig1, axs = plt.subplots(nrows=2)
+    plt.suptitle(cond)
+
+        # histogram cycle freq
+    ax = axs[0]
+    count, bins = np.histogram(cycle_freq, bins=np.arange(0,1.5,0.01))
+    ax.plot(bins[:-1], count)
+    ax.set_xlim(0,.6)
+    ax.set_ylabel('n')
+    ax.set_xlabel('freq')
+    ax.axvline(np.median(cycle_freq), color='m', linestyle='--', label='median = {:.3f}'.format(np.median(cycle_freq)))
+    W, pval = scipy.stats.shapiro(cycle_freq)
+    ax.plot(0, 0, label='Shapiro W = {:.3f}, pval = {:.3f}'.format(W, pval)) # for plotting shapiro stats
+    ax.legend()
+    
+        # histogram inspi/expi ratio
+    ax = axs[1]
+    ratio = (cycle_indexes[:-1, 1] - cycle_indexes[:-1, 0]).astype('float64') / (cycle_indexes[1:, 0] - cycle_indexes[:-1, 0])
+    count, bins = np.histogram(ratio, bins=np.arange(0, 1., 0.01))
+    ax.plot(bins[:-1], count)
+    ax.axvline(np.median(ratio), color='m', linestyle='--', label='median = {:.3f}'.format(np.median(ratio)))
+    ax.set_ylabel('n')
+    ax.set_xlabel('ratio')
+    ax.legend()
+    # plt.show()
+
+    plt.close()
+
+    return [df_detection, fig0, fig1]
+
+
+
+
+
+
+
+
+
+
+
 ########################################
 ######## VERIF RESPIFEATURES ########
 ########################################
@@ -249,8 +449,8 @@ if __name__ == '__main__':
 
     from n0_config import *
     #### whole protocole
-    # sujet = 'CHEe'
-    sujet = 'GOBc' 
+    sujet = 'CHEe'
+    # sujet = 'GOBc' 
     #sujet = 'MAZm' 
     #sujet = 'TREt' 
 
@@ -306,7 +506,7 @@ if __name__ == '__main__':
     srate = int(raw_allcond[os.listdir()[0][5:10]][0].info['sfreq'])
     chan_list = raw_allcond[os.listdir()[0][5:10]][0].info['ch_names']
 
-
+    #### compute
     respi_allcond = {}
     for cond in conditions:
         
@@ -322,6 +522,24 @@ if __name__ == '__main__':
         respi_allcond[cond] = data
 
 
+
+    respi_allcond_bybycle = {}
+    for cond in conditions:
+        
+        data = []
+        for session_i in range(len(raw_allcond[cond])):
+            if cond == 'FR_MV' :
+                respi_i = chan_list.index('ventral')
+            else :
+                respi_i = chan_list.index('nasal')
+            
+            respi_sig = raw_allcond[cond][session_i].get_data()[respi_i, :]
+            resp_features_i = correct_resp_features(respi_sig, detection_bycycle(respi_sig, srate), srate)
+            data.append(resp_features_i)
+
+        respi_allcond_bybycle[cond] = data
+
+
     ########################################
     ######## VERIF RESPIFEATURES ########
     ########################################
@@ -334,17 +552,20 @@ if __name__ == '__main__':
             cond_len[cond] = len(respi_allcond[cond])
         
         cond_len
-        #cond = 'RD_CV' 
-        #cond = 'RD_FV' 
+        # cond = 'RD_CV' 
+        # cond = 'RD_FV' 
         cond = 'RD_SV'
-        #cond = 'RD_AV'
-        #cond = 'FR_CV'
-        #cond = 'FR_MV'
+        # cond = 'RD_AV'
+        # cond = 'FR_CV'
+        # cond = 'FR_MV'
         
         session_i = 0
 
         respi_allcond[cond][session_i][1].show()
         respi_allcond[cond][session_i][2].show()
+
+        respi_allcond_bybycle[cond][session_i][1].show()
+        respi_allcond_bybycle[cond][session_i][2].show()
 
         #### recompute
         params = {
@@ -398,4 +619,15 @@ if __name__ == '__main__':
             respi_allcond[cond_i][i][0].to_excel(sujet + '_' + cond_i + '_' + str(i+1) + '_respfeatures.xlsx')
             respi_allcond[cond_i][i][1].savefig(sujet + '_' + cond_i + '_' + str(i+1) + '_fig0.jpeg')
             respi_allcond[cond_i][i][2].savefig(sujet + '_' + cond_i + '_' + str(i+1) + '_fig1.jpeg')
+
+    #### when everything ok
+    os.chdir(os.path.join(path_results, sujet, 'RESPI'))
+
+    for cond_i in conditions:
+
+        for i in range(len(respi_allcond_bybycle[cond_i])):
+
+            respi_allcond_bybycle[cond_i][i][0].to_excel(sujet + '_' + cond_i + '_' + str(i+1) + '_respfeatures.xlsx')
+            respi_allcond_bybycle[cond_i][i][1].savefig(sujet + '_' + cond_i + '_' + str(i+1) + '_fig0.jpeg')
+            respi_allcond_bybycle[cond_i][i][2].savefig(sujet + '_' + cond_i + '_' + str(i+1) + '_fig1.jpeg')
 

@@ -216,6 +216,20 @@ hrv_metrics_short_name = ['HRV_RMSSD', 'HRV_MeanNN', 'HRV_SDNN', 'HRV_pNN50', 'H
 
 
 ################################
+######## RESPI PARAMS ########
+################################ 
+
+SD_delete_cycles_freq = 3
+SD_delete_cycles_amp = 3
+
+#### filter params
+f_theta = (0.1, 2)
+l_freq = 0
+h_freq = 2
+
+
+
+################################
 ######## PREP PARAMS ########
 ################################ 
 
