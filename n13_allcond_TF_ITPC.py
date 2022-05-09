@@ -172,6 +172,7 @@ def open_TForITPC_data(cond, sujet_i, plot_i, mat_type):
 
     else:
         TF_mat = []
+        TF_mat_count = []
         for session_i in range(n_session):
 
             file_session_to_open = []
@@ -182,13 +183,19 @@ def open_TForITPC_data(cond, sujet_i, plot_i, mat_type):
                     mat = np.load(file_i)
                     mat_plot_i = mat[plot_index, :, :]
                     TF_mat.append(mat_plot_i)
+                    TF_mat_count.append(1)
             
             else:
                 #i, file_i = 0, file_session_to_open[0]
                 for i, file_i in enumerate(file_session_to_open):
                     mat = np.load(file_i)
                     mat_plot_i = mat[plot_index, :, :]
-                    TF_mat[i] = (TF_mat[i] + mat_plot_i)/2
+                    TF_mat[i] = (TF_mat[i] + mat_plot_i)
+                    TF_mat_count[i] += 1
+
+        #### mean
+        for i, _ in enumerate(TF_mat):
+            TF_mat[i] /= TF_mat_count[i]
 
     #### verif
     #fig, axs = plt.subplots(ncols=len(TF_mat))
@@ -229,12 +236,15 @@ def compute_for_one_ROI_allcond(ROI_i, mat_type):
 
     #### generate dict
     ROI_mat_dict = {}
+    ROI_mat_dict_count = {}
     for cond in conditions_allsubjects:
         ROI_mat_dict[cond] = {}
+        ROI_mat_dict_count[cond] = {}
         
         for band_i, freq_i in zip(band_names, freq_values):
             if nfrex_hf == nfrex_lf:
                 ROI_mat_dict[cond][band_i] = np.zeros((nfrex_hf, stretch_point_TF))
+                ROI_mat_dict_count[cond][band_i] = 1
             else:
                 raise ValueError('nfrex_hf != nfrex_lf')
 
@@ -261,8 +271,13 @@ def compute_for_one_ROI_allcond(ROI_i, mat_type):
 
                     TF_mat = open_TForITPC_data(cond, sujet_i, plot_i, mat_type)
                     for band_i, band in enumerate(band_names):
-                        mat_to_add = (ROI_mat_dict[cond][band] + TF_mat[band_i])/2 
+                        mat_to_add = (ROI_mat_dict[cond][band] + TF_mat[band_i])
                         ROI_mat_dict[cond][band] = mat_to_add
+                        ROI_mat_dict_count[cond][band] += 1
+
+    for cond in conditions_allsubjects:
+        for band_i, band in enumerate(band_names):
+            ROI_mat_dict[cond][band] /= ROI_mat_dict_count[cond][band]
 
     #### verif matrix 
     #fig, axs = plt.subplots(nrows=len(conditions_allsubjects), ncols=len(band_names))
@@ -404,12 +419,15 @@ def compute_for_one_Lobe_allcond(Lobe_i, mat_type):
 
     #### generate dict
     Lobe_mat_dict = {}
+    Lobe_mat_dict_count = {}
     for cond in conditions_allsubjects:
         Lobe_mat_dict[cond] = {}
+        Lobe_mat_dict_count[cond] = {}
         
         for band_i, freq_i in zip(band_names, freq_values):
             if nfrex_hf == nfrex_lf:
                 Lobe_mat_dict[cond][band_i] = np.zeros((nfrex_hf, stretch_point_TF))
+                Lobe_mat_dict_count[cond][band_i] = 1
             else:
                 raise ValueError('nfrex_hf != nfrex_lf')
 
@@ -436,8 +454,13 @@ def compute_for_one_Lobe_allcond(Lobe_i, mat_type):
 
                     TF_mat = open_TForITPC_data(cond, sujet_i, plot_i, mat_type)
                     for band_i, band in enumerate(band_names):
-                        mat_to_add = (Lobe_mat_dict[cond][band] + TF_mat[band_i])/2 
+                        mat_to_add = (Lobe_mat_dict[cond][band] + TF_mat[band_i])
                         Lobe_mat_dict[cond][band] = mat_to_add
+                        Lobe_mat_dict_count[cond][band] += 1
+
+    for cond in conditions_allsubjects:
+        for band_i, band in enumerate(band_names):
+            Lobe_mat_dict[cond][band] /= Lobe_mat_dict_count[cond][band]
 
     #### verif matrix 
     #fig, axs = plt.subplots(nrows=len(conditions_allsubjects), ncols=len(band_names))

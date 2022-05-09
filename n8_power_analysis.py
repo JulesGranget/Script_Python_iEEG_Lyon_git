@@ -23,8 +23,8 @@ debug = False
 ################################
 
 
-conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(conditions_allsubjects)
-respfeatures_allcond = load_respfeatures(conditions)
+conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet)
+respfeatures_allcond = load_respfeatures(sujet)
 respi_ratio_allcond = get_all_respi_ratio(conditions, respfeatures_allcond)
 
 dict_loca = get_electrode_loca()
@@ -107,9 +107,7 @@ def compute_PxxCxyCyclefreq_for_cond(band_prep, cond, session_i, nb_point_by_cyc
 
     for n_chan in range(np.size(data_tmp,0)):
 
-        #### script avancement
-        if n_chan/np.size(data_tmp,0) % .2 <= 0.01:
-            print('{:.2f}'.format(n_chan/np.size(data_tmp,0)))
+        print_advancement(n_chan, np.size(data_tmp,0), steps=[25, 50, 75])
 
         x = data_tmp[n_chan,:]
         hzPxx, Pxx = scipy.signal.welch(x,fs=srate,window=hannw,nperseg=nwind,noverlap=noverlap,nfft=nfft)
@@ -241,20 +239,24 @@ for cond in conditions:
         for data_short_i in range(len(data_to_short)):
 
             if data_short_i == 0:
+                _short_count = 0
                 for session_i in range(len(respfeatures_allcond.get(cond))):
                     if session_i == 0:
                         _short = data_to_short[data_short_i][session_i]
                     else:
-                        _short = (_short + data_to_short[data_short_i][session_i])/2
-                data_to_short[data_short_i] = [_short]
+                        _short = (_short + data_to_short[data_short_i][session_i])
+                        _short_count += 1
+                data_to_short[data_short_i] = [_short/_short_count]
 
-            else:    
+            else:
+                _short_count = 0    
                 for session_i in range(len(respfeatures_allcond.get(cond))):
                     if session_i == 0:
                         _short = data_to_short[data_short_i][session_i]
                     else:
-                        _short = (_short + data_to_short[data_short_i][session_i])/2
-                data_to_short[data_short_i] = [_short]
+                        _short = (_short + data_to_short[data_short_i][session_i])
+                        _short_count += 1
+                data_to_short[data_short_i] = [_short/_short_count]
 
         #### fill values
         respfeatures_allcond_adjust[cond] = data_to_short[0]
@@ -311,8 +313,7 @@ def plot_save_PSD_Coh_lf(n_chan):
     
     chan_name = chan_list_ieeg[n_chan]
 
-    if n_chan/len(chan_list_ieeg) % .2 <= 0.01:
-        print('{:.2f}'.format(n_chan/len(chan_list_ieeg)))
+    print_advancement(n_chan, len(chan_list_ieeg), steps=[25, 50, 75])
 
     hzPxx = np.linspace(0,srate/2,int(nfft/2+1))
     hzCxy = np.linspace(0,srate/2,int(nfft/2+1))
@@ -414,8 +415,7 @@ def plot_save_PSD_Coh_hf(n_chan):
 
     chan_name = chan_list_ieeg[n_chan]
 
-    if n_chan/len(chan_list_ieeg) % .2 <= 0.01:
-        print('{:.2f}'.format(n_chan/len(chan_list_ieeg)))
+    print_advancement(n_chan, len(chan_list_ieeg), steps=[25, 50, 75])
 
     hzPxx = np.linspace(0,srate/2,int(nfft/2+1))
 
@@ -521,10 +521,12 @@ for band_prep_i, band_prep in enumerate(band_prep_list):
 #### load file with reducing to one TF
 
 tf_stretch_allcond = {}
+tf_stretch_allcond_count = {}
 
 for cond in conditions:
 
     tf_stretch_onecond = {}
+    tf_stretch_onecond_count = {}
 
     if len(respfeatures_allcond.get(cond)) == 1:
 
@@ -540,6 +542,7 @@ for cond in conditions:
         for freq_band in freq_band_list:
             for band, freq in freq_band.items():
                 tf_stretch_onecond[band] = 0
+                tf_stretch_onecond_count[band] = 1
 
         #### file load
         for file in load_file:
@@ -554,6 +557,7 @@ for cond in conditions:
                         continue
                     
         tf_stretch_allcond[cond] = tf_stretch_onecond
+        tf_stretch_allcond_count[cond] = tf_stretch_onecond_count
 
     elif len(respfeatures_allcond.get(cond)) > 1:
 
@@ -569,6 +573,7 @@ for cond in conditions:
         for freq_band in freq_band_list:
             for band, freq in freq_band.items():
                 tf_stretch_onecond[band] = 0
+                tf_stretch_onecond_count[band] = 1
 
         #### load file
         for file in load_file:
@@ -581,8 +586,9 @@ for cond in conditions:
 
                         if np.sum(tf_stretch_onecond.get(band)) != 0:
 
-                            session_load_tmp = ( np.load(file) + tf_stretch_onecond.get(band) ) /2
+                            session_load_tmp = np.load(file) + tf_stretch_onecond.get(band)
                             tf_stretch_onecond[band] = session_load_tmp
+                            tf_stretch_onecond_count[band] += 1
 
                         else:
                             
@@ -593,7 +599,15 @@ for cond in conditions:
                         continue
 
         tf_stretch_allcond[cond] = tf_stretch_onecond
+        tf_stretch_allcond_count[cond] = tf_stretch_onecond_count
 
+#### mean
+
+for cond in conditions:
+    for freq_band in freq_band_list:
+        for i, (band, freq) in enumerate(freq_band.items()):
+            if tf_stretch_allcond_count[cond][band] != 1:
+                tf_stretch_allcond[cond][band] = tf_stretch_allcond[cond][band] / tf_stretch_allcond_count[cond][band]
 
 
 
@@ -632,8 +646,7 @@ def save_TF_n_chan(n_chan, freq_band_i, freq_band):
     
     chan_name = chan_list_ieeg[n_chan]
 
-    if n_chan/len(chan_list_ieeg) % .2 <= .01:
-        print('{:.2f}'.format(n_chan/len(chan_list_ieeg)))
+    print_advancement(n_chan, len(chan_list_ieeg), steps=[25, 50, 75])
 
     time = range(stretch_point_TF)
     frex = np.size(tf_stretch_allcond.get(conditions[0]).get(list(freq_band.keys())[0]),1)
@@ -747,10 +760,12 @@ for band_prep_i, band_prep in enumerate(band_prep_list):
 #### load file with reducing to one TF
 
 tf_itpc_allcond = {}
+tf_itpc_allcond_count = {}
 
 for cond in conditions:
 
     tf_itpc_onecond = {}
+    tf_itpc_onecond_count = {}
 
     if len(respfeatures_allcond.get(cond)) == 1:
 
@@ -766,6 +781,7 @@ for cond in conditions:
         for freq_band in freq_band_list:
             for band, freq in freq_band.items():
                 tf_itpc_onecond[band] = 0
+                tf_itpc_onecond_count[band] = 1
 
         #### file load
         for file in load_file:
@@ -779,6 +795,7 @@ for cond in conditions:
                         continue
                     
         tf_itpc_allcond[cond] = tf_itpc_onecond
+        tf_itpc_allcond_count[cond] = tf_itpc_onecond_count
 
     elif len(respfeatures_allcond.get(cond)) > 1:
 
@@ -794,6 +811,7 @@ for cond in conditions:
         for freq_band in freq_band_list:
             for band, freq in freq_band.items():
                 tf_itpc_onecond[band] = 0
+                tf_itpc_onecond_count[band] = 1
 
         #### load file
         for file in load_file:
@@ -806,8 +824,9 @@ for cond in conditions:
 
                         if np.sum(tf_itpc_onecond.get(band)) != 0:
 
-                            session_load_tmp = ( np.load(file) + tf_itpc_onecond.get(band) ) /2
+                            session_load_tmp = np.load(file) + tf_itpc_onecond.get(band)
                             tf_itpc_onecond[band] = session_load_tmp
+                            tf_itpc_onecond_count[band] += 1
 
                         else:
                             
@@ -818,6 +837,15 @@ for cond in conditions:
                         continue
 
         tf_itpc_allcond[cond] = tf_itpc_onecond
+        tf_itpc_allcond_count[cond] = tf_itpc_onecond_count
+
+
+#### mean
+for cond in conditions:
+    for freq_band in freq_band_list:
+        for band, freq in freq_band.items():
+            if tf_itpc_allcond_count[cond][band] != 1:
+                tf_itpc_allcond[cond][band] = tf_itpc_allcond[cond][band] / tf_itpc_allcond_count[cond][band]
 
 
 #### verif
@@ -852,8 +880,7 @@ def save_itpc_n_chan(n_chan, freq_band_i, freq_band):
 
     chan_name = chan_list_ieeg[n_chan]
 
-    if n_chan/len(chan_list_ieeg) % .2 <= .01:
-        print('{:.2f}'.format(n_chan/len(chan_list_ieeg)))
+    print_advancement(n_chan, len(chan_list_ieeg), steps=[25, 50, 75])
 
     time = range(stretch_point_TF)
     frex = np.size(tf_itpc_allcond.get(conditions[0]).get(list(freq_band.keys())[0]),1)

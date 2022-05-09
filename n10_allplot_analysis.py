@@ -319,9 +319,8 @@ def get_ROI_Lobes_list_and_Plots(cond):
 
 # plot_i_to_process = 5
 def get_Coh_Respi_1plot(plot_i_to_process):
-        
-    if plot_i_to_process/len(df_adjust_for_sujets.index.values) % .2 <= .01:
-        print('{:.2f}'.format(plot_i_to_process/len(df_adjust_for_sujets.index.values)))
+
+    print_advancement(plot_i_to_process, len(df_adjust_for_sujets.index.values), steps=[25, 50, 75])
 
     #### identify if proccessed
     if (df_all_plot_noselect['subject'][plot_i_to_process] + '_' + df_all_plot_noselect['plot'][plot_i_to_process] in all_proccessed_plot) == False:
@@ -386,8 +385,11 @@ def get_Coh_Respi_1plot(plot_i_to_process):
 
     #### reduce all sessions
     Pxx_respi_reduced = np.zeros((len(hzCxy)))
+    Pxx_respi_reduced_count = 1
     Cxy_reduced = np.zeros((len(hzCxy)))
+    Cxy_reduced_count = 1
     Cxy_surrogates_reduced = np.zeros((len(hzCxy)))
+    Cxy_surrogates_reduced_count = 1
 
     if session_count == 1:
         Pxx_respi_reduced = Pxx_respi[0,:]
@@ -404,9 +406,16 @@ def get_Coh_Respi_1plot(plot_i_to_process):
                 Cxy_surrogates_reduced = Cxy_surrogates[session_i,:]
 
             else:
-                Pxx_respi_reduced = (Pxx_respi_reduced + Pxx_respi[session_i,:])/2
-                Cxy_reduced = (Cxy_reduced + Cxy_for_cond[session_i,:])/2
-                Cxy_surrogates_reduced = (Cxy_surrogates_reduced + Cxy_surrogates[session_i,:])/2
+                Pxx_respi_reduced = (Pxx_respi_reduced + Pxx_respi[session_i,:])
+                Pxx_respi_reduced_count += 1
+                Cxy_reduced = (Cxy_reduced + Cxy_for_cond[session_i,:])
+                Cxy_reduced_count += 1
+                Cxy_surrogates_reduced = (Cxy_surrogates_reduced + Cxy_surrogates[session_i,:])
+                Cxy_surrogates_reduced_count += 1
+
+    Pxx_respi_reduced /= Pxx_respi_reduced_count
+    Cxy_reduced /= Cxy_reduced_count
+    Cxy_surrogates_reduced /= Cxy_surrogates_reduced_count
 
     max_Cxy = hzCxy[np.argmax(Cxy_reduced)]
     max_respi = hzCxy[np.argmax(Pxx_respi_reduced)]
@@ -438,8 +447,7 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process, cond):
     if (ROI_to_process in ROI_to_include) != True:
         return
 
-    if ROI_to_include.index(ROI_to_process)/len(ROI_to_include) % .2 <= .01:
-        print('{:.2f}'.format(ROI_to_include.index(ROI_to_process)/len(ROI_to_include)))
+    print_advancement(ROI_to_include.index(ROI_to_process), len(ROI_to_include), steps=[25, 50, 75])
 
     #### plot to compute
     plot_to_process = ROI_dict_plots[ROI_to_process]
@@ -503,23 +511,41 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process, cond):
 
         #### load TF
         os.chdir(os.path.join(path_precompute, sujet_tmp, 'TF'))
+        count_index = {}
         for band, freq in dict_freq_band.items():
+
+            count_index[band] = 1
 
             for session_i in range(session_count):
                 
                 TF_load = np.load(sujet_tmp + '_tf_' + str(freq[0]) + '_' + str(freq[1]) + '_' + cond + '_' + str(session_i + 1) + '.npy')
 
-                dict_TF_for_ROI_to_process[band] = (dict_TF_for_ROI_to_process[band] + TF_load[plot_tmp_i,:,:])/2
+                dict_TF_for_ROI_to_process[band] = (dict_TF_for_ROI_to_process[band] + TF_load[plot_tmp_i,:,:])
+
+                count_index[band] += 1
+
+        for band, freq in dict_freq_band.items():
+            if count_index[band] != 1:
+                dict_TF_for_ROI_to_process[band] /= count_index[band]
 
         #### load ITPC
         os.chdir(os.path.join(path_precompute, sujet_tmp, 'ITPC'))
+        count_index = {}
         for band, freq in dict_freq_band.items():
+
+            count_index[band] = 1
 
             for session_i in range(session_count):
                 
                 ITPC_load = np.load(sujet_tmp + '_itpc_' + str(freq[0]) + '_' + str(freq[1]) + '_' + cond + '_' + str(session_i + 1) + '.npy')
 
-                dict_ITPC_for_ROI_to_process[band] = (dict_ITPC_for_ROI_to_process[band] + ITPC_load[plot_tmp_i,:,:])/2
+                dict_ITPC_for_ROI_to_process[band] = (dict_ITPC_for_ROI_to_process[band] + ITPC_load[plot_tmp_i,:,:])
+
+                count_index[band] += 1
+
+        for band, freq in dict_freq_band.items():
+            if count_index[band] != 1:
+                dict_ITPC_for_ROI_to_process[band] /= count_index[band]
 
     #### fill for allband allcond plotting
     ROI_i_tmp = list(ROI_list_allband.keys()).index(ROI_to_process)
@@ -673,23 +699,41 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process, cond):
 
         #### load TF
         os.chdir(os.path.join(path_precompute, sujet_tmp, 'TF'))
+        count_index = {}
         for band, freq in dict_freq_band.items():
+
+            count_index[band] = 1
 
             for session_i in range(session_count):
                 
                 TF_load = np.load(sujet_tmp + '_tf_' + str(freq[0]) + '_' + str(freq[1]) + '_' + cond + '_' + str(session_i + 1) + '.npy')
 
-                dict_TF_for_Lobe_to_process[band] = (dict_TF_for_Lobe_to_process[band] + TF_load[plot_tmp_i,:,:])/2
+                dict_TF_for_Lobe_to_process[band] = (dict_TF_for_Lobe_to_process[band] + TF_load[plot_tmp_i,:,:])
+
+                count_index[band] += 1
+
+        for band, freq in dict_freq_band.items():
+            if count_index[band] != 1:
+                dict_TF_for_Lobe_to_process[band] /= count_index[band]
 
         #### load ITPC
         os.chdir(os.path.join(path_precompute, sujet_tmp, 'ITPC'))
+        count_index = {}
         for band, freq in dict_freq_band.items():
+
+            count_index[band] = 1
 
             for session_i in range(session_count):
                 
                 ITPC_load = np.load(sujet_tmp + '_itpc_' + str(freq[0]) + '_' + str(freq[1]) + '_' + cond + '_' + str(session_i + 1) + '.npy')
 
-                dict_ITPC_for_Lobe_to_process[band] = (dict_ITPC_for_Lobe_to_process[band] + ITPC_load[plot_tmp_i,:,:])/2
+                dict_ITPC_for_Lobe_to_process[band] = (dict_ITPC_for_Lobe_to_process[band] + ITPC_load[plot_tmp_i,:,:])
+
+                count_index[band] += 1
+
+        for band, freq in dict_freq_band.items():
+            if count_index[band] != 1:
+                dict_ITPC_for_Lobe_to_process[band] /= count_index[band]      
 
     #### fill for allband allcond plotting
     Lobe_i_tmp = list(Lobe_list_allband.keys()).index(Lobe_to_process)
@@ -826,8 +870,7 @@ def plot_allband_allcond():
     #ROI = list(ROI_list_allband.keys())[0]
     def plot_and_save_allband_allcond_ROI(ROI):
 
-        if list(ROI_list_allband.keys()).index(ROI)/len(list(ROI_list_allband.keys())) % .2 <= .01:
-            print('{:.2f}'.format(list(ROI_list_allband.keys()).index(ROI)/len(list(ROI_list_allband.keys()))))
+        print_advancement(list(ROI_list_allband.keys()).index(ROI), len(list(ROI_list_allband.keys())), steps=[25, 50, 75])
 
         # TF_type = 'TF'
         for TF_type in ['TF', 'ITPC']:

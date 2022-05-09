@@ -18,7 +18,6 @@ import scipy.signal
 ######## GENERAL PARAMS ######## 
 ################################
 
-enable_big_execute = True
 perso_repo_computation = False
 
 #### whole protocole

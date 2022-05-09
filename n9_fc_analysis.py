@@ -15,7 +15,6 @@ from n4_respi_analysis import analyse_resp
 from n0_config import *
 from n0bis_analysis_functions import *
 
-
 debug = False
 
 
@@ -441,6 +440,7 @@ def get_pli_ispc_allsession(sujet):
 
                         load_ispc = []
                         load_pli = []
+                        load_count = 1
 
                         for session_i in range(len(respfeatures_allcond[cond])):
 
@@ -451,8 +451,12 @@ def get_pli_ispc_allsession(sujet):
 
                             else :
                             
-                                load_ispc = (load_ispc[0] + ispc_allband.get(band).get(cond)[session_i]) / 2
-                                load_pli = (load_pli[0] + pli_allband.get(band).get(cond)[session_i]) / 2
+                                load_ispc = (load_ispc[0] + ispc_allband.get(band).get(cond)[session_i])
+                                load_pli = (load_pli[0] + pli_allband.get(band).get(cond)[session_i])
+                                load_count += 1
+                        
+                        load_pli[0] /= load_count
+                        load_ispc[0] /= load_count
 
                         pli_allband_reduced.get(band)[cond] = load_pli
                         ispc_allband_reduced.get(band)[cond] = load_ispc
@@ -515,10 +519,10 @@ def sort_mat(mat, index_new):
 #mat = ispc_allband_reduced[band][cond]
 def get_mat_mean(mat, df_sorted):
 
-    #### extract infos
-    index_new = df_sorted.index.values
+    index_sorted = df_sorted.index.values
     chan_name_sorted = df_sorted['ROI'].values.tolist()
 
+    #### which roi in data
     roi_in_data = []
     rep_count = 0
     for i, name_i in enumerate(chan_name_sorted):
@@ -534,35 +538,59 @@ def get_mat_mean(mat, df_sorted):
                 rep_count = 0
                 continue
 
-    #### sort mat
-    mat_sorted = sort_mat(mat, index_new)
-    
-    #### mean mat
+    #### compute index
+    pairs_possible = []
+    for pair_A_i, pair_A in enumerate(roi_in_data):
+        for pair_B_i, pair_B in enumerate(roi_in_data[pair_A_i:]):
+            if pair_A == pair_B:
+                continue
+            pairs_possible.append(f'{pair_A}-{pair_B}')
+            
     indexes_to_compute = {}
-    for roi_i, roi_name in enumerate(roi_in_data):        
-        i_to_mean = [i for i, roi in enumerate(chan_name_sorted) if roi == roi_name]
-        indexes_to_compute[roi_name] = i_to_mean
+    for pair_i, pair_name in enumerate(pairs_possible):    
+        pair_A, pair_B = pair_name.split('-')[0], pair_name.split('-')[-1]
+        x_to_mean = [i for i, roi in enumerate(chan_name_sorted) if roi == pair_A]
+        y_to_mean = [i for i, roi in enumerate(chan_name_sorted) if roi == pair_B]
         
-    mat_mean = np.zeros(( len(roi_in_data), len(roi_in_data) ))
+        coord = []
+        for x_i in x_to_mean:
+            for y_i in y_to_mean:
+                if x_i == y_i:
+                    continue
+                else:
+                    coord.append([x_i, y_i])
+                    coord.append([y_i, x_i])
+
+        indexes_to_compute[pair_name] = coord
+
+    #### reduce mat
+    mat_reduced = np.zeros((len(roi_in_data), len(roi_in_data) ))
+
     for roi_i_x, roi_name_x in enumerate(roi_in_data):        
-        roi_chunk_dfc = mat_sorted[indexes_to_compute[roi_name_x],:]
-        roi_chunk_dfc_mean = np.mean(roi_chunk_dfc, 0)
-        coeff_i = []
         for roi_i_y, roi_name_y in enumerate(roi_in_data):
             if roi_name_x == roi_name_y:
-                coeff_i.append(0)
                 continue
             else:
-                coeff_i.append( np.mean(roi_chunk_dfc_mean[indexes_to_compute[roi_name_y]]) )
-        coeff_i = np.array(coeff_i)
-        mat_mean[roi_i_x,:] = coeff_i
+                pair_i = f'{roi_name_x}-{roi_name_y}'
+                if (pair_i in indexes_to_compute) == False:
+                    pair_i = f'{roi_name_y}-{roi_name_x}'
+                pair_i_data = []
+                for coord_i in indexes_to_compute[pair_i]:
+                    pair_i_data.append(mat[coord_i[0],coord_i[-1]])
+                mat_reduced[roi_i_x, roi_i_y] = np.mean(pair_i_data)
 
     #### verif
     if debug:
-        plt.matshow(mat_mean)
+        mat_test = np.zeros(( len(chan_name_sorted), len(chan_name_sorted) )) 
+        for roi_i, roi_name in enumerate(pairs_possible): 
+            i_test = indexes_to_compute[roi_name]
+            for pixel in i_test:
+                mat_test[pixel[0],pixel[-1]] = 1
+
+        plt.matshow(mat_test)
         plt.show()
 
-    return mat_mean
+    return mat_reduced
 
 
 
@@ -595,7 +623,6 @@ def mat_tresh(mat, percentile_thresh):
 
 
 def save_fig_FC(pli_allband_reduced, ispc_allband_reduced, df_loca, prms):
-
 
 
     print('######## SAVEFIG FC ########')
@@ -803,13 +830,13 @@ def save_fig_for_allsession(sujet):
 if __name__ == '__main__':
 
     #### params
-    compute_metrics = False
-    plot_fig = True
+    compute_metrics = True
+    plot_fig = False
 
     #### compute fc metrics
     if compute_metrics:
         #compute_pli_ispc_allband(sujet)
-        execute_function_in_slurm_bash('n10_fc_analysis', 'compute_pli_ispc_allband', [sujet])
+        execute_function_in_slurm_bash('n9_fc_analysis', 'compute_pli_ispc_allband', [sujet])
 
     #### save fig
     if plot_fig:

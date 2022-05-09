@@ -3,7 +3,6 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from pytest import raises
 import scipy.signal
 import mne
 import pandas as pd
@@ -290,53 +289,42 @@ def detection_bycycle(sig, srate):
 
     #### generate df
     data_detection = {'cycle_num' : range(rises.shape[0]), 'inspi_index' : rises, 'expi_index' : decays, 
-    'inspi_time' : rises/srate, 'expi_time' : decays/srate, 'peaks' : peaks, 'troughs' : troughs}
+    'inspi_time' : rises/srate, 'expi_time' : decays/srate, 'peaks' : peaks, 'troughs' : troughs, 'select' : [1]*rises.shape[0]}
     
-    df_detection_raw = pd.DataFrame(data_detection, columns=['cycle_num', 'inspi_index', 'expi_index', 'inspi_time', 'expi_time', 'peaks', 'troughs'])
+    df_detection = pd.DataFrame(data_detection, columns=['cycle_num', 'inspi_index', 'expi_index', 'inspi_time', 'expi_time', 'peaks', 'troughs', 'select'])
 
-    df_detection_raw['cycle_duration'] = np.append(np.diff(df_detection_raw['inspi_time']), np.round( np.mean( np.diff(df_detection_raw['inspi_time'])), 2 ) )
-    df_detection_raw['insp_duration'] = df_detection_raw['expi_time'] - df_detection_raw['inspi_time']
-    df_detection_raw['exp_duration'] = df_detection_raw['cycle_duration'] - df_detection_raw['insp_duration']
-    df_detection_raw['cycle_freq'] = 1/df_detection_raw['cycle_duration']
+    df_detection['cycle_duration'] = np.append(np.diff(df_detection['inspi_time']), np.round( np.mean( np.diff(df_detection['inspi_time'])), 2 ) )
+    df_detection['insp_duration'] = df_detection['expi_time'] - df_detection['inspi_time']
+    df_detection['exp_duration'] = df_detection['cycle_duration'] - df_detection['insp_duration']
+    df_detection['cycle_freq'] = 1/df_detection['cycle_duration']
 
-    df_detection_raw['insp_amplitude'] = sig[df_detection_raw['peaks'].values] - sig[df_detection_raw['inspi_index'].values]
-    df_detection_raw['exp_amplitude'] = np.abs(sig[df_detection_raw['troughs'].values] - sig[df_detection_raw['expi_index'].values])
-    df_detection_raw['total_amplitude'] = df_detection_raw['insp_amplitude'] + df_detection_raw['exp_amplitude']
+    df_detection['insp_amplitude'] = sig[df_detection['peaks'].values] - sig[df_detection['inspi_index'].values]
+    df_detection['exp_amplitude'] = np.abs(sig[df_detection['troughs'].values] - sig[df_detection['expi_index'].values])
+    df_detection['total_amplitude'] = df_detection['insp_amplitude'] + df_detection['exp_amplitude']
 
     #### verif
     if debug:
-        plot_cyclepoints_array(sig_low, srate, peaks=df_detection_raw['peaks'], troughs=df_detection_raw['troughs'], 
-        rises=df_detection_raw['inspi_index'], decays=df_detection_raw['expi_index'])
+        plot_cyclepoints_array(sig_low, srate, peaks=df_detection['peaks'], troughs=df_detection['troughs'], 
+        rises=df_detection['inspi_index'], decays=df_detection['expi_index'])
         plt.show()
 
     #### supress cycle freq based
-    mean_freq = np.mean(df_detection_raw['cycle_freq'].values)
-    std_freq = np.std(df_detection_raw['cycle_freq'].values)
+    mean_freq = np.mean(df_detection['cycle_freq'].values)
+    std_freq = np.std(df_detection['cycle_freq'].values)
 
-    delete_i = np.where( (df_detection_raw['cycle_freq'].values > mean_freq + SD_delete_cycles_freq*std_freq) | (df_detection_raw['cycle_freq'].values < mean_freq - SD_delete_cycles_freq*std_freq) )[0]
+    delete_i_freq = np.where( (df_detection['cycle_freq'].values > mean_freq + SD_delete_cycles_freq*std_freq) | (df_detection['cycle_freq'].values < mean_freq - SD_delete_cycles_freq*std_freq) )[0]
 
-    df_detection_deleted = df_detection_raw.loc[delete_i]
-
-    df_detection_clean_freq = df_detection_raw.drop(delete_i)
-    df_detection_clean_freq['cycle_num'] = range(df_detection_clean_freq['cycle_num'].values.shape[0])
-
-    #### reset index
-    df_detection_clean_freq.index = np.arange(df_detection_clean_freq['cycle_num'].values.shape[0])
+    df_detection['select'][delete_i_freq] = 0
+    df_detection_deleted = df_detection.loc[delete_i_freq]
 
     #### supress cycle amp based
-    mean_amp = np.mean(df_detection_clean_freq['total_amplitude'].values)
-    std_amp = np.std(df_detection_clean_freq['total_amplitude'].values)
+    mean_amp = np.mean(df_detection['total_amplitude'].values)
+    std_amp = np.std(df_detection['total_amplitude'].values)
 
-    delete_i = np.where( (df_detection_clean_freq['total_amplitude'].values > mean_amp + SD_delete_cycles_amp*std_amp) | (df_detection_clean_freq['total_amplitude'].values < mean_amp - SD_delete_cycles_amp*std_amp) )[0]
+    delete_i_amp = np.where( (df_detection['total_amplitude'].values > mean_amp + SD_delete_cycles_amp*std_amp) | (df_detection['total_amplitude'].values < mean_amp - SD_delete_cycles_amp*std_amp) )[0]
 
-    df_detection_deleted = pd.concat([df_detection_deleted, df_detection_clean_freq.loc[delete_i]])
-
-    df_detection = df_detection_clean_freq.drop(delete_i)
-    df_detection['cycle_num'] = range(df_detection['cycle_num'].values.shape[0])
-
-    #### reset index
-    df_detection.index = np.arange(df_detection['cycle_num'].values.shape[0])
-
+    df_detection_deleted = pd.concat([df_detection_deleted, df_detection.loc[delete_i_amp]])
+    df_detection['select'][delete_i_amp] = 0
 
     #### verif
     if debug:
@@ -348,18 +336,21 @@ def detection_bycycle(sig, srate):
         rises=df_detection_deleted['inspi_index'], decays=df_detection_deleted['expi_index'])
         plt.show()
 
+    
+
     return df_detection
 
 
 
 
 
-#df_detection, respi_sig = df_detection_clean, raw_allcond[cond][session_i].get_data()[respi_i, :]
+#df_detection, respi_sig = detection_bycycle(respi_sig, srate), respi_sig
 def correct_resp_features(respi_sig, df_detection, srate):
 
-    cycle_indexes = np.concatenate((df_detection['inspi_index'].values.reshape(-1,1), df_detection['expi_index'].values.reshape(-1,1)), axis=1)
-    cycle_freq = df_detection['cycle_freq'].values
-    cycle_amplitudes = df_detection['total_amplitude'].values
+    cycle_indexes = np.concatenate((df_detection['inspi_index'][df_detection['select'] == 1].values.reshape(-1,1), 
+                                    df_detection['expi_index'][df_detection['select'] == 1].values.reshape(-1,1)), axis=1)
+    cycle_freq = df_detection['cycle_freq'][df_detection['select'] == 1].values
+    cycle_amplitudes = df_detection['total_amplitude'][df_detection['select'] == 1].values
 
     fig0, axs = plt.subplots(nrows=3, sharex=True)
     plt.suptitle(cond)
@@ -456,7 +447,7 @@ if __name__ == '__main__':
 
     #### FR_CV only
     #sujet = 'MUGa'
-    #sujet = 'BANc'halation 
+    #sujet = 'BANc'
     #sujet = 'LEMl'
     #sujet = 'pat_02459_0912'
     #sujet = 'pat_02476_0929'
@@ -540,6 +531,7 @@ if __name__ == '__main__':
         respi_allcond_bybycle[cond] = data
 
 
+
     ########################################
     ######## VERIF RESPIFEATURES ########
     ########################################
@@ -552,9 +544,9 @@ if __name__ == '__main__':
             cond_len[cond] = len(respi_allcond[cond])
         
         cond_len
-        # cond = 'RD_CV' 
+        cond = 'RD_CV' 
         # cond = 'RD_FV' 
-        cond = 'RD_SV'
+        # cond = 'RD_SV'
         # cond = 'RD_AV'
         # cond = 'FR_CV'
         # cond = 'FR_MV'
@@ -609,7 +601,7 @@ if __name__ == '__main__':
     ################################
 
 
-    #### when everything ok
+    #### when everything ok classic
     os.chdir(os.path.join(path_results, sujet, 'RESPI'))
 
     for cond_i in conditions:
@@ -620,7 +612,7 @@ if __name__ == '__main__':
             respi_allcond[cond_i][i][1].savefig(sujet + '_' + cond_i + '_' + str(i+1) + '_fig0.jpeg')
             respi_allcond[cond_i][i][2].savefig(sujet + '_' + cond_i + '_' + str(i+1) + '_fig1.jpeg')
 
-    #### when everything ok
+    #### when everything ok bycycle
     os.chdir(os.path.join(path_results, sujet, 'RESPI'))
 
     for cond_i in conditions:

@@ -572,6 +572,7 @@ def get_all_respi_ratio(sujet):
         elif len(respfeatures_allcond[cond]) > 1:
 
             data_to_short = []
+            data_to_short_count = 1
 
             for session_i in range(len(respfeatures_allcond[cond])):   
                 
@@ -586,12 +587,13 @@ def get_all_respi_ratio(sujet):
                     mean_cycle_duration = np.mean(respfeatures_allcond[cond][session_i][['insp_duration', 'exp_duration']].values, axis=0)
                     mean_inspi_ratio = mean_cycle_duration[0]/mean_cycle_duration.sum()
 
-                    data_replace = [(data_to_short[0] + mean_inspi_ratio) / 2]
+                    data_replace = [(data_to_short[0] + mean_inspi_ratio)]
+                    data_to_short_count += 1
 
                     data_to_short = data_replace.copy()
             
             # to put in list
-            respi_ratio_allcond[cond] = data_to_short 
+            respi_ratio_allcond[cond] = data_to_short[0] / data_to_short_count
 
     return respi_ratio_allcond
 
@@ -601,7 +603,7 @@ def get_all_respi_ratio(sujet):
 ################################
 
 
-#resp_features, stretch_point_surrogates, data = resp_features_CV, srate*2, data_CV[0,:]
+#resp_features, data = respfeatures_allcond[cond][session_i], data[0,:]
 def stretch_data(resp_features, nb_point_by_cycle, data, srate):
 
     # params
@@ -792,5 +794,28 @@ def modify_name(chan_list):
 
     return chan_list_modified, chan_list_keep
 
+
+
+
+########################################
+######## SCRIPT ADVANCEMENT ########
+########################################
+
+
+def print_advancement(i, i_final, steps=[25, 50, 75]):
+
+    steps_i = {}
+    for step in steps:
+
+        step_i = 0
+        while (step_i/i_final*100) < step:
+            step_i += 1
+
+        steps_i[step] = step_i
+
+    for step, step_i in steps_i.items():
+
+        if i == step_i:
+            print(f'{step}%')
 
 

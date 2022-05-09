@@ -49,6 +49,9 @@ def precompute_surrogates_coh(sujet, band_prep, cond, session_i):
     
     print(cond)
 
+    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet)
+    nwind, nfft, noverlap, hannw = get_params_spectral_analysis(srate)
+
     data_tmp = load_data(band_prep, cond, session_i)
 
     if os.path.exists(sujet + '_' + cond + '_' + str(session_i+1) + '_Coh.npy') == True :
@@ -70,8 +73,7 @@ def precompute_surrogates_coh(sujet, band_prep, cond, session_i):
 
     def compute_surrogates_coh_n_chan(n_chan):
 
-        if n_chan/np.size(data_tmp,0) % .2 <= .01:
-            print('{:.2f}'.format(n_chan/np.size(data_tmp,0)))
+        print_advancement(n_chan, np.size(data_tmp,0), steps=[25, 50, 75])
 
         x = data_tmp[n_chan,:]
         y = respi
@@ -111,7 +113,9 @@ def precompute_surrogates_cyclefreq(sujet, band_prep, cond, session_i):
     
     print(cond)
 
-    respfeatures_allcond = load_respfeatures(conditions_allsubjects)
+    respfeatures_allcond = load_respfeatures(sujet)
+
+    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet)
 
     os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
 
@@ -127,8 +131,7 @@ def precompute_surrogates_cyclefreq(sujet, band_prep, cond, session_i):
 
     def compute_surrogates_cyclefreq_nchan(n_chan):
 
-        if n_chan/np.size(data_tmp,0) % .2 <= .01:
-            print('{:.2f}'.format(n_chan/np.size(data_tmp,0)))
+        print_advancement(n_chan, np.size(data_tmp,0), steps=[25, 50, 75])
 
         x = data_tmp[n_chan,:]
 
@@ -178,8 +181,8 @@ if __name__ == '__main__':
 
     #### load data
 
-    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(conditions_allsubjects)
-    respfeatures_allcond = load_respfeatures(conditions_allsubjects)
+    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet)
+    respfeatures_allcond = load_respfeatures(sujet)
 
     #### params surrogates
 
