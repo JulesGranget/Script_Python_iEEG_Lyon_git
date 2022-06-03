@@ -11,8 +11,8 @@ import mne
 import scipy.fftpack
 import scipy.signal
 
-from n0_config import *
-from n0bis_analysis_functions import *
+from n0_config_params import *
+from n0bis_config_analysis_functions import *
 
 
 debug = False
@@ -226,7 +226,7 @@ def extract_data_trc():
         add_in_csv_textfile.write(element + "\n")
     add_in_csv_textfile.close()
 
-    #### idicate removed chan
+    #### indicate removed chan
     print('verification nchan out first:')
     print(chan_list_nchan_rmv_first)
     print('')
@@ -247,7 +247,6 @@ def extract_data_trc():
     chan_list_all_rmw = chan_list_nchan_rmv_first + chan_list_nchan_rmv_second
 
     #### identify iEEG / respi / ECG
-
     print('#### AUX IDENTIFICATION ####')
     nasal_i = chan_list.index(aux_chan.get(sujet).get('nasal'))
     ecg_i = chan_list.index(aux_chan.get(sujet).get('ECG'))
@@ -260,6 +259,9 @@ def extract_data_trc():
         data_aux = np.stack((data[nasal_i, :], data[ventral_i, :], data[ecg_i, :]), axis = 0)
 
     chan_list_aux = ['nasal', 'ventral', 'ECG']
+
+    if sujet_respi_adjust[sujet] == 'inverse':
+        data_aux[0, :] *= -1
 
     data = data_rmv_second.copy()
     chan_list = chan_list_rmv_second.copy()

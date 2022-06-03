@@ -11,7 +11,7 @@ import sys
 import stat
 import subprocess
 
-from n0_config import *
+from n0_config_params import *
 
 
 debug = False
@@ -59,6 +59,7 @@ def generate_folder_structure(sujet):
         #### precompute
     os.chdir(os.path.join(path_general, 'Analyses', 'precompute'))
     construct_token = create_folder(sujet, construct_token)
+    construct_token = create_folder('allplot', construct_token)
     os.chdir(os.path.join(path_general, 'Analyses', 'precompute', sujet))
     construct_token = create_folder('ITPC', construct_token)
     construct_token = create_folder('TF', construct_token)
@@ -72,6 +73,7 @@ def generate_folder_structure(sujet):
         #### results
     os.chdir(os.path.join(path_general, 'Analyses', 'results'))
     construct_token = create_folder(sujet, construct_token)
+    construct_token = create_folder('allplot', construct_token)
     os.chdir(os.path.join(path_general, 'Analyses', 'results', sujet))
     construct_token = create_folder('RESPI', construct_token)
     construct_token = create_folder('TF', construct_token)
@@ -109,6 +111,54 @@ def generate_folder_structure(sujet):
     os.chdir(os.path.join(path_general, 'Analyses', 'results', sujet, 'FC', 'ISPC'))
     construct_token = create_folder('figures', construct_token)
     construct_token = create_folder('matrix', construct_token)
+
+        #### allplot
+    os.chdir(os.path.join(path_general, 'Analyses', 'results', 'allplot'))
+    construct_token = create_folder('allcond', construct_token)
+    construct_token = create_folder('FR_CV', construct_token)
+    construct_token = create_folder('anatomy', construct_token)
+    os.chdir(os.path.join(path_general, 'Analyses', 'results', 'allplot', 'allcond'))
+    construct_token = create_folder('TF', construct_token)
+    construct_token = create_folder('ITPC', construct_token)
+    construct_token = create_folder('FC', construct_token)
+    construct_token = create_folder('PSD_Coh', construct_token)
+    os.chdir(os.path.join(path_general, 'Analyses', 'results', 'allplot', 'FR_CV'))
+    construct_token = create_folder('TF', construct_token)
+    construct_token = create_folder('ITPC', construct_token)
+    construct_token = create_folder('DFC', construct_token)
+    construct_token = create_folder('PSD_Coh', construct_token)
+
+            #### TF
+    os.chdir(os.path.join(path_general, 'Analyses', 'results', 'allplot', 'FR_CV', 'TF'))
+    construct_token = create_folder('ROI', construct_token)
+    construct_token = create_folder('Lobes', construct_token)            
+    os.chdir(os.path.join(path_general, 'Analyses', 'results', 'allplot', 'allcond', 'TF'))
+    construct_token = create_folder('ROI', construct_token)
+    construct_token = create_folder('Lobes', construct_token)
+
+            #### PSD_Coh
+    os.chdir(os.path.join(path_general, 'Analyses', 'results', 'allplot', 'FR_CV', 'PSD_Coh'))
+    construct_token = create_folder('ROI', construct_token)
+    construct_token = create_folder('Lobes', construct_token)            
+    os.chdir(os.path.join(path_general, 'Analyses', 'results', 'allplot', 'allcond', 'PSD_Coh'))
+    construct_token = create_folder('ROI', construct_token)
+    construct_token = create_folder('Lobes', construct_token)
+
+            #### ITPC
+    os.chdir(os.path.join(path_general, 'Analyses', 'results', 'allplot', 'FR_CV', 'ITPC'))
+    construct_token = create_folder('ROI', construct_token)
+    construct_token = create_folder('Lobes', construct_token)            
+    os.chdir(os.path.join(path_general, 'Analyses', 'results', 'allplot', 'allcond', 'ITPC'))
+    construct_token = create_folder('ROI', construct_token)
+    construct_token = create_folder('Lobes', construct_token)
+
+            #### DFC
+    os.chdir(os.path.join(path_general, 'Analyses', 'results', 'allplot', 'FR_CV', 'DFC'))
+    construct_token = create_folder('ROI', construct_token)
+    construct_token = create_folder('Lobes', construct_token)            
+    os.chdir(os.path.join(path_general, 'Analyses', 'results', 'allplot', 'allcond', 'FC'))
+    construct_token = create_folder('ROI', construct_token)
+    construct_token = create_folder('Lobes', construct_token)
 
     #### Data
     os.chdir(os.path.join(path_general, 'Data'))
@@ -193,7 +243,7 @@ def execute_function_in_slurm(name_script, name_function, params):
 
 
 
-#name_script, name_function, params = 'n9_fc_analysis', 'compute_pli_ispc_allband', [sujet]
+#name_script, name_function, params = 'n7_precompute_TF', 'precompute_tf', [cond, session_i, freq_band_list, band_prep_list]
 def execute_function_in_slurm_bash(name_script, name_function, params):
 
     scritp_path = os.getcwd()
@@ -277,6 +327,96 @@ def execute_function_in_slurm_bash(name_script, name_function, params):
 
     #### get back to original path
     os.chdir(scritp_path)
+
+
+
+
+#name_script, name_function, params = 'n9_fc_analysis', 'compute_pli_ispc_allband', [sujet]
+def execute_function_in_slurm_bash_mem_choice(name_script, name_function, params, mem_required):
+
+    scritp_path = os.getcwd()
+    
+    python = sys.executable
+
+    #### params to print in script
+    params_str = ""
+    for i, params_i in enumerate(params):
+        if isinstance(params_i, str):
+            str_i = f"'{params_i}'"
+        else:
+            str_i = str(params_i)
+
+        if i == 0 :
+            params_str = params_str + str_i
+        else:
+            params_str = params_str + ' , ' + str_i
+
+    #### params to print in script name
+    params_str_name = ''
+    for i, params_i in enumerate(params):
+
+        str_i = str(params_i)
+
+        if i == 0 :
+            params_str_name = params_str_name + str_i
+        else:
+            params_str_name = params_str_name + '_' + str_i
+
+    #### remove all txt that block name save
+    for txt_remove_i in ["'", "[", "]", "{", "}", ":", " ", ","]:
+        if txt_remove_i == " " or txt_remove_i == ",":
+            params_str_name = params_str_name.replace(txt_remove_i, '_')
+        else:
+            params_str_name = params_str_name.replace(txt_remove_i, '')
+    
+    #### script text
+    lines = [f'#! {python}']
+    lines += ['import sys']
+    lines += [f"sys.path.append('{path_main_workdir}')"]
+    lines += [f'from {name_script} import {name_function}']
+    lines += [f'{name_function}({params_str})']
+
+    cpus_per_task = n_core_slurms
+    mem = mem_crnl_cluster
+        
+    #### write script and execute
+    os.chdir(path_slurm)
+    slurm_script_name =  f"run__{name_function}__{params_str_name}.py" #add params
+        
+    with open(slurm_script_name, 'w') as f:
+        f.writelines('\n'.join(lines))
+        os.fchmod(f.fileno(), mode = stat.S_IRWXU)
+        f.close()
+    
+    #### script text
+    lines = ['#!/bin/bash']
+    lines += [f'#SBATCH --job-name={name_function}']
+    lines += [f'#SBATCH --output=%slurm_{name_function}_{params_str_name}.log']
+    lines += [f'#SBATCH --cpus-per-task={n_core_slurms}']
+    lines += [f'#SBATCH --mem={mem_required}']
+    lines += [f'srun {python} {os.path.join(path_slurm, slurm_script_name)}']
+        
+    #### write script and execute
+    slurm_bash_script_name =  f"bash__{name_function}__{params_str_name}.batch" #add params
+        
+    with open(slurm_bash_script_name, 'w') as f:
+        f.writelines('\n'.join(lines))
+        os.fchmod(f.fileno(), mode = stat.S_IRWXU)
+        f.close()
+
+    #### execute bash
+    print(f'#### slurm submission : from {name_script} execute {name_function}({params})')
+    subprocess.Popen(['sbatch', f'{slurm_bash_script_name}']) 
+
+    # wait subprocess to lauch before removing
+    #time.sleep(4)
+    #os.remove(slurm_script_name)
+    #os.remove(slurm_bash_script_name)
+
+    #### get back to original path
+    os.chdir(scritp_path)
+
+
 
 
 
@@ -636,6 +776,46 @@ def stretch_data(resp_features, nb_point_by_cycle, data, srate):
 
     return data_stretch, mean_inspi_ratio
 
+    
+#resp_features, nb_point_by_cycle, data, srate = resp_features, stretch_point_TF, ispc_mat, 1/slwin_step
+def stretch_data_tf(resp_features, nb_point_by_cycle, data, srate):
+
+    # params
+    cycle_times = resp_features[['inspi_time', 'expi_time']].values
+    mean_cycle_duration = np.mean(resp_features[['insp_duration', 'exp_duration']].values, axis=0)
+    mean_inspi_ratio = mean_cycle_duration[0]/mean_cycle_duration.sum()
+    times = np.arange(0,data.shape[1])/srate
+
+    # stretch
+    if stretch_TF_auto:
+        clipped_times, times_to_cycles, cycles, cycle_points, data_stretch_linear = respirationtools.deform_to_cycle_template(
+                data.T, times, cycle_times, nb_point_by_cycle=nb_point_by_cycle, inspi_ratio=mean_inspi_ratio)
+    else:
+        clipped_times, times_to_cycles, cycles, cycle_points, data_stretch_linear = respirationtools.deform_to_cycle_template(
+                data.T, times, cycle_times, nb_point_by_cycle=nb_point_by_cycle, inspi_ratio=ratio_stretch_TF)
+
+    #### clean
+    mask = resp_features[resp_features['select'] == 1].index.values
+    cycle_clean = mask[np.isin(mask, cycles)]
+
+    #### reshape
+    if np.iscomplex(data[0,0]):
+        data_stretch = np.zeros(( cycle_clean.shape[0], data.shape[0], nb_point_by_cycle ), dtype='complex')
+    else:
+        data_stretch = np.zeros(( cycle_clean.shape[0], data.shape[0], nb_point_by_cycle ))
+    for cycle_i, cycle_val in enumerate(cycle_clean):
+        data_stretch[cycle_i, :, :] = data_stretch_linear.T[:, 1000*(cycle_val):1000*(cycle_val+1)]
+
+    # inspect
+    if debug == True:
+        plt.pcolormesh(data_stretch_linear.T)
+        plt.show()
+
+        plt.pcolormesh(np.mean(data_stretch, axis=0))
+        plt.show()
+
+    return data_stretch, mean_inspi_ratio
+
 
 
 
@@ -793,8 +973,6 @@ def modify_name(chan_list):
 
 
     return chan_list_modified, chan_list_keep
-
-
 
 
 ########################################

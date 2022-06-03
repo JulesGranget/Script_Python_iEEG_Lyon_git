@@ -7,7 +7,7 @@ import pingouin as pg
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from n0_config import *
+from n0_config_params import *
 
 
 

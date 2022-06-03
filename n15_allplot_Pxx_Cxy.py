@@ -8,9 +8,9 @@ import joblib
 import seaborn as sns
 import xarray as xr
 
-from n0_config import *
-from n0bis_analysis_functions import *
-from n10_allplot_analysis import ROI_list
+from n0_config_params import *
+from n0bis_config_analysis_functions import *
+from n10_res_allplot_analysis import ROI_list
 
 
 debug = False

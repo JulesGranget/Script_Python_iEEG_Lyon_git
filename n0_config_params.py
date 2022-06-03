@@ -58,7 +58,8 @@ freq_band_dict = {'wb' : {'theta' : [2,10], 'alpha' : [8,14], 'beta' : [10,40]},
                 'lf' : {'theta' : [2,10], 'alpha' : [8,14], 'beta' : [10,40], 'whole' : [2,50]},
                 'hf' : {'l_gamma' : [50, 80], 'h_gamma' : [80, 120]} }
 
-
+freq_band_dict_FC_function = {'lf' : {'theta' : [4,8], 'alpha' : [8,12], 'beta' : [12,40]},
+                'hf' : {'l_gamma' : [50, 80], 'h_gamma' : [80, 120]} }
 
 
 
@@ -131,7 +132,7 @@ else:
     path_main_workdir = '/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ/Script_Python_iEEG_Lyon_git'
     path_general = '/crnldata/cmo/multisite/DATA_MANIP/iEEG_Lyon_VJ'
     path_memmap = '/mnt/data/julesgranget'
-    n_core = 15
+    n_core = 10
 
 path_data = os.path.join(path_general, 'Data', 'raw_data')
 path_prep = os.path.join(path_general, 'Analyses', 'preprocessing')
@@ -218,6 +219,21 @@ hrv_metrics_short_name = ['HRV_RMSSD', 'HRV_MeanNN', 'HRV_SDNN', 'HRV_pNN50', 'H
 ######## RESPI PARAMS ########
 ################################ 
 
+
+
+#### INSPI DOWN
+sujet_respi_adjust = {
+'CHEe' : 'inverse',
+'GOBc' : 'normal',
+'MAZm' : 'normal',
+'TREt' : 'normal',
+'MUGa' : 'normal',
+'BANc' : 'normal',
+'KOFs' : 'normal',
+'LEMl' : 'normal',
+}
+
+
 SD_delete_cycles_freq = 3
 SD_delete_cycles_amp = 3
 
@@ -298,7 +314,7 @@ percentile_cyclefreq_dw = .01
 #### stretch
 stretch_point_TF = 1000
 stretch_TF_auto = False
-ratio_stretch_TF = 0.45
+ratio_stretch_TF = 0.40
 
 #### TF & ITPC
 nfrex_hf = 50
@@ -326,6 +342,10 @@ coh_computation_interval = .02 #Hz around respi
 freq_band_fc_analysis = {'theta' : [4, 8], 'alpha' : [9,12], 'beta' : [15,40], 'l_gamma' : [50, 80], 'h_gamma' : [80, 120]}
 
 percentile_thresh = 90
+
+#### for AL DFC
+slwin_dict = {'theta' : 5, 'alpha' : 3, 'beta' : .3, 'l_gamma' : .3, 'h_gamma' : .3}
+slwin_step_coeff = .1  # in %, 10% move
 
 
 ################################

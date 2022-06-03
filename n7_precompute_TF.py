@@ -6,8 +6,8 @@ import scipy.signal
 import pandas as pd
 import joblib
 
-from n0_config import *
-from n0bis_analysis_functions import *
+from n0_config_params import *
+from n0bis_config_analysis_functions import *
 
 debug = False
 
@@ -26,14 +26,7 @@ def compute_stretch_tf(tf, cond, session_i, respfeatures_allcond, stretch_point_
 
     for n_chan in range(np.size(tf,0)):
 
-        tf_mean = np.zeros((np.size(tf,1),int(stretch_point_TF)))
-        for fi in range(np.size(tf,1)):
-
-            x = tf[n_chan,fi,:]
-            x_stretch, ratio = stretch_data(respfeatures_allcond.get(cond)[session_i], stretch_point_TF, x, srate)
-            tf_mean[fi,:] = np.mean(x_stretch, axis=0)
-
-        tf_mean_allchan[n_chan,:,:] = tf_mean
+        tf_mean_allchan[n_chan,:,:] = np.mean(stretch_data_tf(respfeatures_allcond[cond][session_i], stretch_point_TF, tf[n_chan,:,:], srate)[0], axis=0)
 
     return tf_mean_allchan
 
@@ -62,14 +55,7 @@ def compute_stretch_tf_dB(tf, cond, session_i, respfeatures_allcond, stretch_poi
 
     def stretch_tf_db_n_chan(n_chan):
 
-        print_advancement(n_chan, np.size(tf,0), steps=[25, 50, 75])
-
-        tf_mean = np.zeros((np.size(tf,1),int(stretch_point_TF)))
-        for fi in range(np.size(tf,1)):
-
-            x = tf[n_chan,fi,:]
-            x_stretch, ratio = stretch_data(respfeatures_allcond.get(cond)[session_i], stretch_point_TF, x, srate)
-            tf_mean[fi,:] = np.mean(x_stretch, axis=0)
+        tf_mean = np.mean(stretch_data_tf(respfeatures_allcond[cond][session_i], stretch_point_TF, tf[n_chan,:,:], srate)[0], axis=0)
 
         return tf_mean
 
@@ -83,24 +69,6 @@ def compute_stretch_tf_dB(tf, cond, session_i, respfeatures_allcond, stretch_poi
     return tf_mean_allchan
 
 
-#condition, resp_features, freq_band, stretch_point_TF = conditions[0], list(resp_features_allcond.values())[0], freq_band, stretch_point_TF
-def compute_stretch_tf_itpc(tf, cond, session_i, respfeatures_allcond, stretch_point_TF, srate):
-    
-    #### identify number stretch
-    x = tf[0,:]
-    x_stretch, ratio = stretch_data(respfeatures_allcond.get(cond)[session_i], stretch_point_TF, x, srate)
-    nb_cycle = np.size(x_stretch, 0)
-    
-    #### compute tf
-    tf_stretch = np.zeros((nb_cycle, np.size(tf,0), int(stretch_point_TF)), dtype='complex')
-
-    for fi in range(np.size(tf,0)):
-
-        x = tf[fi,:]
-        x_stretch, ratio = stretch_data(respfeatures_allcond.get(cond)[session_i], stretch_point_TF, x, srate)
-        tf_stretch[:,fi,:] = x_stretch
-
-    return tf_stretch
 
 
 
@@ -144,7 +112,7 @@ def precompute_tf(cond, session_i, freq_band_list, band_prep_list):
             wavelets, nfrex = get_wavelets(band_prep, freq)
 
             os.chdir(path_memmap)
-            tf_allchan = np.memmap(f'{sujet}_{cond}_{session_i}_precompute_convolutions.dat', dtype=np.float64, mode='w+', shape=(np.size(data,0), nfrex, np.size(data,1)))
+            tf_allchan = np.memmap(f'{sujet}_{cond}_{session_i}_{band}_precompute_convolutions.dat', dtype=np.float64, mode='w+', shape=(data.shape[0], nfrex, data.shape[1]))
 
             def compute_tf_convolution_nchan(n_chan):
 
@@ -174,10 +142,11 @@ def precompute_tf(cond, session_i, freq_band_list, band_prep_list):
             np.save(sujet + '_tf_' + str(freq[0]) + '_' + str(freq[1]) + '_' + cond + '_' + str(session_i+1) + '.npy', tf_allband_stretched)
             
             os.chdir(path_memmap)
-            os.remove(f'{sujet}_{cond}_{session_i}_precompute_convolutions.dat')
+            os.remove(f'{sujet}_{cond}_{session_i}_{band}_precompute_convolutions.dat')
 
 
     print('done')
+    
 
 
 ################################
@@ -194,6 +163,7 @@ def precompute_tf_itpc(cond, session_i, freq_band_list, band_prep_list):
     respfeatures_allcond = load_respfeatures(sujet)
     
     #### select prep to load
+    #band_prep_i, band_prep = 0, 'lf'
     for band_prep_i, band_prep in enumerate(band_prep_list):
 
         #### select data without aux chan
@@ -218,9 +188,6 @@ def precompute_tf_itpc(cond, session_i, freq_band_list, band_prep_list):
             #### compute itpc
             print('COMPUTE, STRETCH & ITPC')
             def compute_itpc_n_chan(n_chan):
-
-                if n_chan/np.size(data,0) % .2 <= .01:
-                    print("{:.2f}".format(n_chan/np.size(data,0)))
                     
                 x = data[n_chan,:]
 
@@ -231,7 +198,7 @@ def precompute_tf_itpc(cond, session_i, freq_band_list, band_prep_list):
                     tf[fi,:] = scipy.signal.fftconvolve(x, wavelets[fi,:], 'same')
 
                 #### stretch
-                tf_stretch = compute_stretch_tf_itpc(tf, cond, session_i, respfeatures_allcond, stretch_point_TF, srate)
+                tf_stretch = stretch_data_tf(respfeatures_allcond[cond][session_i], stretch_point_TF, tf, srate)[0]
 
                 #### ITPC
                 tf_angle = np.angle(tf_stretch)
@@ -239,9 +206,7 @@ def precompute_tf_itpc(cond, session_i, freq_band_list, band_prep_list):
                 itpc = np.abs(np.mean(tf_cangle,0))
 
                 if debug == True:
-                    time = range(stretch_point_TF)
-                    frex = range(nfrex)
-                    plt.pcolormesh(time,frex,itpc,vmin=np.min(itpc),vmax=np.max(itpc))
+                    plt.pcolormesh(itpc)
                     plt.show()
 
                 return itpc 

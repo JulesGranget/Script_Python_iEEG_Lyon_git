@@ -11,7 +11,8 @@ import respirationtools
 from bycycle.cyclepoints import find_extrema, find_zerox
 from bycycle.plts import plot_cyclepoints_array
 
-from n0_config import *
+from n0_config_params import *
+from n0bis_config_analysis_functions import *
 
 debug = False
 
@@ -257,43 +258,39 @@ def detection_bycycle(sig, srate):
     peaks, troughs = find_extrema(sig_low, srate, f_theta)
     rises, decays = find_zerox(sig_low, peaks, troughs)
 
+    if debug:
+        times = np.arange(0, sig_low.shape[0])/srate
+        plt.plot(times, sig_low)
+        plt.plot(times[rises], sig_low[rises], ls='None', marker='o', color='r', label='rises')
+        plt.plot(times[decays], sig_low[decays], ls='None', marker='o', color='b', label='decays')
+        plt.plot(times[peaks], sig_low[peaks], ls='None', marker='o', color='g', label='peaks')
+        plt.plot(times[troughs], sig_low[troughs], ls='None', marker='o', color='k', label='troughs')
+        plt.legend()
+        plt.show()
+
     #### adjust detection
-    if np.where(decays < rises[0])[0].shape[0] != 0:
-        point_delete = np.where(decays < rises[0])[0][-1]
-        decays = decays[point_delete+1:]
+    if decays[0] > rises[0]:
+        decays = decays[1:]
+        troughs = troughs[1:]
 
-    if np.where(peaks < rises[0])[0].shape[0] != 0:
-        point_delete = np.where(peaks < rises[0])[0][-1]
-        peaks = peaks[point_delete+1:]
+    if decays[-1] < rises[-1]:
+        rises = rises[:-1]
+        troughs = troughs[:-1]
 
-    if np.where(troughs < rises[0])[0].shape[0] != 0:
-        point_delete = np.where(troughs < rises[0])[0][-1]
-        troughs = troughs[point_delete+1:]
+    if peaks[0] < decays[0]:
+        peaks = peaks[1:]
 
-    if np.where(rises > troughs[-1])[0].shape[0] != 0:
-        point_delete = np.where(rises > troughs[-1])[0][0]
-        rises = rises[:point_delete]
-
-    if np.where(peaks > troughs[-1])[0].shape[0] != 0:
-        point_delete = np.where(peaks > troughs[-1])[0][0]
-        peaks = peaks[:point_delete]
-
-    if np.where(decays > troughs[-1])[0].shape[0] != 0:
-        point_delete = np.where(decays > troughs[-1])[0][0]
-        decays = decays[:point_delete]
-
-    #### verif
-    shapes_verif = [rises.shape[0], decays.shape[0], peaks.shape[0], troughs.shape[0]]
-    if np.mean(shapes_verif) != int(np.mean(shapes_verif)):
-        raise ValueError('incorrect detection')
-
+    if troughs[-1] > decays[-1]:
+        troughs = troughs[:-1]
+        
     #### generate df
-    data_detection = {'cycle_num' : range(rises.shape[0]), 'inspi_index' : rises, 'expi_index' : decays, 
-    'inspi_time' : rises/srate, 'expi_time' : decays/srate, 'peaks' : peaks, 'troughs' : troughs, 'select' : [1]*rises.shape[0]}
+    #### INSPI SIGN = -
+    data_detection = {'cycle_num' : range(rises.shape[0]), 'inspi_index' : decays[:-1], 'expi_index' : rises, 
+    'inspi_time' : decays[:-1]/srate, 'expi_time' : rises/srate, 'peaks' : peaks, 'troughs' : troughs, 'select' : [1]*rises.shape[0]}
     
     df_detection = pd.DataFrame(data_detection, columns=['cycle_num', 'inspi_index', 'expi_index', 'inspi_time', 'expi_time', 'peaks', 'troughs', 'select'])
 
-    df_detection['cycle_duration'] = np.append(np.diff(df_detection['inspi_time']), np.round( np.mean( np.diff(df_detection['inspi_time'])), 2 ) )
+    df_detection['cycle_duration'] = np.diff(decays/srate)
     df_detection['insp_duration'] = df_detection['expi_time'] - df_detection['inspi_time']
     df_detection['exp_duration'] = df_detection['cycle_duration'] - df_detection['insp_duration']
     df_detection['cycle_freq'] = 1/df_detection['cycle_duration']
@@ -314,7 +311,8 @@ def detection_bycycle(sig, srate):
 
     delete_i_freq = np.where( (df_detection['cycle_freq'].values > mean_freq + SD_delete_cycles_freq*std_freq) | (df_detection['cycle_freq'].values < mean_freq - SD_delete_cycles_freq*std_freq) )[0]
 
-    df_detection['select'][delete_i_freq] = 0
+    if delete_i_freq.shape[0] != 0:
+        df_detection['select'][delete_i_freq] = np.array([0]*delete_i_freq.shape[0])
     df_detection_deleted = df_detection.loc[delete_i_freq]
 
     #### supress cycle amp based
@@ -323,8 +321,9 @@ def detection_bycycle(sig, srate):
 
     delete_i_amp = np.where( (df_detection['total_amplitude'].values > mean_amp + SD_delete_cycles_amp*std_amp) | (df_detection['total_amplitude'].values < mean_amp - SD_delete_cycles_amp*std_amp) )[0]
 
+    if delete_i_amp.shape[0] != 0:
+        df_detection['select'][delete_i_amp] = np.array([0]*delete_i_amp.shape[0])
     df_detection_deleted = pd.concat([df_detection_deleted, df_detection.loc[delete_i_amp]])
-    df_detection['select'][delete_i_amp] = 0
 
     #### verif
     if debug:
@@ -336,8 +335,6 @@ def detection_bycycle(sig, srate):
         rises=df_detection_deleted['inspi_index'], decays=df_detection_deleted['expi_index'])
         plt.show()
 
-    
-
     return df_detection
 
 
@@ -347,8 +344,8 @@ def detection_bycycle(sig, srate):
 #df_detection, respi_sig = detection_bycycle(respi_sig, srate), respi_sig
 def correct_resp_features(respi_sig, df_detection, srate):
 
-    cycle_indexes = np.concatenate((df_detection['inspi_index'][df_detection['select'] == 1].values.reshape(-1,1), 
-                                    df_detection['expi_index'][df_detection['select'] == 1].values.reshape(-1,1)), axis=1)
+    cycle_indexes = np.concatenate((df_detection['expi_index'][df_detection['select'] == 1].values.reshape(-1,1), 
+                                    df_detection['inspi_index'][df_detection['select'] == 1].values.reshape(-1,1)), axis=1)
     cycle_freq = df_detection['cycle_freq'][df_detection['select'] == 1].values
     cycle_amplitudes = df_detection['total_amplitude'][df_detection['select'] == 1].values
 
@@ -359,8 +356,8 @@ def correct_resp_features(respi_sig, df_detection, srate):
         # respi signal with inspi expi markers
     ax = axs[0]
     ax.plot(times, respi_sig)
-    ax.plot(times[cycle_indexes[:, 0]], respi_sig[cycle_indexes[:, 0]], ls='None', marker='o', color='r', label='inspi')
-    ax.plot(times[cycle_indexes[:, 1]], respi_sig[cycle_indexes[:, 1]], ls='None', marker='o', color='g', label='expi')
+    ax.plot(times[cycle_indexes[:, 1]], respi_sig[cycle_indexes[:, 1]], ls='None', marker='o', color='r', label='inspi')
+    ax.plot(times[cycle_indexes[:, 0]], respi_sig[cycle_indexes[:, 0]], ls='None', marker='o', color='g', label='expi')
     ax.set_ylabel('resp')
     ax.legend()
     
@@ -403,7 +400,7 @@ def correct_resp_features(respi_sig, df_detection, srate):
     
         # histogram inspi/expi ratio
     ax = axs[1]
-    ratio = (cycle_indexes[:-1, 1] - cycle_indexes[:-1, 0]).astype('float64') / (cycle_indexes[1:, 0] - cycle_indexes[:-1, 0])
+    ratio = (cycle_indexes[:-1, 0] - cycle_indexes[:-1, 1]).astype('float64') / (cycle_indexes[1:, 0] - cycle_indexes[:-1, 0])
     count, bins = np.histogram(ratio, bins=np.arange(0, 1., 0.01))
     ax.plot(bins[:-1], count)
     ax.axvline(np.median(ratio), color='m', linestyle='--', label='median = {:.3f}'.format(np.median(ratio)))
@@ -420,11 +417,52 @@ def correct_resp_features(respi_sig, df_detection, srate):
 
 
 
+########################################
+######## EDIT CYCLES SELECTED ########
+########################################
+
+
+#respi_allcond = respi_allcond_bybycle
+def edit_df_for_sretch_cycles_deleted(sujet, respi_allcond, raw_allcond):
+
+    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet)
+
+    for cond in conditions:
+        
+        for session_i in range(len(raw_allcond[cond])):
+
+            #### params
+            respi = raw_allcond[cond][session_i].get_data()[-3, :]
+            cycle_times = respi_allcond[cond][session_i][0][['inspi_time', 'expi_time']].values
+            mean_cycle_duration = np.mean(respi_allcond[cond][session_i][0][['insp_duration', 'exp_duration']].values, axis=0)
+            mean_inspi_ratio = mean_cycle_duration[0]/mean_cycle_duration.sum()
+            times = np.arange(0,respi.shape[0])/srate
+
+            #### stretch
+            clipped_times, times_to_cycles, cycles, cycle_points, data_stretch_linear = respirationtools.deform_to_cycle_template(
+                    respi, times, cycle_times, nb_point_by_cycle=stretch_point_TF, inspi_ratio=ratio_stretch_TF)
+
+            i_to_update = respi_allcond[cond][session_i][0].index.values[~np.isin(respi_allcond[cond][session_i][0].index.values, cycles)]
+            respi_allcond[cond][session_i][0]['select'][i_to_update] = np.array([0]*i_to_update.shape[0])
 
 
 
+def export_sniff_count(sujet, respi_allcond):
 
+    #### generate df
+    df_count_cycle = pd.DataFrame(columns={'sujet' : [], 'cond' : [], 'trial' : [], 'count' : []})
 
+    for cond in conditions:
+        
+        for session_i in range(len(raw_allcond[cond])):
+
+            data_i = {'sujet' : [sujet], 'cond' : [cond], 'trial' : [session_i+1], 'count' : [np.sum(respi_allcond[cond][session_i][0]['select'].values)]}
+            df_i = pd.DataFrame(data_i, columns=data_i.keys())
+            df_count_cycle = pd.concat([df_count_cycle, df_i])
+
+    #### export
+    os.chdir(os.path.join(path_results, sujet, 'RESPI'))
+    df_count_cycle.to_excel(f'{sujet}_count_cycles.xlsx')
 
 ########################################
 ######## VERIF RESPIFEATURES ########
@@ -438,20 +476,20 @@ if __name__ == '__main__':
     ######## PARAMETERS ########
     ############################
 
-    from n0_config import *
+    
     #### whole protocole
     sujet = 'CHEe'
     # sujet = 'GOBc' 
-    #sujet = 'MAZm' 
-    #sujet = 'TREt' 
+    # sujet = 'MAZm' 
+    # sujet = 'TREt' 
 
     #### FR_CV only
-    #sujet = 'MUGa'
-    #sujet = 'BANc'
-    #sujet = 'LEMl'
-    #sujet = 'pat_02459_0912'
-    #sujet = 'pat_02476_0929'
-    #sujet = 'pat_02495_0949'
+    # sujet = 'MUGa'
+    # sujet = 'BANc'
+    # sujet = 'LEMl'
+    # sujet = 'pat_02459_0912'
+    # sujet = 'pat_02476_0929'
+    # sujet = 'pat_02495_0949'
 
     ############################
     ######## LOAD DATA ########
@@ -507,8 +545,9 @@ if __name__ == '__main__':
                 respi_i = chan_list.index('ventral')
             else :
                 respi_i = chan_list.index('nasal')
-
-            data.append(analyse_resp(raw_allcond[cond][session_i].get_data()[respi_i, :], srate, 0, cond))
+            
+            respi_to_analyze = raw_allcond[cond][session_i].get_data()[respi_i, :]
+            data.append(analyse_resp(respi_to_analyze, srate, 0, cond))
 
         respi_allcond[cond] = data
 
@@ -545,13 +584,14 @@ if __name__ == '__main__':
         
         cond_len
         cond = 'RD_CV' 
-        # cond = 'RD_FV' 
-        # cond = 'RD_SV'
+        cond = 'RD_FV' 
+        cond = 'RD_SV'
+        cond = 'FR_CV'
+
         # cond = 'RD_AV'
-        # cond = 'FR_CV'
         # cond = 'FR_MV'
         
-        session_i = 0
+        session_i = 1
 
         respi_allcond[cond][session_i][1].show()
         respi_allcond[cond][session_i][2].show()
@@ -596,30 +636,45 @@ if __name__ == '__main__':
 
 
 
+
+    ########################################
+    ######## EDIT CYCLES SELECTED ########
+    ########################################
+
+    edit_df_for_sretch_cycles_deleted(sujet, respi_allcond_bybycle, raw_allcond)
+
+    export_sniff_count(sujet, respi_allcond)
+
     ################################
     ######## SAVE FIG ########
     ################################
 
+    #### select export
+    # export = 'sam'
+    export = 'bycycle'
+
 
     #### when everything ok classic
-    os.chdir(os.path.join(path_results, sujet, 'RESPI'))
+    if export == 'sam':
+        os.chdir(os.path.join(path_results, sujet, 'RESPI'))
 
-    for cond_i in conditions:
+        for cond_i in conditions:
 
-        for i in range(len(respi_allcond[cond_i])):
+            for i in range(len(respi_allcond[cond_i])):
 
-            respi_allcond[cond_i][i][0].to_excel(sujet + '_' + cond_i + '_' + str(i+1) + '_respfeatures.xlsx')
-            respi_allcond[cond_i][i][1].savefig(sujet + '_' + cond_i + '_' + str(i+1) + '_fig0.jpeg')
-            respi_allcond[cond_i][i][2].savefig(sujet + '_' + cond_i + '_' + str(i+1) + '_fig1.jpeg')
+                respi_allcond[cond_i][i][0].to_excel(sujet + '_' + cond_i + '_' + str(i+1) + '_respfeatures.xlsx')
+                respi_allcond[cond_i][i][1].savefig(sujet + '_' + cond_i + '_' + str(i+1) + '_fig0.jpeg')
+                respi_allcond[cond_i][i][2].savefig(sujet + '_' + cond_i + '_' + str(i+1) + '_fig1.jpeg')
 
     #### when everything ok bycycle
-    os.chdir(os.path.join(path_results, sujet, 'RESPI'))
+    if export == 'bycycle':
+        os.chdir(os.path.join(path_results, sujet, 'RESPI'))
 
-    for cond_i in conditions:
+        for cond_i in conditions:
 
-        for i in range(len(respi_allcond_bybycle[cond_i])):
+            for i in range(len(respi_allcond_bybycle[cond_i])):
 
-            respi_allcond_bybycle[cond_i][i][0].to_excel(sujet + '_' + cond_i + '_' + str(i+1) + '_respfeatures.xlsx')
-            respi_allcond_bybycle[cond_i][i][1].savefig(sujet + '_' + cond_i + '_' + str(i+1) + '_fig0.jpeg')
-            respi_allcond_bybycle[cond_i][i][2].savefig(sujet + '_' + cond_i + '_' + str(i+1) + '_fig1.jpeg')
+                respi_allcond_bybycle[cond_i][i][0].to_excel(sujet + '_' + cond_i + '_' + str(i+1) + '_respfeatures.xlsx')
+                respi_allcond_bybycle[cond_i][i][1].savefig(sujet + '_' + cond_i + '_' + str(i+1) + '_fig0.jpeg')
+                respi_allcond_bybycle[cond_i][i][2].savefig(sujet + '_' + cond_i + '_' + str(i+1) + '_fig1.jpeg')
 

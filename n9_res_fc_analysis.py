@@ -10,10 +10,10 @@ import respirationtools
 import joblib
 import pickle
 
-from n4_respi_analysis import analyse_resp
+from n3_prep_respi_analysis import analyse_resp
 
-from n0_config import *
-from n0bis_analysis_functions import *
+from n0_config_params import *
+from n0bis_config_analysis_functions import *
 
 debug = False
 
