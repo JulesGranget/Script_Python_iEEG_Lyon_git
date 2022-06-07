@@ -140,10 +140,7 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process, cond, srate):
     #### identify stretch point
     if cond == 'FR_CV':
         stretch_point = stretch_point_TF
-    if cond == 'AC':
-        stretch_point = int(np.abs(t_start_AC)*srate +  t_stop_AC*srate)
-    if cond == 'SNIFF':
-        stretch_point = int(np.abs(t_start_SNIFF)*srate +  t_stop_SNIFF*srate)
+
 
     #### identify if proccessed
     if (ROI_to_process in ROI_to_include) == False:
@@ -246,10 +243,7 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process, cond, srate):
     #### identify stretch point
     if cond == 'FR_CV':
         stretch_point = stretch_point_TF
-    if cond == 'AC':
-        stretch_point = int(np.abs(t_start_AC)*srate +  t_stop_AC*srate)
-    if cond == 'SNIFF':
-        stretch_point = int(np.abs(t_start_SNIFF)*srate +  t_stop_SNIFF*srate)
+
 
     #### identify if proccessed
     if (Lobe_to_process in lobe_to_include) != True:
@@ -386,10 +380,7 @@ def compilation_allplot_analysis(cond):
     #### identify stretch point
     if cond == 'FR_CV':
         stretch_point = stretch_point_TF
-    if cond == 'AC':
-        stretch_point = int(np.abs(t_start_AC)*srate +  t_stop_AC*srate)
-    if cond == 'SNIFF':
-        stretch_point = int(np.abs(t_start_SNIFF)*srate +  t_stop_SNIFF*srate)
+
     
     #### compute TF & ITPC for ROI
     print('#### TF and ITPC for ROI ####')
@@ -452,7 +443,7 @@ if __name__ == '__main__':
     for cond in conditions_allsubjects:
 
         # compilation_allplot_analysis(cond)
-        execute_function_in_slurm_bash('n11_precompute_allplot_TF', 'compilation_allplot_analysis', [cond])
+        execute_function_in_slurm_bash('n14_precompute_allplot_TF', 'compilation_allplot_analysis', [cond])
     
 
 

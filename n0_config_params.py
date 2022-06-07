@@ -58,7 +58,7 @@ freq_band_dict = {'wb' : {'theta' : [2,10], 'alpha' : [8,14], 'beta' : [10,40]},
                 'lf' : {'theta' : [2,10], 'alpha' : [8,14], 'beta' : [10,40], 'whole' : [2,50]},
                 'hf' : {'l_gamma' : [50, 80], 'h_gamma' : [80, 120]} }
 
-freq_band_dict_FC_function = {'lf' : {'theta' : [4,8], 'alpha' : [8,12], 'beta' : [12,40]},
+freq_band_dict_FC_function = {'lf' : {'theta' : [4,8], 'alpha' : [8,12], 'beta' : [10,40]},
                 'hf' : {'l_gamma' : [50, 80], 'h_gamma' : [80, 120]} }
 
 
@@ -343,9 +343,11 @@ freq_band_fc_analysis = {'theta' : [4, 8], 'alpha' : [9,12], 'beta' : [15,40], '
 
 percentile_thresh = 90
 
-#### for AL DFC
+#### for DFC
 slwin_dict = {'theta' : 5, 'alpha' : 3, 'beta' : .3, 'l_gamma' : .3, 'h_gamma' : .3}
 slwin_step_coeff = .1  # in %, 10% move
+
+band_name_dfc = ['beta', 'l_gamma', 'h_gamma']
 
 
 ################################

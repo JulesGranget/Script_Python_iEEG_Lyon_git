@@ -634,13 +634,41 @@ def chop_save_trc(data, chan_list, data_aux, chan_list_aux, conditions_trig, tri
 
     print('#### SAVE ####')
     
-    #### save alldata + stim chan
+    #### agregate data
     data_all = np.vstack(( data, data_aux, np.zeros(( len(data[0,:]) )) ))
     chan_list_all = chan_list + chan_list_aux + ['ECG_cR']
+
+    #### resample if needed
+    if srate != 500:
+
+        dw_srate = 500 # new srate
+        dw_npnts = int( data_all.shape[1]*dw_srate/srate )
+
+        dw_data = np.zeros(( data_all.shape[0], dw_npnts ))
+
+        #chan_i = 0
+        for chan_i in range(data_all.shape[0]):
+            
+            dw_data[chan_i,:] = scipy.signal.resample(data_all[chan_i,:], dw_npnts)
+
+            if debug:
+                up_times = np.arange(0,data_all.shape[1])/srate
+                dw_times = np.arange(0,dw_data.shape[1])/dw_srate
+                plt.plot(dw_times, dw_data[chan_i,:], label='resample')
+                plt.plot(up_times, data_all[chan_i,:], label='Original')
+                plt.legend()
+                plt.show()
+
+        data_all = dw_data.copy()
+        srate = 500
 
     ch_types = ['seeg'] * (len(chan_list_all)-4) + ['misc'] * 4
     info = mne.create_info(chan_list_all, srate, ch_types=ch_types)
     raw_all = mne.io.RawArray(data_all, info)
+
+    for i in range(data_all.shape[0]):
+        plt.plot(data_all[i,:]+i)
+    plt.show()
 
     del data
     del data_all

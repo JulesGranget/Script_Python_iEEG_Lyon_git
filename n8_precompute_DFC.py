@@ -424,15 +424,15 @@ def get_pli_ispc_dfc(sujet, cond, band_prep, band, freq):
     #### export
     #### save allpairs
     os.chdir(os.path.join(path_precompute, sujet, 'DFC'))
-    dict_xr = {'mat_type' : ['ispc', 'pli'], 'pairs' : pairs_to_compute_anat, 'times' : np.arange(0, stretch_point_TF)}
+    dict_xr = {'mat_type' : ['ispc', 'wpli'], 'pairs' : pairs_to_compute_anat, 'times' : np.arange(0, stretch_point_TF)}
     xr_export = xr.DataArray(mat_stretch_mean, coords=dict_xr.values(), dims=dict_xr.keys())
-    xr_export.to_netcdf(f'{sujet}_DFC_pli_ispc_{band}_{cond}_allpairs.nc')
+    xr_export.to_netcdf(f'{sujet}_DFC_wpli_ispc_{band}_{cond}_allpairs.nc')
 
     #### save reduced pairs
     os.chdir(os.path.join(path_precompute, sujet, 'DFC'))
-    dict_xr = {'mat_type' : ['ispc', 'pli'], 'x' : roi_in_data, 'y' : roi_in_data}
+    dict_xr = {'mat_type' : ['ispc', 'wpli'], 'x' : roi_in_data, 'y' : roi_in_data}
     xr_export = xr.DataArray(mat_dfc_mean, coords=dict_xr.values(), dims=dict_xr.keys())
-    xr_export.to_netcdf(f'{sujet}_DFC_pli_ispc_{band}_{cond}_reducedpairs.nc')
+    xr_export.to_netcdf(f'{sujet}_DFC_wpli_ispc_{band}_{cond}_reducedpairs.nc')
 
 
 
@@ -446,15 +446,15 @@ if __name__ == '__main__':
 
     cond = 'FR_CV'
 
-    #band_prep = 'lf'
+    #band_prep = 'hf'
     for band_prep in band_prep_list:
-        #band, freq = 'beta', [12, 40]
+        #band, freq = list(freq_band_dict_FC_function[band_prep].items())[0]
         for band, freq in freq_band_dict_FC_function[band_prep].items():
 
             if band in ['beta', 'l_gamma', 'h_gamma']:
 
                 #get_pli_ispc_dfc(sujet, cond)
-                execute_function_in_slurm_bash('n8_precompute_DFC', 'get_pli_ispc_dfc', [sujet, cond, band_prep, band, freq])
-                # execute_function_in_slurm_bash_mem_choice('n8_precompute_DFC', 'get_pli_ispc_dfc', [sujet, cond, band_prep, band, freq], '30G')
+                execute_function_in_slurm_bash('n8_precompute_fc', 'get_pli_ispc_dfc', [sujet, cond, band_prep, band, freq])
+                # execute_function_in_slurm_bash_mem_choice('n8_precompute_fc', 'get_pli_ispc_dfc', [sujet, cond, band_prep, band, freq], '30G')
 
 
