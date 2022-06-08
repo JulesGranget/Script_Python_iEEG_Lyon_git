@@ -21,10 +21,10 @@ import scipy.signal
 perso_repo_computation = False
 
 #### whole protocole
-sujet = 'CHEe'
+# sujet = 'CHEe'
 # sujet = 'GOBc' 
 # sujet = 'MAZm' 
-# sujet = 'TREt' 
+sujet = 'TREt' 
 
 #### FR_CV only
 # sujet = 'MUGa'
@@ -168,6 +168,7 @@ electrodes_to_remove = {
 ######## PREP INFO ######## 
 ################################
 
+dw_srate = 500 # new srate
 
 conditions_trig = {
 'RD_CV' : ['31', '32'], # RespiDriver Comfort Ventilation
@@ -224,13 +225,17 @@ hrv_metrics_short_name = ['HRV_RMSSD', 'HRV_MeanNN', 'HRV_SDNN', 'HRV_pNN50', 'H
 #### INSPI DOWN
 sujet_respi_adjust = {
 'CHEe' : 'inverse',
-'GOBc' : 'normal',
-'MAZm' : 'normal',
+'GOBc' : 'inverse',
+'MAZm' : 'inverse',
 'TREt' : 'normal',
 'MUGa' : 'normal',
-'BANc' : 'normal',
-'KOFs' : 'normal',
-'LEMl' : 'normal',
+'BANc' : 'inverse',
+'KOFs' : 'inverse',
+'LEMl' : 'inverse',
+'pat_02459_0912' : 'normal',
+'pat_02476_0929' : 'normal',
+'pat_02495_0949' : 'normal',
+
 }
 
 
@@ -241,6 +246,9 @@ SD_delete_cycles_amp = 3
 f_theta = (0.1, 2)
 l_freq = 0
 h_freq = 2
+
+#### sujet that need more filter for respi sig
+sujet_for_more_filter = ['pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949']
 
 
 

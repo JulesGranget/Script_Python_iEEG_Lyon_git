@@ -19,6 +19,103 @@ debug = False
 
 
 
+
+############################
+######## LOAD DATA ########
+############################
+
+def load_respi_allcond_data(sujet):
+
+    #### get params
+    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions_for_sujet(sujet, conditions_allsubjects)
+
+    #### adjust conditions
+    os.chdir(os.path.join(path_prep, sujet, 'sections'))
+    dirlist_subject = os.listdir()
+
+    cond_keep = []
+    for cond in conditions_allsubjects:
+
+        for file in dirlist_subject:
+
+            if file.find(cond) != -1 : 
+                cond_keep.append(cond)
+                break
+
+    conditions = cond_keep
+
+    #### load data
+    raw_allcond = {}
+
+    for cond in conditions:
+
+        load_i = []
+        for session_i, session_name in enumerate(os.listdir()):
+            if session_name.find(cond) > 0 and session_name.find('lf') != -1 :
+                load_i.append(session_i)
+            else:
+                continue
+
+        load_list = [os.listdir()[i] for i in load_i]
+
+        data = []
+        for load_name in load_list:
+            load_data = mne.io.read_raw_fif(load_name, preload=True)
+            if sujet[:3] == 'pat' and sujet_respi_adjust[sujet] == 'inverse':
+                respi_i = chan_list.index('nasal')
+                data_tmp = load_data.get_data()
+                data_tmp[respi_i,:] = data_tmp[respi_i,:]*-1
+                load_data[:,:] = data_tmp
+            data.append(load_data)
+
+        raw_allcond[cond] = data
+
+    if sujet[:3] == 'pat':
+        srate = int(raw_allcond[os.listdir()[0][15:20]][0].info['sfreq'])
+        chan_list = raw_allcond[os.listdir()[0][15:20]][0].info['ch_names']
+    else:
+        srate = int(raw_allcond[os.listdir()[0][5:10]][0].info['sfreq'])
+        chan_list = raw_allcond[os.listdir()[0][5:10]][0].info['ch_names']
+
+
+    #### compute
+    respi_allcond = {}
+    for cond in conditions:
+        
+        data = []
+        for session_i in range(len(raw_allcond[cond])):
+            if cond == 'FR_MV' :
+                respi_i = chan_list.index('ventral')
+            else :
+                respi_i = chan_list.index('nasal')
+            
+            respi_to_analyze = raw_allcond[cond][session_i].get_data()[respi_i, :]
+            data.append(analyse_resp(respi_to_analyze, srate, 0, cond))
+
+        respi_allcond[cond] = data
+
+
+
+    respi_allcond_bybycle = {}
+    for cond in conditions:
+        
+        data = []
+        for session_i in range(len(raw_allcond[cond])):
+            if cond == 'FR_MV' :
+                respi_i = chan_list.index('ventral')
+            else :
+                respi_i = chan_list.index('nasal')
+            
+            respi_sig = raw_allcond[cond][session_i].get_data()[respi_i, :]
+            resp_features_i = correct_resp_features(respi_sig, detection_bycycle(respi_sig, srate), cond, srate)
+            data.append(resp_features_i)
+
+        respi_allcond_bybycle[cond] = data
+
+    return raw_allcond, respi_allcond, respi_allcond_bybycle, conditions, chan_list, srate
+
+
+
 ########################################
 ######## COMPUTE RESPI FEATURES ########
 ########################################
@@ -32,7 +129,7 @@ def analyse_resp(resp_sig, sr, t_start, condition):
         # for abdominal belt EEG inspi = '-'
         # for nasal thermistance inspi = '+'
     cycle_indexes = respirationtools.detect_respiration_cycles(resp_sig, sr, t_start=t_start, output = 'index',
-                                                    inspiration_sign = '+',
+                                                    inspiration_sign = '-',
                                                     # baseline
                                                     #baseline_with_average = False,
                                                     baseline_with_average = True,
@@ -144,7 +241,7 @@ def analyse_resp_debug(resp_sig, sr, t_start, condition, params):
         # for abdominal belt inspi = '-'
         # for nasal thermistance inspi = '+'
     cycle_indexes = respirationtools.detect_respiration_cycles(resp_sig, sr, t_start=t_start, output = 'index',
-                                                    inspiration_sign = '+',
+                                                    inspiration_sign = '-',
                                                     # baseline
                                                     #baseline_with_average = False,
                                                     baseline_with_average = params.get('baseline_with_average'),
@@ -239,7 +336,7 @@ def analyse_resp_debug(resp_sig, sr, t_start, condition, params):
 
 
 
-#sig = respi_sig
+#sig = raw_allcond[cond][0].get_data()[-4, :]
 def detection_bycycle(sig, srate):
 
     if debug:
@@ -249,14 +346,50 @@ def detection_bycycle(sig, srate):
     #### filter
     sig_low = mne.filter.filter_data(sig, srate, l_freq, h_freq, filter_length='auto', verbose='CRITICAL')
 
+    if sujet in sujet_for_more_filter:
+        sig_low = mne.filter.filter_data(sig, srate, 0, .2, filter_length='auto', verbose='CRITICAL')
+
+        cycle_indexes = respirationtools.detect_respiration_cycles(sig_low, srate, t_start=0, output = 'index',
+                                                    inspiration_sign = '-',
+                                                    # baseline
+                                                    #baseline_with_average = False,
+                                                    baseline_with_average = True,
+                                                    manual_baseline = 0.,
+
+                                                    high_pass_filter = None,
+                                                    constrain_frequency = None,
+                                                    median_windows_filter = None,
+
+                                                    # clean
+                                                    eliminate_time_shortest_ratio = 8,
+                                                    eliminate_amplitude_shortest_ratio = 4,
+                                                    eliminate_mode = 'OR', ) # 'AND')
+
+        resp_features = respirationtools.get_all_respiration_features(sig_low, srate, cycle_indexes, t_start = 0.)
+
     if debug:
-        plt.plot(sig)
-        plt.plot(sig_low)
+
+        times = np.arange(0, sig.shape[0])/srate
+        plt.plot(times, sig, label='original')
+        plt.plot(times, sig_low, label='filtered')
+        plt.legend()
+        plt.show()
+
+        plt.plot(times, sig_low, label='filtered')
+        plt.plot(times[cycle_indexes.T[0,:]], sig_low[cycle_indexes.T[0,:]], ls='None', marker='o', color='r', label='decays')
+        plt.plot(times[cycle_indexes.T[1,:]], sig_low[cycle_indexes.T[1,:]], ls='None', marker='o', color='b', label='rises')
+        plt.legend()
         plt.show()
 
     #### detect
-    peaks, troughs = find_extrema(sig_low, srate, f_theta)
-    rises, decays = find_zerox(sig_low, peaks, troughs)
+    if sujet in sujet_for_more_filter:
+        rises, decays = cycle_indexes.T[1,:-1], cycle_indexes.T[0,:]
+
+        # peaks, _ = scipy.signal.find_peaks(sig_low, distance=3*srate, prominence=sig_low.mean()+sig_low.std()/15)
+        # troughs, _ = scipy.signal.find_peaks(sig_low*-1, distance=3*srate, prominence=sig_low.mean()+sig_low.std()/15)
+    else:
+        peaks, troughs = find_extrema(sig_low, srate, f_theta)
+        rises, decays = find_zerox(sig_low, peaks, troughs)
 
     if debug:
         times = np.arange(0, sig_low.shape[0])/srate
@@ -269,6 +402,7 @@ def detection_bycycle(sig, srate):
         plt.show()
 
     #### adjust detection
+    
     if decays[0] > rises[0]:
         decays = decays[1:]
         troughs = troughs[1:]
@@ -277,31 +411,38 @@ def detection_bycycle(sig, srate):
         rises = rises[:-1]
         troughs = troughs[:-1]
 
-    if peaks[0] < decays[0]:
-        peaks = peaks[1:]
+    if sujet not in sujet_for_more_filter: 
 
-    if troughs[-1] > decays[-1]:
-        troughs = troughs[:-1]
+        if peaks[0] < decays[0]:
+            peaks = peaks[1:]
+
+        if troughs[-1] > decays[-1]:
+            troughs = troughs[:-1]
         
     #### generate df
     #### INSPI SIGN = -
     data_detection = {'cycle_num' : range(rises.shape[0]), 'inspi_index' : decays[:-1], 'expi_index' : rises, 
-    'inspi_time' : decays[:-1]/srate, 'expi_time' : rises/srate, 'peaks' : peaks, 'troughs' : troughs, 'select' : [1]*rises.shape[0]}
+    'inspi_time' : decays[:-1]/srate, 'expi_time' : rises/srate, 'select' : [1]*rises.shape[0]}
     
-    df_detection = pd.DataFrame(data_detection, columns=['cycle_num', 'inspi_index', 'expi_index', 'inspi_time', 'expi_time', 'peaks', 'troughs', 'select'])
+    df_detection = pd.DataFrame(data_detection, columns=['cycle_num', 'inspi_index', 'expi_index', 'inspi_time', 'expi_time', 'select'])
 
     df_detection['cycle_duration'] = np.diff(decays/srate)
     df_detection['insp_duration'] = df_detection['expi_time'] - df_detection['inspi_time']
     df_detection['exp_duration'] = df_detection['cycle_duration'] - df_detection['insp_duration']
     df_detection['cycle_freq'] = 1/df_detection['cycle_duration']
 
-    df_detection['insp_amplitude'] = sig[df_detection['peaks'].values] - sig[df_detection['inspi_index'].values]
-    df_detection['exp_amplitude'] = np.abs(sig[df_detection['troughs'].values] - sig[df_detection['expi_index'].values])
-    df_detection['total_amplitude'] = df_detection['insp_amplitude'] + df_detection['exp_amplitude']
+    if sujet in sujet_for_more_filter:
+        df_detection['insp_amplitude'] = resp_features['insp_amplitude']
+        df_detection['exp_amplitude'] = resp_features['exp_amplitude']
+        df_detection['total_amplitude'] = resp_features['total_amplitude']
+    else:  
+        df_detection['insp_amplitude'] = sig[peaks] - sig[df_detection['inspi_index'].values]
+        df_detection['exp_amplitude'] = np.abs(sig[troughs] - sig[df_detection['expi_index'].values])
+        df_detection['total_amplitude'] = df_detection['insp_amplitude'] + df_detection['exp_amplitude']
 
     #### verif
     if debug:
-        plot_cyclepoints_array(sig_low, srate, peaks=df_detection['peaks'], troughs=df_detection['troughs'], 
+        plot_cyclepoints_array(sig_low, srate, peaks=peaks, troughs=troughs, 
         rises=df_detection['inspi_index'], decays=df_detection['expi_index'])
         plt.show()
 
@@ -327,11 +468,11 @@ def detection_bycycle(sig, srate):
 
     #### verif
     if debug:
-        plot_cyclepoints_array(sig_low, srate, peaks=df_detection['peaks'], troughs=df_detection['troughs'], 
+        plot_cyclepoints_array(sig_low, srate, peaks=peaks, troughs=troughs, 
         rises=df_detection['inspi_index'], decays=df_detection['expi_index'])
         plt.show()
         
-        plot_cyclepoints_array(sig_low, srate, peaks=df_detection_deleted['peaks'], troughs=df_detection_deleted['troughs'], 
+        plot_cyclepoints_array(sig_low, srate, peaks=peaks, troughs=troughs, 
         rises=df_detection_deleted['inspi_index'], decays=df_detection_deleted['expi_index'])
         plt.show()
 
@@ -342,7 +483,7 @@ def detection_bycycle(sig, srate):
 
 
 #df_detection, respi_sig = detection_bycycle(respi_sig, srate), respi_sig
-def correct_resp_features(respi_sig, df_detection, srate):
+def correct_resp_features(respi_sig, df_detection, cond, srate):
 
     cycle_indexes = np.concatenate((df_detection['expi_index'][df_detection['select'] == 1].values.reshape(-1,1), 
                                     df_detection['inspi_index'][df_detection['select'] == 1].values.reshape(-1,1)), axis=1)
@@ -432,7 +573,8 @@ def edit_df_for_sretch_cycles_deleted(sujet, respi_allcond, raw_allcond):
         for session_i in range(len(raw_allcond[cond])):
 
             #### params
-            respi = raw_allcond[cond][session_i].get_data()[-3, :]
+            respi_i = chan_list.index('nasal')
+            respi = raw_allcond[cond][session_i].get_data()[respi_i, :]
             cycle_times = respi_allcond[cond][session_i][0][['inspi_time', 'expi_time']].values
             mean_cycle_duration = np.mean(respi_allcond[cond][session_i][0][['insp_duration', 'exp_duration']].values, axis=0)
             mean_inspi_ratio = mean_cycle_duration[0]/mean_cycle_duration.sum()
@@ -464,26 +606,31 @@ def export_sniff_count(sujet, respi_allcond):
     os.chdir(os.path.join(path_results, sujet, 'RESPI'))
     df_count_cycle.to_excel(f'{sujet}_count_cycles.xlsx')
 
-########################################
-######## VERIF RESPIFEATURES ########
-########################################
+
+
+
+
+
+
+
 
 
 
 if __name__ == '__main__':
 
     ############################
-    ######## PARAMETERS ########
+    ######## LOAD DATA ########
     ############################
 
     
     #### whole protocole
-    sujet = 'CHEe'
+    # sujet = 'CHEe'
     # sujet = 'GOBc' 
     # sujet = 'MAZm' 
-    # sujet = 'TREt' 
+    sujet = 'TREt' 
 
     #### FR_CV only
+    # sujet = 'KOFs'
     # sujet = 'MUGa'
     # sujet = 'BANc'
     # sujet = 'LEMl'
@@ -491,83 +638,8 @@ if __name__ == '__main__':
     # sujet = 'pat_02476_0929'
     # sujet = 'pat_02495_0949'
 
-    ############################
-    ######## LOAD DATA ########
-    ############################
-
-
-    #### adjust conditions
-    os.chdir(os.path.join(path_prep, sujet, 'sections'))
-    dirlist_subject = os.listdir()
-
-    cond_keep = []
-    for cond in conditions_allsubjects:
-
-        for file in dirlist_subject:
-
-            if file.find(cond) != -1 : 
-                cond_keep.append(cond)
-                break
-
-    conditions = cond_keep
-
     #### load data
-    raw_allcond = {}
-
-    for cond in conditions:
-
-        load_i = []
-        for session_i, session_name in enumerate(os.listdir()):
-            if session_name.find(cond) > 0 and session_name.find('lf') != -1 :
-                load_i.append(session_i)
-            else:
-                continue
-
-        load_list = [os.listdir()[i] for i in load_i]
-
-        data = []
-        for load_name in load_list:
-            data.append(mne.io.read_raw_fif(load_name, preload=True))
-
-        raw_allcond[cond] = data
-
-
-    srate = int(raw_allcond[os.listdir()[0][5:10]][0].info['sfreq'])
-    chan_list = raw_allcond[os.listdir()[0][5:10]][0].info['ch_names']
-
-    #### compute
-    respi_allcond = {}
-    for cond in conditions:
-        
-        data = []
-        for session_i in range(len(raw_allcond[cond])):
-            if cond == 'FR_MV' :
-                respi_i = chan_list.index('ventral')
-            else :
-                respi_i = chan_list.index('nasal')
-            
-            respi_to_analyze = raw_allcond[cond][session_i].get_data()[respi_i, :]
-            data.append(analyse_resp(respi_to_analyze, srate, 0, cond))
-
-        respi_allcond[cond] = data
-
-
-
-    respi_allcond_bybycle = {}
-    for cond in conditions:
-        
-        data = []
-        for session_i in range(len(raw_allcond[cond])):
-            if cond == 'FR_MV' :
-                respi_i = chan_list.index('ventral')
-            else :
-                respi_i = chan_list.index('nasal')
-            
-            respi_sig = raw_allcond[cond][session_i].get_data()[respi_i, :]
-            resp_features_i = correct_resp_features(respi_sig, detection_bycycle(respi_sig, srate), srate)
-            data.append(resp_features_i)
-
-        respi_allcond_bybycle[cond] = data
+    raw_allcond, respi_allcond, respi_allcond_bybycle, conditions, chan_list, srate = load_respi_allcond_data(sujet)
 
 
 
@@ -586,12 +658,13 @@ if __name__ == '__main__':
         cond = 'RD_CV' 
         cond = 'RD_FV' 
         cond = 'RD_SV'
+
         cond = 'FR_CV'
 
-        # cond = 'RD_AV'
-        # cond = 'FR_MV'
+        cond = 'RD_AV'
+        cond = 'FR_MV'
         
-        session_i = 1
+        session_i = 0
 
         respi_allcond[cond][session_i][1].show()
         respi_allcond[cond][session_i][2].show()
@@ -643,7 +716,7 @@ if __name__ == '__main__':
 
     edit_df_for_sretch_cycles_deleted(sujet, respi_allcond_bybycle, raw_allcond)
 
-    export_sniff_count(sujet, respi_allcond)
+    export_sniff_count(sujet, respi_allcond_bybycle)
 
     ################################
     ######## SAVE FIG ########

@@ -10,6 +10,7 @@ import joblib
 import mne
 import scipy.fftpack
 import scipy.signal
+from sklearn.utils import resample
 
 from n0_config_params import *
 from n0bis_config_analysis_functions import *
@@ -23,7 +24,7 @@ debug = False
 ########################################
 
 #path_data, sujet = 'D:\LPPR_CMO_PROJECT\Lyon\Data\iEEG', 'LYONNEURO_2019_CAPp'
-def extract_data_trc():
+def extract_data_trc(sujet):
 
     os.chdir(os.path.join(path_data,sujet))
 
@@ -333,8 +334,8 @@ def preprocessing_ieeg(data, chan_list, srate, prep_step):
 
     ch_types = ['seeg'] * (np.size(data,0)) # ‘ecg’, ‘stim’, ‘eog’, ‘misc’, ‘seeg’, ‘eeg’
 
-    info = mne.create_info(chan_list, srate, ch_types=ch_types)
-    raw_init = mne.io.RawArray(data, info)
+    info = mne.create_info(chan_list, srate, ch_types=ch_types, verbose='critical')
+    raw_init = mne.io.RawArray(data, info, verbose='critical')
 
     if debug == True :
         for nchan in range(np.size(raw_init.get_data(),0)):
@@ -584,6 +585,8 @@ def preprocessing_ieeg(data, chan_list, srate, prep_step):
 
     data_preproc = raw.get_data()
 
+    del raw, raw_init, raw_post
+
     return data_preproc
 
 
@@ -630,6 +633,7 @@ def ecg_detection(data_aux, chan_list_aux, srate):
 ######## CHOP & SAVE ########
 ################################
 
+#data, band_preproc, export_info = data_preproc_lf, 'lf', True
 def chop_save_trc(data, chan_list, data_aux, chan_list_aux, conditions_trig, trig, srate, ecg_events_time, band_preproc, export_info):
 
     print('#### SAVE ####')
@@ -639,9 +643,11 @@ def chop_save_trc(data, chan_list, data_aux, chan_list_aux, conditions_trig, tri
     chan_list_all = chan_list + chan_list_aux + ['ECG_cR']
 
     #### resample if needed
+
     if srate != 500:
 
-        dw_srate = 500 # new srate
+        ratio_resampling = dw_srate/srate
+
         dw_npnts = int( data_all.shape[1]*dw_srate/srate )
 
         dw_data = np.zeros(( data_all.shape[0], dw_npnts ))
@@ -662,13 +668,27 @@ def chop_save_trc(data, chan_list, data_aux, chan_list_aux, conditions_trig, tri
         data_all = dw_data.copy()
         srate = 500
 
-    ch_types = ['seeg'] * (len(chan_list_all)-4) + ['misc'] * 4
-    info = mne.create_info(chan_list_all, srate, ch_types=ch_types)
-    raw_all = mne.io.RawArray(data_all, info)
+        del dw_data
 
-    for i in range(data_all.shape[0]):
-        plt.plot(data_all[i,:]+i)
-    plt.show()
+        #### resample trig
+        pre_trig_resample = trig.time.values 
+        post_trig = []
+        for trig_i in pre_trig_resample:
+            post_trig.append(int(trig_i*ratio_resampling))
+        post_trig = np.array(post_trig)
+
+        trig['time'] = post_trig
+
+        ecg_events_time = [int(i*ratio_resampling) for i in ecg_events_time]
+
+    ch_types = ['seeg'] * (len(chan_list_all)-4) + ['misc'] * 4
+    info = mne.create_info(chan_list_all, srate, ch_types=ch_types, verbose='critical')
+    raw_all = mne.io.RawArray(data_all, info, verbose='critical')
+
+    if debug:
+        for i in range(data_all.shape[0]):
+            plt.plot(data_all[i,:]+i)
+        plt.show()
 
     del data
     del data_all
@@ -706,14 +726,13 @@ def chop_save_trc(data, chan_list, data_aux, chan_list_aux, conditions_trig, tri
 
         cond_i = np.where(trig.name.values == trig_cond[0])[0]
 
-        for i, trig_i in enumerate(cond_i):
+        for trig_i in cond_i:
 
             count_session[condition] = count_session[condition] + 1 
 
             raw_chunk = raw_all.copy()
             raw_chunk.crop( tmin = (trig.iloc[trig_i,:].time)/srate , tmax= (trig.iloc[trig_i+1,:].time/srate)-0.2 )
-            
-            raw_chunk.save(sujet + '_' + condition + '_' + str(i+1) + '_' + band_preproc + '.fif')
+            raw_chunk.save(sujet + '_' + condition + '_' + str(trig_i+1) + '_' + band_preproc + '.fif')
 
             del raw_chunk
 
@@ -777,7 +796,7 @@ if __name__== '__main__':
     ######## EXTRACT DATA ########
     ################################
 
-    data, chan_list, data_aux, chan_list_aux, chan_list_all_rmw, trig, srate = extract_data_trc()
+    data, chan_list, data_aux, chan_list_aux, chan_list_all_rmw, trig, srate = extract_data_trc(sujet)
 
 
     #### verif and adjust trig for some patients

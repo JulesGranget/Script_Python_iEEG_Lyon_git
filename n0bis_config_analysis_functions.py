@@ -598,6 +598,10 @@ def load_data(band_prep, cond, session_i):
 
     data = raw.get_data() 
 
+    if sujet[:3] == 'pat' and sujet_respi_adjust[sujet] == 'inverse':
+        data[-3,:] = data[-3,:]*-1
+        data[-4,:] = data[-4,:]*-1
+
     #### go back to path source
     os.chdir(path_source)
 
@@ -625,7 +629,11 @@ def load_data_sujet(sujet_tmp, band_prep, cond, session_i):
 
     raw = mne.io.read_raw_fif(load_name, preload=True, verbose='critical')
 
-    data = raw.get_data() 
+    data = raw.get_data()
+
+    if sujet[:3] == 'pat' and sujet_respi_adjust[sujet] == 'inverse':
+        data[-3,:] = data[-3,:]*-1
+        data[-4,:] = data[-4,:]*-1
 
     #### go back to path source
     os.chdir(path_source)

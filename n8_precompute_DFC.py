@@ -382,8 +382,8 @@ def get_pli_ispc_dfc(sujet, cond, band_prep, band, freq):
             mat_stretch_mean += mat_stretch[trial_i]
             mat_dfc_mean += mat_dfc[trial_i]
 
-    mat_stretch_mean /= len(n_trials)
-    mat_dfc_mean /= len(n_trials)
+    mat_stretch_mean /= n_trials
+    mat_dfc_mean /= n_trials
 
     #### identify anat info
     prms = get_params(sujet)
@@ -446,15 +446,15 @@ if __name__ == '__main__':
 
     cond = 'FR_CV'
 
-    #band_prep = 'hf'
+    #band_prep = 'lf'
     for band_prep in band_prep_list:
-        #band, freq = list(freq_band_dict_FC_function[band_prep].items())[0]
+        #band, freq = 'beta', [10,40]
         for band, freq in freq_band_dict_FC_function[band_prep].items():
 
             if band in ['beta', 'l_gamma', 'h_gamma']:
 
                 #get_pli_ispc_dfc(sujet, cond)
-                execute_function_in_slurm_bash('n8_precompute_fc', 'get_pli_ispc_dfc', [sujet, cond, band_prep, band, freq])
-                # execute_function_in_slurm_bash_mem_choice('n8_precompute_fc', 'get_pli_ispc_dfc', [sujet, cond, band_prep, band, freq], '30G')
+                # execute_function_in_slurm_bash('n8_precompute_DFC', 'get_pli_ispc_dfc', [sujet, cond, band_prep, band, freq])
+                execute_function_in_slurm_bash_mem_choice('n8_precompute_DFC', 'get_pli_ispc_dfc', [sujet, cond, band_prep, band, freq], '15G')
 
 
