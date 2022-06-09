@@ -138,7 +138,7 @@ def get_pli_ispc_dfc_trial(sujet, cond, band_prep, band, freq, trial_i):
         print('ALREADY DONE')
         return
 
-    wavelets, nfrex = get_wavelets(band_prep, freq)
+    wavelets, nfrex = get_wavelets(sujet, band_prep, freq)
 
     #### initiate res
     os.chdir(path_memmap)

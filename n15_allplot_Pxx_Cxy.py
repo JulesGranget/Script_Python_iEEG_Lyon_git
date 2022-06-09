@@ -313,7 +313,7 @@ if __name__ == '__main__':
 
         fig.savefig(ROI + '_Cxy.jpeg')
 
-        plt.close()
+        plt.close('all')
 
     #### Pxx
 
@@ -355,7 +355,7 @@ if __name__ == '__main__':
 
         fig.savefig(ROI_i + '_Pxx.jpeg')
 
-        plt.close()
+        plt.close('all')
 
 
 

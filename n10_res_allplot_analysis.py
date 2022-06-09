@@ -621,7 +621,7 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process, cond):
                 fig.savefig(ROI_to_process + '_lf.jpeg', dpi=600)
             if band_prep == 'hf':
                 fig.savefig(ROI_to_process + '_hf.jpeg', dpi=600)
-            plt.close()
+            plt.close('all')
 
 
 
@@ -809,7 +809,7 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process, cond):
                 fig.savefig(Lobe_to_process + '_lf.jpeg', dpi=600)
             if band_prep == 'hf':
                 fig.savefig(Lobe_to_process + '_hf.jpeg', dpi=600)
-            plt.close()
+            plt.close('all')
 
 
 
@@ -944,7 +944,7 @@ def plot_allband_allcond():
                     fig.savefig(ROI + '_all_lf.jpeg', dpi=600)
                 if band_prep == 'hf':
                     fig.savefig(ROI + '_all_hf.jpeg', dpi=600)
-                plt.close()
+                plt.close('all')
 
     joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(plot_and_save_allband_allcond_ROI)(ROI) for ROI in list(ROI_list_allband.keys()))
 
@@ -1022,7 +1022,7 @@ def plot_allband_allcond():
                         fig.savefig(Lobe + '_all_lf.jpeg', dpi=600)
                     if band_prep == 'hf':
                         fig.savefig(Lobe + '_all_hf.jpeg', dpi=600)
-                    plt.close()
+                    plt.close('all')
 
     joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(plot_and_save_allband_allcond_Lobe)(Lobe) for Lobe in list(Lobe_list_allband.keys()))
 

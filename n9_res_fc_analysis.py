@@ -28,7 +28,7 @@ debug = False
 #######################################
 
 #data = data_tmp
-def compute_fc_metrics_mat(band_prep, data, freq, band, cond, session_i, prms):
+def compute_fc_metrics_mat(sujet, band_prep, data, freq, band, cond, session_i, prms):
     
     #### check if already computed
     pli_mat = np.array([0])
@@ -49,7 +49,7 @@ def compute_fc_metrics_mat(band_prep, data, freq, band, cond, session_i, prms):
     
 
     #### select wavelet parameters
-    wavelets, nfrex = get_wavelets(band_prep, freq)
+    wavelets, nfrex = get_wavelets(sujet, band_prep, freq)
 
     data = data[:len(prms['chan_list_ieeg']),:]
 
@@ -189,8 +189,8 @@ def compute_pli_ispc_allband(sujet):
 
                     if len(respfeatures_allcond[cond]) == 1:
 
-                        data_tmp = load_data(band_prep, cond, 0)
-                        pli_mat, ispc_mat = compute_fc_metrics_mat(band_prep, data_tmp, freq, band, cond, 0, prms)
+                        data_tmp = load_data_sujet(sujet, band_prep, cond, 0)
+                        pli_mat, ispc_mat = compute_fc_metrics_mat(sujet, band_prep, data_tmp, freq, band, cond, 0, prms)
                         pli_allcond[cond] = [pli_mat]
                         ispc_allcond[cond] = [ispc_mat]
 
@@ -201,8 +201,8 @@ def compute_pli_ispc_allband(sujet):
 
                         for session_i in range(len(respfeatures_allcond[cond])):
                             
-                            data_tmp = load_data(band_prep, cond, session_i)
-                            pli_mat, ispc_mat = compute_fc_metrics_mat(band_prep, data_tmp, freq, band, cond, session_i, prms)
+                            data_tmp = load_data_sujet(sujet, band_prep, cond, session_i)
+                            pli_mat, ispc_mat = compute_fc_metrics_mat(sujet, band_prep, data_tmp, freq, band, cond, session_i, prms)
                             load_ispc.append(ispc_mat)
                             load_pli.append(pli_mat)
 
@@ -232,7 +232,7 @@ def compute_pli_ispc_allband(sujet):
 
 
 
-def compute_TF_ITPC(prms):
+def compute_TF_ITPC(sujet, prms):
 
     #tf_mode = 'ITPC'
     for tf_mode in ['TF', 'ITPC']:
@@ -357,8 +357,8 @@ def get_pli_ispc_allsession(sujet):
 
                     if len(respfeatures_allcond[cond]) == 1:
 
-                        data_tmp = load_data(band_prep, cond, 0)
-                        pli_mat, ispc_mat = compute_fc_metrics_mat(band_prep, data_tmp, freq, band, cond, 0, prms)
+                        data_tmp = load_data_sujet(sujet, band_prep, cond, 0)
+                        pli_mat, ispc_mat = compute_fc_metrics_mat(sujet, band_prep, data_tmp, freq, band, cond, 0, prms)
                         pli_allcond[cond] = [pli_mat]
                         ispc_allcond[cond] = [ispc_mat]
 
@@ -369,8 +369,8 @@ def get_pli_ispc_allsession(sujet):
 
                         for session_i in range(len(respfeatures_allcond[cond])):
                             
-                            data_tmp = load_data(band_prep, cond, session_i)
-                            pli_mat, ispc_mat = compute_fc_metrics_mat(band_prep, data_tmp, freq, band, cond, session_i, prms)
+                            data_tmp = load_data_sujet(sujet, band_prep, cond, session_i)
+                            pli_mat, ispc_mat = compute_fc_metrics_mat(sujet, band_prep, data_tmp, freq, band, cond, session_i, prms)
                             load_ispc.append(ispc_mat)
                             load_pli.append(pli_mat)
 
@@ -622,7 +622,7 @@ def mat_tresh(mat, percentile_thresh):
 
 
 
-def save_fig_FC(pli_allband_reduced, ispc_allband_reduced, df_loca, prms):
+def save_fig_FC(sujet, pli_allband_reduced, ispc_allband_reduced, df_loca, prms):
 
 
     print('######## SAVEFIG FC ########')
@@ -698,7 +698,7 @@ def save_fig_FC(pli_allband_reduced, ispc_allband_reduced, df_loca, prms):
 
         fig.savefig(sujet + '_ISPC_' + band + '_graph', dpi = 100)
 
-        plt.close()
+        plt.close('all')
 
         #### matrix
         if len(prms['conditions']) == 1:
@@ -730,7 +730,7 @@ def save_fig_FC(pli_allband_reduced, ispc_allband_reduced, df_loca, prms):
                     
         fig.savefig(sujet + '_ISPC_' + band + '_mat', dpi = 100)
 
-        plt.close()
+        plt.close('all')
 
 
     #### PLI
@@ -763,7 +763,7 @@ def save_fig_FC(pli_allband_reduced, ispc_allband_reduced, df_loca, prms):
 
         fig.savefig(sujet + '_PLI_' + band + '_graph', dpi = 100)
 
-        plt.close()
+        plt.close('all')
 
         #### matrix
         if len(prms['conditions']) == 1:
@@ -795,7 +795,7 @@ def save_fig_FC(pli_allband_reduced, ispc_allband_reduced, df_loca, prms):
                     
         fig.savefig(sujet + '_PLI_' + band + '_mat', dpi = 100)
 
-        plt.close()
+        plt.close('all')
 
 
 
@@ -811,7 +811,7 @@ def save_fig_for_allsession(sujet):
 
     pli_allband_reduced, ispc_allband_reduced = get_pli_ispc_allsession(sujet)
 
-    save_fig_FC(pli_allband_reduced, ispc_allband_reduced, df_loca, prms)
+    save_fig_FC(sujet, pli_allband_reduced, ispc_allband_reduced, df_loca, prms)
 
 
 

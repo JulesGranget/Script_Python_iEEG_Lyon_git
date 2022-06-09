@@ -386,7 +386,7 @@ def compute_for_one_ROI_allcond(ROI_i, mat_type):
             fig.savefig(ROI_i + '_all_lf.jpeg', dpi=600)
         if band_prep == 'hf':
             fig.savefig(ROI_i + '_all_hf.jpeg', dpi=600)
-        plt.close()
+        plt.close('all')
 
 
 
@@ -569,7 +569,7 @@ def compute_for_one_Lobe_allcond(Lobe_i, mat_type):
             fig.savefig(Lobe_i + '_all_lf.jpeg', dpi=600)
         if band_prep == 'hf':
             fig.savefig(Lobe_i + '_all_hf.jpeg', dpi=600)
-        plt.close()
+        plt.close('all')
 
 
 

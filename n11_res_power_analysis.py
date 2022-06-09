@@ -147,14 +147,14 @@ def load_surrogates(sujet, respfeatures_allcond, prms):
 
 
 #### compute Pxx & Cxy & Cyclefreq
-def compute_PxxCxyCyclefreq_for_cond(band_prep, cond, session_i, stretch_point_surrogates, respfeatures_allcond, prms):
+def compute_PxxCxyCyclefreq_for_cond(sujet, band_prep, cond, session_i, stretch_point_surrogates, respfeatures_allcond, prms):
     
     print(cond)
 
     #### extract data
     chan_i = prms['chan_list'].index('nasal')
-    respi = load_data(band_prep, cond, session_i)[chan_i,:]
-    data_tmp = load_data(band_prep, cond, session_i)
+    respi = load_data_sujet(sujet, band_prep, cond, session_i)[chan_i,:]
+    data_tmp = load_data_sujet(sujet, band_prep, cond, session_i)
 
     #### prepare analysis
     hzPxx = np.linspace(0,prms['srate']/2,int(prms['nfft']/2+1))
@@ -190,7 +190,7 @@ def compute_PxxCxyCyclefreq_for_cond(band_prep, cond, session_i, stretch_point_s
 
 
 
-def compute_all_PxxCxyCyclefreq(respfeatures_allcond, prms):
+def compute_all_PxxCxyCyclefreq(sujet, respfeatures_allcond, prms):
 
     Pxx_allcond = {'lf' : {}, 'hf' : {}}
     Cxy_allcond = {}
@@ -205,7 +205,7 @@ def compute_all_PxxCxyCyclefreq(respfeatures_allcond, prms):
 
             if ( len(respfeatures_allcond[cond]) == 1 ) & (band_prep == 'lf'):
 
-                Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond = compute_PxxCxyCyclefreq_for_cond(band_prep, cond, 0, stretch_point_surrogates, respfeatures_allcond, prms)
+                Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond = compute_PxxCxyCyclefreq_for_cond(sujet, band_prep, cond, 0, stretch_point_surrogates, respfeatures_allcond, prms)
 
                 Pxx_allcond['lf'][cond] = [Pxx_for_cond]
                 Cxy_allcond[cond] = [Cxy_for_cond]
@@ -213,7 +213,7 @@ def compute_all_PxxCxyCyclefreq(respfeatures_allcond, prms):
 
             elif ( len(respfeatures_allcond[cond]) == 1 ) & (band_prep == 'hf') :
 
-                Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond = compute_PxxCxyCyclefreq_for_cond(band_prep, cond, 0, stretch_point_surrogates, respfeatures_allcond, prms)
+                Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond = compute_PxxCxyCyclefreq_for_cond(sujet, band_prep, cond, 0, stretch_point_surrogates, respfeatures_allcond, prms)
 
                 Pxx_allcond['hf'][cond] = [Pxx_for_cond]
                 cyclefreq_allcond['hf'][cond] = [cyclefreq_for_cond]
@@ -226,7 +226,7 @@ def compute_all_PxxCxyCyclefreq(respfeatures_allcond, prms):
 
                 for session_i in range(len(respfeatures_allcond[cond])):
 
-                    Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond = compute_PxxCxyCyclefreq_for_cond(band_prep, cond, session_i, stretch_point_surrogates, respfeatures_allcond, prms)
+                    Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond = compute_PxxCxyCyclefreq_for_cond(sujet, band_prep, cond, session_i, stretch_point_surrogates, respfeatures_allcond, prms)
 
                     Pxx_load.append(Pxx_for_cond)
                     Cxy_load.append(Cxy_for_cond)
@@ -243,7 +243,7 @@ def compute_all_PxxCxyCyclefreq(respfeatures_allcond, prms):
 
                 for session_i in range(len(respfeatures_allcond[cond])):
 
-                    Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond = compute_PxxCxyCyclefreq_for_cond(band_prep, cond, session_i, stretch_point_surrogates, respfeatures_allcond, prms)
+                    Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond = compute_PxxCxyCyclefreq_for_cond(sujet, band_prep, cond, session_i, stretch_point_surrogates, respfeatures_allcond, prms)
 
                     Pxx_load.append(Pxx_for_cond)
                     cyclefreq_load.append(cyclefreq_for_cond)
@@ -273,7 +273,7 @@ def reduce_PxxCxy_cyclefreq(Pxx_allcond, Cxy_allcond, cyclefreq_allcond, surroga
 
 
 
-def save_Pxx_Cxy_Cyclefreq_Surrogates_allcond(Pxx_allcond, cyclefreq_allcond, Cxy_allcond, surrogates_allcond):
+def save_Pxx_Cxy_Cyclefreq_Surrogates_allcond(sujet, Pxx_allcond, cyclefreq_allcond, Cxy_allcond, surrogates_allcond):
 
     os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
 
@@ -292,16 +292,16 @@ def save_Pxx_Cxy_Cyclefreq_Surrogates_allcond(Pxx_allcond, cyclefreq_allcond, Cx
 
 
 
-def compute_reduced_PxxCxyCyclefreqSurrogates(respfeatures_allcond, surrogates_allcond, prms):
+def compute_reduced_PxxCxyCyclefreqSurrogates(sujet, respfeatures_allcond, surrogates_allcond, prms):
 
 
     if os.path.exists(os.path.join(path_precompute, sujet, 'PSD_Coh', f'{sujet}_Pxx_allcond.pkl')) == False:
     
-        Pxx_allcond, Cxy_allcond, cyclefreq_allcond = compute_all_PxxCxyCyclefreq(respfeatures_allcond, prms)
+        Pxx_allcond, Cxy_allcond, cyclefreq_allcond = compute_all_PxxCxyCyclefreq(sujet, respfeatures_allcond, prms)
 
         Pxx_allcond, cyclefreq_allcond, Cxy_allcond, surrogates_allcond = reduce_PxxCxy_cyclefreq(Pxx_allcond, Cxy_allcond, cyclefreq_allcond, surrogates_allcond, prms)
 
-        save_Pxx_Cxy_Cyclefreq_Surrogates_allcond(Pxx_allcond, cyclefreq_allcond, Cxy_allcond, surrogates_allcond)
+        save_Pxx_Cxy_Cyclefreq_Surrogates_allcond(sujet, Pxx_allcond, cyclefreq_allcond, Cxy_allcond, surrogates_allcond)
 
         print('COMPUTE Pxx CF Cxy Surr')
 
@@ -349,7 +349,7 @@ def get_Pxx_Cxy_Cyclefreq_Surrogates_allcond(sujet):
 
 
 #n_chan = 0
-def plot_save_PSD_Coh(n_chan):
+def plot_save_PSD_Coh(sujet, n_chan):
 
     #### load data
     Pxx_allcond, Cxy_allcond, surrogates_allcond, cyclefreq_allcond = get_Pxx_Cxy_Cyclefreq_Surrogates_allcond(sujet)
@@ -472,9 +472,9 @@ def plot_save_PSD_Coh(n_chan):
 ################################
 
 
-def compute_TF_ITPC(prms):
+def compute_TF_ITPC(sujet, prms):
 
-    #tf_mode = 'ITPC'
+    #tf_mode = 'TF'
     for tf_mode in ['TF', 'ITPC']:
     
         if tf_mode == 'TF':
@@ -567,7 +567,7 @@ def compute_TF_ITPC(prms):
 ########################################
 
 
-def get_tf_itpc_stretch_allcond(tf_mode):
+def get_tf_itpc_stretch_allcond(sujet, tf_mode):
 
     source_path = os.getcwd()
 
@@ -594,7 +594,7 @@ def get_tf_itpc_stretch_allcond(tf_mode):
 
 
 #n_chan, tf_mode, band_prep = 0, 'TF', 'lf'
-def save_TF_ITPC_n_chan(n_chan, tf_mode, band_prep):
+def save_TF_ITPC_n_chan(sujet, n_chan, tf_mode, band_prep):
 
     #### load prms
     prms = get_params(sujet)
@@ -625,7 +625,7 @@ def save_TF_ITPC_n_chan(n_chan, tf_mode, band_prep):
             if band == 'whole' or band == 'l_gamma':
                 continue
 
-            data = get_tf_itpc_stretch_allcond(tf_mode)[band_prep][cond][band][n_chan, :, :]
+            data = get_tf_itpc_stretch_allcond(sujet, tf_mode)[band_prep][cond][band][n_chan, :, :]
             frex = np.linspace(freq[0], freq[1], np.size(data,0))
 
             scales['vmin_val'] = np.append(scales['vmin_val'], np.min(data))
@@ -639,6 +639,8 @@ def save_TF_ITPC_n_chan(n_chan, tf_mode, band_prep):
 
         vmaxs[cond] = vmax
         vmins[cond] = vmin
+
+    del scales
 
     #### plot
     fig, axs = plt.subplots(nrows=len(freq_band), ncols=len(prms['conditions']))
@@ -658,7 +660,7 @@ def save_TF_ITPC_n_chan(n_chan, tf_mode, band_prep):
         #### plot
         for i, (band, freq) in enumerate(freq_band.items()) :
 
-            data = get_tf_itpc_stretch_allcond(tf_mode)[band_prep][cond][band][n_chan, :, :]
+            data = get_tf_itpc_stretch_allcond(sujet, tf_mode)[band_prep][cond][band][n_chan, :, :]
             frex = np.linspace(freq[0], freq[1], np.size(data,0))
         
             if len(conditions_allsubjects) == 1:
@@ -689,6 +691,8 @@ def save_TF_ITPC_n_chan(n_chan, tf_mode, band_prep):
 
     #plt.show()
 
+    del data
+
     #### save
     fig.savefig(f'{sujet}_{chan_name}_{chan_loca}_{band_prep}.jpeg', dpi=150)
     plt.close('all')
@@ -715,12 +719,12 @@ def compilation_compute_Pxx_Cxy_Cyclefreq(sujet):
         
     surrogates_allcond = load_surrogates(sujet, respfeatures_allcond, prms)
 
-    compute_reduced_PxxCxyCyclefreqSurrogates(respfeatures_allcond, surrogates_allcond, prms)
+    compute_reduced_PxxCxyCyclefreqSurrogates(sujet, respfeatures_allcond, surrogates_allcond, prms)
     
     #### compute joblib
     print('######## PLOT & SAVE PSD AND COH ########')
 
-    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(plot_save_PSD_Coh)(n_chan) for n_chan in range(len(prms['chan_list_ieeg'])))
+    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(plot_save_PSD_Coh)(sujet, n_chan) for n_chan in range(len(prms['chan_list_ieeg'])))
 
     print('done')
 
@@ -730,9 +734,9 @@ def compilation_compute_TF_ITPC(sujet):
 
     prms = get_params(sujet)
 
-    compute_TF_ITPC(prms)
+    compute_TF_ITPC(sujet, prms)
     
-    #tf_mode = 'ITPC'
+    #tf_mode = 'TF'
     for tf_mode in ['TF', 'ITPC']:
         
         if tf_mode == 'TF':
@@ -745,7 +749,7 @@ def compilation_compute_TF_ITPC(sujet):
 
             print(band_prep)
 
-            joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(save_TF_ITPC_n_chan)(n_chan, tf_mode, band_prep) for n_chan, tf_mode, band_prep in zip(range(len(prms['chan_list_ieeg'])), [tf_mode]*len(prms['chan_list_ieeg']), [band_prep]*len(prms['chan_list_ieeg'])))
+            joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(save_TF_ITPC_n_chan)(sujet, n_chan, tf_mode, band_prep) for n_chan, tf_mode, band_prep in zip(range(len(prms['chan_list_ieeg'])), [tf_mode]*len(prms['chan_list_ieeg']), [band_prep]*len(prms['chan_list_ieeg'])))
 
     print('done')
 

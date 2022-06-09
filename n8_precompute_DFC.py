@@ -138,7 +138,7 @@ def get_pli_ispc_dfc_trial(sujet, cond, band_prep, band, freq, trial_i):
         print('ALREADY DONE')
         return
 
-    wavelets, nfrex = get_wavelets(band_prep, freq)
+    wavelets, nfrex = get_wavelets(sujet, band_prep, freq)
 
     #### initiate res
     os.chdir(path_memmap)
@@ -228,7 +228,7 @@ def get_pli_ispc_dfc_trial(sujet, cond, band_prep, band, freq, trial_i):
     #pair_to_compute = pairs_to_compute[0]
     def compute_ispc_pli(pair_to_compute_i, pair_to_compute):
 
-        # print_advancement(pair_to_compute_i, len(pairs_to_compute), steps=[25, 50, 75])
+        print_advancement(pair_to_compute_i, len(pairs_to_compute), steps=[25, 50, 75])
 
         pair_A, pair_B = pair_to_compute.split('-')[0], pair_to_compute.split('-')[-1]
         pair_A_i, pair_B_i = prms['chan_list_ieeg'].index(pair_A), prms['chan_list_ieeg'].index(pair_B)

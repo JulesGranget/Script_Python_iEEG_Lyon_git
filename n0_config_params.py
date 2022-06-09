@@ -21,19 +21,25 @@ import scipy.signal
 perso_repo_computation = False
 
 #### whole protocole
-# sujet = 'CHEe'
+sujet = 'CHEe'
 # sujet = 'GOBc' 
 # sujet = 'MAZm' 
-sujet = 'TREt' 
+# sujet = 'TREt' 
 
 #### FR_CV only
 # sujet = 'MUGa'
 # sujet = 'BANc'
 # sujet = 'KOFs'
 # sujet = 'LEMl'
+
 # sujet = 'pat_02459_0912'
 # sujet = 'pat_02476_0929'
 # sujet = 'pat_02495_0949'
+
+# sujet = 'pat_03083_1527'
+# sujet = 'pat_03105_1551'
+# sujet = 'pat_03128_1591'
+# sujet = 'pat_03138_1601'
 
 #sujet = 'DEBUG'
 
@@ -41,7 +47,11 @@ sujet = 'TREt'
 sujet_list = ['CHEe', 'GOBc', 'MAZm', 'TREt']
 
 #### FR_CV
-sujet_list_FR_CV = ['CHEe', 'GOBc', 'MAZm', 'TREt', 'MUGa', 'BANc', 'KOFs', 'LEMl', 'pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949']
+sujet_list_FR_CV =  ['CHEe', 'GOBc', 'MAZm', 'TREt', 'MUGa', 'BANc', 'KOFs', 'LEMl', 
+                    'pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949',
+                    ]
+
+sujet_list_paris_only_FR_CV = ['pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949']
 
 conditions_allsubjects = ['RD_CV', 'RD_FV', 'RD_SV', 'RD_AV', 'FR_CV', 'FR_MV']
 

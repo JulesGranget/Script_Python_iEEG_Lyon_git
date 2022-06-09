@@ -25,7 +25,7 @@ debug = False
 ########################################
 
 #path_data, sujet = 'D:\LPPR_CMO_PROJECT\Lyon\Data\iEEG', 'LYONNEURO_2019_CAPp'
-def extract_data_trc():
+def extract_data_trc(sujet):
 
     os.chdir(os.path.join(path_data,sujet))
 
@@ -262,24 +262,32 @@ def extract_data_trc():
 ######## COMPUTE BASELINE ######## 
 ########################################
 
-#sujet_i, band_prep = 'pat_03083_1527', 'lf'
-def compute_and_save_baseline(sujet_i, band_prep):
+#sujet, band_prep = 'pat_03083_1527', 'lf'
+def compute_and_save_baseline(sujet, band_prep):
 
     print('#### COMPUTE BASELINES ####')
 
     #### verify if already computed
     verif_band_compute = []
     for band in list(freq_band_dict[band_prep].keys()):
-        if os.path.exists(os.path.join(path_precompute, sujet_i, 'baselines', f'{sujet_i}_{band}_baselines.npy')):
+        if os.path.exists(os.path.join(path_precompute, sujet, 'baselines', f'{sujet}_{band}_baselines.npy')):
             verif_band_compute.append(True)
 
     if np.sum(verif_band_compute) > 0:
-        print(f'{sujet_i} : BASELINES ALREADY COMPUTED')
+        print(f'{sujet} : BASELINES ALREADY COMPUTED')
         return
             
 
-    #### open raw
-    data, chan_list, srate = extract_data_trc()
+    #### open raw and section if sujet from paris
+    if sujet in sujet_list_paris_only_FR_CV:
+        data = load_data_sujet(sujet, band_prep, 'FR_CV', 0)
+        srate = get_srate(sujet)
+    elif sujet[:3] == 'pat' and sujet not in sujet_list_paris_only_FR_CV:
+        os.chdir(os.path.join(path_data, sujet, 'raw_data', sujet))
+        raw = mne.io.read_raw_eeglab(f'{sujet}_allchan.set', preload=True)
+        data, chan_list_ieeg, data_aux, chan_list_aux, srate = organize_raw(raw)
+    else:
+        data, chan_list, srate = extract_data_trc(sujet)
 
     #### generate all wavelets to conv
     wavelets_to_conv = {}
@@ -341,7 +349,7 @@ def compute_and_save_baseline(sujet_i, band_prep):
     n_band_to_compute = len(list(freq_band_dict[band_prep].keys()))
 
     os.chdir(path_memmap)
-    baseline_allchan = np.memmap(f'{sujet_i}_baseline_convolutions_{band_prep}.dat', dtype=np.float64, mode='w+', shape=(n_band_to_compute, data.shape[0], nfrex))
+    baseline_allchan = np.memmap(f'{sujet}_baseline_convolutions_{band_prep}.dat', dtype=np.float64, mode='w+', shape=(n_band_to_compute, data.shape[0], nfrex))
 
         #### compute
     #n_chan = 0
@@ -366,17 +374,18 @@ def compute_and_save_baseline(sujet_i, band_prep):
     joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(baseline_convolutions)(n_chan) for n_chan in range(np.size(data,0)))
 
     #### save baseline
-    os.chdir(os.path.join(path_precompute, sujet_i, 'baselines'))
+    os.chdir(os.path.join(path_precompute, sujet, 'baselines'))
 
     for band_i, band in enumerate(list(freq_band_dict[band_prep].keys())):
     
-        np.save(f'{sujet_i}_{band}_baselines.npy', baseline_allchan[band_i, :, :])
+        np.save(f'{sujet}_{band}_baselines.npy', baseline_allchan[band_i, :, :])
 
     #### remove memmap
     os.chdir(path_memmap)
-    os.remove(f'{sujet_i}_baseline_convolutions_{band_prep}.dat')
+    os.remove(f'{sujet}_baseline_convolutions_{band_prep}.dat')
 
     print('done')
+    print(sujet)
 
 
 
@@ -393,6 +402,7 @@ if __name__== '__main__':
     #compute_and_save_baseline(sujet, band_prep)
     
     #### slurm execution
+    #### possibility to launch several subjects simultaneously
     for band_prep in band_prep_list:
-        execute_function_in_slurm_bash('n3_compute_baselines', 'compute_and_save_baseline', [sujet, band_prep])
+        execute_function_in_slurm_bash('n5_precompute_baselines', 'compute_and_save_baseline', [sujet, band_prep])
 

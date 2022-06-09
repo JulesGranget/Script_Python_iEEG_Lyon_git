@@ -431,7 +431,7 @@ def execute_function_in_slurm_bash_mem_choice(name_script, name_function, params
 ################################
 
 
-def get_wavelets(band_prep, freq):
+def get_wavelets(sujet, band_prep, freq):
 
     #### get params
     prms = get_params(sujet)
@@ -578,44 +578,11 @@ def extract_chanlist_srate_conditions_for_sujet(sujet_tmp, conditions_allsubject
 
 
 
-def load_data(band_prep, cond, session_i):
+def load_data_sujet(sujet, band_prep, cond, session_i):
 
     path_source = os.getcwd()
     
     os.chdir(os.path.join(path_prep, sujet, 'sections'))
-
-    load_i = []
-    for i, session_name in enumerate(os.listdir()):
-        if ( session_name.find(cond) != -1 ) & ( session_name.find(band_prep) != -1 ):
-            load_i.append(i)
-        else:
-            continue
-
-    load_list = [os.listdir()[i] for i in load_i]
-    load_name = load_list[session_i]
-
-    raw = mne.io.read_raw_fif(load_name, preload=True, verbose='critical')
-
-    data = raw.get_data() 
-
-    if sujet[:3] == 'pat' and sujet_respi_adjust[sujet] == 'inverse':
-        data[-3,:] = data[-3,:]*-1
-        data[-4,:] = data[-4,:]*-1
-
-    #### go back to path source
-    os.chdir(path_source)
-
-    #### free memory
-    del raw
-
-    return data
-
-
-def load_data_sujet(sujet_tmp, band_prep, cond, session_i):
-
-    path_source = os.getcwd()
-    
-    os.chdir(os.path.join(path_prep, sujet_tmp, 'sections'))
 
     load_i = []
     for i, session_name in enumerate(os.listdir()):
@@ -660,6 +627,50 @@ def get_srate(sujet):
     del raw
 
     return srate
+
+
+
+
+
+def organize_raw(raw):
+
+    #### extract chan_list
+    chan_list_clean = []
+    chan_list = raw.info['ch_names']
+    srate = int(raw.info['sfreq'])
+    [chan_list_clean.append(nchan[23:]) for nchan in chan_list]
+
+    #### extract data
+    data = raw.get_data()
+
+    #### identify aux chan
+    nasal_i = chan_list_clean.index(aux_chan[sujet]['nasal'])
+    ventral_i = chan_list_clean.index(aux_chan[sujet]['ventral'])
+    ecg_i = chan_list_clean.index(aux_chan[sujet]['ECG'])
+
+    data_aux = np.vstack((data[nasal_i,:], data[ventral_i,:], data[ecg_i,:]))
+
+    if debug:
+        plt.plot(data_aux[0,:])
+        plt.plot(data_aux[1,:])
+        plt.plot(data_aux[2,:])
+        plt.show()
+
+    #### remove from data
+    data_ieeg = data.copy()
+
+    # remove other aux
+    for aux_name in aux_chan[sujet].keys():
+
+        aux_i = chan_list_clean.index(aux_chan[sujet][aux_name])
+        data_ieeg = np.delete(data_ieeg, aux_i, axis=0)
+        chan_list_clean.remove(aux_chan[sujet][aux_name])
+
+    chan_list_aux = [aux_i for aux_i in list(aux_chan[sujet]) if aux_i != 'EMG']
+    chan_list_ieeg = chan_list_clean
+
+
+    return data_ieeg, chan_list_ieeg, data_aux, chan_list_aux, srate
 
 
 
@@ -837,33 +848,6 @@ def stretch_data_tf(resp_features, nb_point_by_cycle, data, srate):
 ########################################
 
 
-def get_electrode_loca():
-
-    os.chdir(os.path.join(path_anatomy, sujet))
-
-    file_plot_select = pd.read_excel(sujet + '_plot_loca.xlsx')
-
-    chan_list_txt = open(sujet + '_chanlist_ieeg.txt', 'r')
-    chan_list_txt_readlines = chan_list_txt.readlines()
-    chan_list_ieeg_trc = [i.replace('\n', '') for i in chan_list_txt_readlines]
-
-    if sujet[:3] == 'pat':
-        chan_list_ieeg_csv = chan_list_ieeg_trc.copy()
-    else:
-        chan_list_ieeg_csv, trash = modify_name(chan_list_ieeg_trc)
-
-    loca_ieeg = []
-    for chan_name in chan_list_ieeg_csv:
-        loca_ieeg.append( str(file_plot_select['localisation_corrected'][file_plot_select['plot'] == chan_name].values.tolist()[0]) )
-
-    dict_loca = {}
-    for nchan_i, chan_name in enumerate(chan_list_ieeg_trc):
-        dict_loca[chan_name] = loca_ieeg[nchan_i]
-
-
-    return dict_loca
-
-
 
 def get_loca_df(sujet):
 
@@ -899,7 +883,7 @@ def get_loca_df(sujet):
     return df_loca
 
 
-def get_mni_loca():
+def get_mni_loca(sujet):
 
     os.chdir(os.path.join(path_anatomy, sujet))
 
