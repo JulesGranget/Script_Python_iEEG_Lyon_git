@@ -49,6 +49,7 @@ sujet_list = ['CHEe', 'GOBc', 'MAZm', 'TREt']
 #### FR_CV
 sujet_list_FR_CV =  ['CHEe', 'GOBc', 'MAZm', 'TREt', 'MUGa', 'BANc', 'KOFs', 'LEMl', 
                     'pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949',
+                    'pat_03083_1527', 'pat_03105_1551', 'pat_03128_1591', 'pat_03138_1601'
                     ]
 
 sujet_list_paris_only_FR_CV = ['pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949']
@@ -200,6 +201,11 @@ aux_chan = {
 'KOFs' : {'nasal': 'p7+', 'ventral' : None, 'ECG' : 'ECG'}, # OK
 'LEMl' : {'nasal': 'p17+', 'ventral' : None, 'ECG' : 'ECG1'}, # OK
 
+'pat_03083_1527' : {'nasal': 'PRES1', 'ventral' : 'BELT1', 'ECG' : 'ECG1'}, # OK
+'pat_03105_1551' : {'nasal': 'PRES1', 'ventral' : 'BELT1', 'ECG' : 'ECG1'}, # OK
+'pat_03128_1591' : {'nasal': 'PRES1', 'ventral' : 'BELT1', 'ECG' : 'ECG1'}, # OK
+'pat_03138_1601' : {'nasal': 'PRES1', 'ventral' : 'BELT1', 'ECG' : 'ECG1'}, # OK
+
 'DEBUG' : {'nasal': 'p20+', 'ventral' : 'p19+', 'ECG' : 'ECG'}, # OK
 
 }
@@ -242,9 +248,15 @@ sujet_respi_adjust = {
 'BANc' : 'inverse',
 'KOFs' : 'inverse',
 'LEMl' : 'inverse',
+
 'pat_02459_0912' : 'normal',
 'pat_02476_0929' : 'normal',
 'pat_02495_0949' : 'normal',
+
+'pat_03083_1527' : 'normal',
+'pat_03105_1551' : 'inverse',
+'pat_03128_1591' : 'normal',
+'pat_03138_1601' : 'normal',
 
 }
 
@@ -258,8 +270,8 @@ l_freq = 0
 h_freq = 2
 
 #### sujet that need more filter for respi sig
-sujet_for_more_filter = ['pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949']
-
+sujet_manual_detection = ['pat_03105_1551', 'pat_03128_1591']
+sujet_for_more_filter = ['pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949', 'pat_03138_1601']
 
 
 ################################

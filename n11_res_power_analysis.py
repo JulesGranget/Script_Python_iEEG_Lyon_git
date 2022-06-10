@@ -108,12 +108,11 @@ def reduce_data(dict2reduce, prms):
 
 
 
-#### load surrogates
 def load_surrogates(sujet, respfeatures_allcond, prms):
 
     os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
 
-    surrogates_allcond = {'Cxy' : {}, 'cyclefreq_lf' : {}, 'cyclefreq_hf' : {}}
+    surrogates_allcond = {'Cxy' : {}, 'cyclefreq_lf' : {}, 'cyclefreq_hf' : {}, 'MI' : {}}
 
     for cond in prms['conditions']:
 
@@ -122,20 +121,23 @@ def load_surrogates(sujet, respfeatures_allcond, prms):
             surrogates_allcond['Cxy'][cond] = [np.load(sujet + '_' + cond + '_' + str(1) + '_Coh.npy')]
             surrogates_allcond['cyclefreq_lf'][cond] = [np.load(sujet + '_' + cond + '_' + str(1) + '_cyclefreq_lf.npy')]
             surrogates_allcond['cyclefreq_hf'][cond] = [np.load(sujet + '_' + cond + '_' + str(1) + '_cyclefreq_hf.npy')]
+            surrogates_allcond['MI'][cond] = [np.load(f'{sujet}_{cond}_{str(session_i+1)}_MI_lf.npy')]
 
         elif len(respfeatures_allcond[cond]) > 1:
 
-            data_load = {'Cxy' : [], 'cyclefreq_lf' : [], 'cyclefreq_hf' : []}
+            data_load = {'Cxy' : [], 'cyclefreq_lf' : [], 'cyclefreq_hf' : [], 'MI' : {}}
 
             for session_i in range(len(respfeatures_allcond[cond])):
 
                 data_load['Cxy'].append(np.load(sujet + '_' + cond + '_' + str(session_i+1) + '_Coh.npy'))
                 data_load['cyclefreq_lf'].append(np.load(sujet + '_' + cond + '_' + str(session_i+1) + '_cyclefreq_lf.npy'))
                 data_load['cyclefreq_hf'].append(np.load(sujet + '_' + cond + '_' + str(session_i+1) + '_cyclefreq_hf.npy'))
+                data_load['MI'].append(np.load(f'{sujet}_{cond}_{str(session_i+1)}_MI_lf.npy'))
             
             surrogates_allcond['Cxy'][cond] = data_load['Cxy']
             surrogates_allcond['cyclefreq_lf'][cond] = data_load['cyclefreq_lf']
             surrogates_allcond['cyclefreq_hf'][cond] = data_load['cyclefreq_hf']
+            surrogates_allcond['MI'][cond] = data_load['MI']
 
 
     return surrogates_allcond
@@ -714,11 +716,13 @@ def save_TF_ITPC_n_chan(sujet, n_chan, tf_mode, band_prep):
 
 def compilation_compute_Pxx_Cxy_Cyclefreq(sujet):
     
+    #### load params
     prms = get_params(sujet)
     respfeatures_allcond = load_respfeatures(sujet)
         
     surrogates_allcond = load_surrogates(sujet, respfeatures_allcond, prms)
 
+    #### reduce surrogates
     compute_reduced_PxxCxyCyclefreqSurrogates(sujet, respfeatures_allcond, surrogates_allcond, prms)
     
     #### compute joblib

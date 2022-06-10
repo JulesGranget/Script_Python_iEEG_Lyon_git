@@ -283,9 +283,9 @@ def compute_and_save_baseline(sujet, band_prep):
         data = load_data_sujet(sujet, band_prep, 'FR_CV', 0)
         srate = get_srate(sujet)
     elif sujet[:3] == 'pat' and sujet not in sujet_list_paris_only_FR_CV:
-        os.chdir(os.path.join(path_data, sujet, 'raw_data', sujet))
+        os.chdir(os.path.join(path_data, sujet))
         raw = mne.io.read_raw_eeglab(f'{sujet}_allchan.set', preload=True)
-        data, chan_list_ieeg, data_aux, chan_list_aux, srate = organize_raw(raw)
+        data, chan_list_ieeg, data_aux, chan_list_aux, srate = organize_raw(sujet, raw)
     else:
         data, chan_list, srate = extract_data_trc(sujet)
 
@@ -403,6 +403,7 @@ if __name__== '__main__':
     
     #### slurm execution
     #### possibility to launch several subjects simultaneously
+    #band_prep = 'lf'
     for band_prep in band_prep_list:
         execute_function_in_slurm_bash('n5_precompute_baselines', 'compute_and_save_baseline', [sujet, band_prep])
 

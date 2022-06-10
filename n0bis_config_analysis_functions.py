@@ -632,7 +632,7 @@ def get_srate(sujet):
 
 
 
-def organize_raw(raw):
+def organize_raw(sujet, raw):
 
     #### extract chan_list
     chan_list_clean = []
@@ -642,6 +642,8 @@ def organize_raw(raw):
 
     #### extract data
     data = raw.get_data()
+
+    del raw
 
     #### identify aux chan
     nasal_i = chan_list_clean.index(aux_chan[sujet]['nasal'])

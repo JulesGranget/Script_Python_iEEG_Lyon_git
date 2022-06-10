@@ -320,7 +320,7 @@ def get_pli_ispc_dfc_trial(sujet, cond, band_prep, band, freq, trial_i):
 
     for pair_i, _ in enumerate(pairs_to_compute):
 
-        # print_advancement(pair_i, len(pairs_to_compute), steps=[25, 50, 75])
+        print_advancement(pair_i, len(pairs_to_compute), steps=[25, 50, 75])
         
         x = matrix_resampled[ispc_mat_i,pair_i,:]
         x_stretch, _ = stretch_data(resp_features, stretch_point_TF, x, prms['srate'])
@@ -356,7 +356,6 @@ def get_pli_ispc_dfc_trial(sujet, cond, band_prep, band, freq, trial_i):
 
 
 
-
 def get_pli_ispc_dfc(sujet, cond, band_prep, band, freq):
 
     #### get n trial for cond
@@ -369,6 +368,7 @@ def get_pli_ispc_dfc(sujet, cond, band_prep, band, freq):
 
     #trial_i = 0
     for trial_i in range(n_trials):
+        #mat_stretch_i, mat_dfc_mean_i = mat_stretch, mat_dfc_mean
         mat_stretch_i, mat_dfc_mean_i = get_pli_ispc_dfc_trial(sujet, cond, band_prep, band, freq, trial_i)
         mat_stretch.append(mat_stretch_i)
         mat_dfc.append(mat_dfc_mean_i)

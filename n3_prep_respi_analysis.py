@@ -343,6 +343,10 @@ def detection_bycycle(sig, srate):
         plt.plot(sig)
         plt.show()
 
+        plt.plot(sig_low)
+        plt.show()
+
+
     #### filter
     sig_low = mne.filter.filter_data(sig, srate, l_freq, h_freq, filter_length='auto', verbose='CRITICAL')
 
@@ -352,9 +356,9 @@ def detection_bycycle(sig, srate):
         cycle_indexes = respirationtools.detect_respiration_cycles(sig_low, srate, t_start=0, output = 'index',
                                                     inspiration_sign = '-',
                                                     # baseline
-                                                    #baseline_with_average = False,
-                                                    baseline_with_average = True,
-                                                    manual_baseline = 0.,
+                                                    baseline_with_average = False,
+                                                    # baseline_with_average = True,
+                                                    manual_baseline = 0. - sig_low.std()/4,
 
                                                     high_pass_filter = None,
                                                     constrain_frequency = None,
@@ -364,6 +368,35 @@ def detection_bycycle(sig, srate):
                                                     eliminate_time_shortest_ratio = 8,
                                                     eliminate_amplitude_shortest_ratio = 4,
                                                     eliminate_mode = 'OR', ) # 'AND')
+
+        
+
+        resp_features = respirationtools.get_all_respiration_features(sig_low, srate, cycle_indexes, t_start = 0.)
+
+    if sujet == 'pat_03105_1551':
+
+        cycle_indexes_inspi =   np.array([9.4e2, 3.13e3, 5.05e3, 7.26e3, 8.91e3, 1.019e4, 1.211e4, 1.328e4, 1.497e4, 1.650e4, 1.831e4, 1.998e4, 2.160e4, 2.293e4, 2.459e4, 2.677e4, 2.840e4, 3.045e4, 3.184e4, 3.301e4, 3.445e4, 3.633e4, 3.805e4, 3.949e4, 4.152e4, 4.332e4, 4.496e4, 4.649e4, 
+                                4.851e4, 4.998e4, 5.160e4, 5.309e4, 5.473e4, 5.647e4, 5.813e4, 5.970e4, 6.146e4, 6.285e4, 6.496e4, 6.656e4, 6.830e4, 7.007e4, 7.176e4, 7.338e4, 7.474e4, 7.644e4, 7.797e4, 7.960e4, 8.087e4, 8.271e4, 8.391e4, 8.561e4, 8.721e4, 8.872e4, 9.037e4, 9.157e4, 9.317e4, 
+                                9.467e4, 9.657e4, 9.844e4, 1.0157e5, 1.0318e5, 1.0487e5, 1.0634e5, 1.0819e5, 1.0974e5, 1.1110e5, 1.1300e5, 1.1562e5, 1.1779e5, 1.1923e5, 1.2085e5, 1.2234e5, 1.2393e5, 1.2598e5, 1.2742e5, 1.2889e5, 1.3017e5, 1.3154e5, 1.3300e5, 1.3454e5, 1.3608e5, 
+                                1.3746e5, 1.3866e5, 1.4042e5, 1.4188e5, 1.4379e5, 1.4534e5, 1.4679e5, 1.4852e5, 1.5009e5])
+        cycle_indexes_expi =    np.array([1.46e3, 3.68e3, 5.55e3, 7.83e3, 9.39e3, 1.094e4, 1.254e4, 1.376e4, 1.548e4, 1.699e4, 1.879e4, 2.048e4, 2.208e4, 2.362e4, 2.525e4, 2.729e4, 2.893e4, 3.099e4, 3.249e4, 3.351e4, 3.501e4, 3.702e4, 3.860e4, 4.001e4, 4.211e4, 4.375e4, 4.551e4, 4.713e4, 
+                                4.900e4, 5.054e4, 5.208e4, 5.366e4, 5.526e4, 5.687e4, 5.868e4, 6.021e4, 6.202e4, 6.348e4, 6.558e4, 6.709e4, 6.882e4, 7.062e4, 7.229e4, 7.392e4, 7.518e4, 7.701e4, 7.851e4, 8.000e4, 8.144e4, 8.326e4, 8.468e4, 8.612e4, 8.765e4, 8.925e4, 9.077e4, 
+                                9.199e4, 9.371e4, 9.520e4, 9.756e4, 1.0031e5, 1.0205e5, 1.0371e5, 1.0544e5, 1.0707e5, 1.0862e5, 1.1020e5, 1.1164e5, 1.1367e5, 1.1629e5, 1.1829e5, 1.1992e5, 1.2132e5, 1.2287e5, 1.2447e5, 1.2650e5, 1.2797e5, 1.2940e5, 1.3075e5, 1.3213e5, 1.3355e5, 
+                                1.3503e5, 1.3647e5, 1.3788e5, 1.3930e5, 1.4088e5, 1.4251e5, 1.4431e5, 1.4578e5, 1.4728e5, 1.4905e5, -1])
+
+    if sujet == 'pat_03128_1591':
+
+        cycle_indexes_inspi =   np.array([2.54e3, 5.02e3, 9.08e3, 1.231e4, 1.520e4, 1.753e4, 2.040e4, 2.282e4, 2.612e4, 2.872e4, 3.178e4, 3.453e4, 3.688e4, 3.923e4, 4.176e4, 4.428e4, 4.707e4, 4.920e4, 5.199e4, 5.456e4, 5.728e4, 6.030e4, 6.294e4, 6.579e4, 6.900e4, 7.138e4, 7.417e4, 7.661e4, 
+                                7.929e4, 8.176e4, 8.428e4, 8.670e4, 8.900e4, 9.163e4, 9.464e4, 9.730e4, 9.983e4, 1.0215e5, 1.0460e5, 1.0717e5, 1.0961e5, 1.1214e5, 1.1436e5, 1.1706e5, 1.1973e5, 1.2241e5, 1.2496e5, 1.2730e5, 1.2950e5, 1.3216e5, 1.3466e5, 1.3719e5, 1.3957e5, 1.4197e5, 
+                                1.4460e5, 1.4711e5, 1.4923e5])
+        cycle_indexes_expi =    np.array([3.10e3, 5.54e3, 9.78e3, 1.290e4, 1.577e4, 1.843e4, 2.090e4, 2.351e4, 2.674e4, 2.953e4, 3.242e4, 3.509e4, 3.745e4, 3.976e4, 4.238e4, 4.493e4, 4.766e4, 4.982e4, 5.259e4, 5.510e4, 5.790e4, 6.094e4, 6.352e4, 6.643e4, 6.952e4, 7.191e4, 7.474e4, 7.705e4, 
+                                7.986e4, 8.234e4, 8.486e4, 8.724e4, 8.964e4, 9.226e4, 9.520e4, 9.785e4, 1.0041e5, 1.0258e5, 1.0514e5, 1.0776e5, 1.1024e5, 1.1272e5, 1.1496e5, 1.1755e5, 1.2048e5, 1.2296e5, 1.2546e5, 1.2777e5, 1.3014e5, 1.3272e5, 1.3520e5, 1.3763e5, 1.4018e5, 1.4264e5, 1.4526e5, 1.4753e5, 
+                                1.4988e5])
+        
+        cycle_indexes = np.zeros((cycle_indexes_inspi.shape[0], 2))
+        for i, (x, y) in enumerate(zip(cycle_indexes_inspi, cycle_indexes_expi)):
+            cycle_indexes[i,:] = [x, y]
+        cycle_indexes = np.asarray(cycle_indexes, np.int64)
 
         resp_features = respirationtools.get_all_respiration_features(sig_low, srate, cycle_indexes, t_start = 0.)
 
@@ -382,7 +415,7 @@ def detection_bycycle(sig, srate):
         plt.show()
 
     #### detect
-    if sujet in sujet_for_more_filter:
+    if sujet in sujet_for_more_filter or sujet in sujet_manual_detection:
         rises, decays = cycle_indexes.T[1,:-1], cycle_indexes.T[0,:]
 
         # peaks, _ = scipy.signal.find_peaks(sig_low, distance=3*srate, prominence=sig_low.mean()+sig_low.std()/15)
@@ -411,7 +444,7 @@ def detection_bycycle(sig, srate):
         rises = rises[:-1]
         troughs = troughs[:-1]
 
-    if sujet not in sujet_for_more_filter: 
+    if sujet not in sujet_for_more_filter and sujet not in sujet_manual_detection: 
 
         if peaks[0] < decays[0]:
             peaks = peaks[1:]
@@ -431,7 +464,7 @@ def detection_bycycle(sig, srate):
     df_detection['exp_duration'] = df_detection['cycle_duration'] - df_detection['insp_duration']
     df_detection['cycle_freq'] = 1/df_detection['cycle_duration']
 
-    if sujet in sujet_for_more_filter:
+    if sujet in sujet_for_more_filter or sujet in sujet_manual_detection:
         df_detection['insp_amplitude'] = resp_features['insp_amplitude']
         df_detection['exp_amplitude'] = resp_features['exp_amplitude']
         df_detection['total_amplitude'] = resp_features['total_amplitude']
@@ -609,9 +642,36 @@ def export_sniff_count(sujet, respi_allcond):
 
 
 
+############################
+######## SAVE DATA ########
+############################
 
 
+def save_all_respfeatures(respi_allcond, respi_allcond_bybycle, conditions, export):
 
+    #### when everything ok classic
+    if export == 'sam':
+        os.chdir(os.path.join(path_results, sujet, 'RESPI'))
+
+        for cond_i in conditions:
+
+            for i in range(len(respi_allcond[cond_i])):
+
+                respi_allcond[cond_i][i][0].to_excel(sujet + '_' + cond_i + '_' + str(i+1) + '_respfeatures.xlsx')
+                respi_allcond[cond_i][i][1].savefig(sujet + '_' + cond_i + '_' + str(i+1) + '_fig0.jpeg')
+                respi_allcond[cond_i][i][2].savefig(sujet + '_' + cond_i + '_' + str(i+1) + '_fig1.jpeg')
+
+    #### when everything ok bycycle
+    if export == 'bycycle':
+        os.chdir(os.path.join(path_results, sujet, 'RESPI'))
+
+        for cond_i in conditions:
+
+            for i in range(len(respi_allcond_bybycle[cond_i])):
+
+                respi_allcond_bybycle[cond_i][i][0].to_excel(sujet + '_' + cond_i + '_' + str(i+1) + '_respfeatures.xlsx')
+                respi_allcond_bybycle[cond_i][i][1].savefig(sujet + '_' + cond_i + '_' + str(i+1) + '_fig0.jpeg')
+                respi_allcond_bybycle[cond_i][i][2].savefig(sujet + '_' + cond_i + '_' + str(i+1) + '_fig1.jpeg')
 
 
 
@@ -634,9 +694,15 @@ if __name__ == '__main__':
     # sujet = 'MUGa'
     # sujet = 'BANc'
     # sujet = 'LEMl'
+
     # sujet = 'pat_02459_0912'
     # sujet = 'pat_02476_0929'
     # sujet = 'pat_02495_0949'
+
+    # sujet = 'pat_03083_1527'
+    # sujet = 'pat_03105_1551'
+    # sujet = 'pat_03128_1591'
+    # sujet = 'pat_03138_1601'
 
     #### load data
     raw_allcond, respi_allcond, respi_allcond_bybycle, conditions, chan_list, srate = load_respi_allcond_data(sujet)
@@ -726,28 +792,7 @@ if __name__ == '__main__':
     # export = 'sam'
     export = 'bycycle'
 
+    save_all_respfeatures(respi_allcond, respi_allcond_bybycle, conditions, export)
 
-    #### when everything ok classic
-    if export == 'sam':
-        os.chdir(os.path.join(path_results, sujet, 'RESPI'))
 
-        for cond_i in conditions:
-
-            for i in range(len(respi_allcond[cond_i])):
-
-                respi_allcond[cond_i][i][0].to_excel(sujet + '_' + cond_i + '_' + str(i+1) + '_respfeatures.xlsx')
-                respi_allcond[cond_i][i][1].savefig(sujet + '_' + cond_i + '_' + str(i+1) + '_fig0.jpeg')
-                respi_allcond[cond_i][i][2].savefig(sujet + '_' + cond_i + '_' + str(i+1) + '_fig1.jpeg')
-
-    #### when everything ok bycycle
-    if export == 'bycycle':
-        os.chdir(os.path.join(path_results, sujet, 'RESPI'))
-
-        for cond_i in conditions:
-
-            for i in range(len(respi_allcond_bybycle[cond_i])):
-
-                respi_allcond_bybycle[cond_i][i][0].to_excel(sujet + '_' + cond_i + '_' + str(i+1) + '_respfeatures.xlsx')
-                respi_allcond_bybycle[cond_i][i][1].savefig(sujet + '_' + cond_i + '_' + str(i+1) + '_fig0.jpeg')
-                respi_allcond_bybycle[cond_i][i][2].savefig(sujet + '_' + cond_i + '_' + str(i+1) + '_fig1.jpeg')
-
+    
