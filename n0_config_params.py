@@ -21,10 +21,10 @@ import scipy.signal
 perso_repo_computation = False
 
 #### whole protocole
-sujet = 'CHEe'
+# sujet = 'CHEe'
 # sujet = 'GOBc' 
 # sujet = 'MAZm' 
-# sujet = 'TREt' 
+sujet = 'TREt' 
 
 #### FR_CV only
 # sujet = 'MUGa'

@@ -446,9 +446,9 @@ if __name__ == '__main__':
 
     cond = 'FR_CV'
 
-    #band_prep = 'lf'
+    #band_prep = 'hf'
     for band_prep in band_prep_list:
-        #band, freq = 'beta', [10,40]
+        #band, freq = 'h_gamma', [80,120]
         for band, freq in freq_band_dict_FC_function[band_prep].items():
 
             if band in ['beta', 'l_gamma', 'h_gamma']:
