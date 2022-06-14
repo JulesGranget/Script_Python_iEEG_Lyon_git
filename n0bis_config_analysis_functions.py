@@ -975,6 +975,101 @@ def modify_name(chan_list):
     return chan_list_modified, chan_list_keep
 
 
+
+########################################
+######## MI ANALYSIS FUNCTIONS ########
+########################################
+
+
+
+def shuffle_CycleFreq(x):
+
+    cut = int(np.random.randint(low=0, high=len(x), size=1))
+    x_cut1 = x[:cut]
+    x_cut2 = x[cut:]*-1
+    x_shift = np.concatenate((x_cut2, x_cut1), axis=0)
+
+    return x_shift
+    
+
+def shuffle_Cxy(x):
+   half_size = x.shape[0]//2
+   ind = np.random.randint(low=0, high=half_size)
+   x_shift = x.copy()
+   
+   x_shift[ind:ind+half_size] *= -1
+   if np.random.rand() >=0.5:
+       x_shift *= -1
+
+   return x_shift
+
+
+def Kullback_Leibler_Distance(a, b):
+    a = np.asarray(a, dtype=float)
+    b = np.asarray(b, dtype=float)
+    return np.sum(np.where(a != 0, a * np.log(a / b), 0))
+
+def Shannon_Entropy(a):
+    a = np.asarray(a, dtype=float)
+    return - np.sum(np.where(a != 0, a * np.log(a), 0))
+
+def Modulation_Index(distrib, show=False, verbose=False):
+    distrib = np.asarray(distrib, dtype = float)
+    
+    if verbose:
+        if np.sum(distrib) != 1:
+            print(f'(!)  The sum of all bins is not 1 (sum = {round(np.sum(distrib), 2)})  (!)')
+        
+    N = distrib.size
+    uniform_distrib = np.ones(N) * (1/N)
+    mi = Kullback_Leibler_Distance(distrib, uniform_distrib) / np.log(N)
+    
+    if show:
+        bin_width_deg = 360 / N
+        
+        doubled_distrib = np.concatenate([distrib,distrib] )
+        x = np.arange(0, doubled_distrib.size*bin_width_deg, bin_width_deg)
+        fig, ax = plt.subplots(figsize = (8,4))
+        
+        doubled_uniform_distrib = np.concatenate([uniform_distrib,uniform_distrib] )
+        ax.scatter(x, doubled_uniform_distrib, s=2, color='r')
+        
+        ax.bar(x=x, height=doubled_distrib, width = bin_width_deg/1.1, align = 'edge')
+        ax.set_title(f'Modulation Index = {round(mi, 4)}')
+        ax.set_xlabel(f'Phase (Deg)')
+        ax.set_ylabel(f'Amplitude (Normalized)')
+        ax.set_xticks([0,360,720])
+
+    return mi
+
+def Shannon_MI(a):
+    a = np.asarray(a, dtype = float)
+    N = a.size
+    kl_divergence_shannon = np.log(N) - Shannon_Entropy(a)
+    return kl_divergence_shannon / np.log(N)
+
+
+
+def get_MVL(x):
+    _phase = np.arange(0, x.shape[0])*2*np.pi/x.shape[0]
+    complex_vec = x*np.exp(1j*_phase)
+
+    MVL = np.abs(np.mean(complex_vec))
+    
+    if debug:
+        fig = plt.figure()
+        ax = fig.add_subplot(projection='polar')
+        ax.scatter(complex_vec.real, complex_vec.imag)
+        ax.scatter(np.mean(complex_vec.real), np.mean(complex_vec.imag), linewidth=3, color='r')
+        plt.show()
+
+    return MVL
+
+
+
+
+
+
 ########################################
 ######## SCRIPT ADVANCEMENT ########
 ########################################

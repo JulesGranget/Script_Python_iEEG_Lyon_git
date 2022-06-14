@@ -4,9 +4,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal
-import mne
 import pandas as pd
-import respirationtools
 import joblib
 
 import pickle
@@ -29,49 +27,75 @@ debug = False
 
 
 
+def zscore(x):
 
-#dict2reduce = Cxy_allcond
+    x_zscore = (x - x.mean()) / x.std()
+
+    return x_zscore
+
+
+#dict2reduce = cyclefreq_binned_allcond
 def reduce_data(dict2reduce, prms):
+
+    #### identify count
+    dict_count = {}
+        #### for cyclefreq Pxx
+    if list(dict2reduce.keys())[0] in band_prep_list:
+
+        for cond in prms['conditions']:
+            dict_count[cond] = len(dict2reduce[band_prep_list[0]][cond])
+        #### for surrogates
+    elif len(list(dict2reduce.keys())) == 4 and list(dict2reduce.keys())[0] not in prms['conditions']:
+
+        for cond in prms['conditions']:
+            dict_count[cond] = len(dict2reduce[list(dict2reduce.keys())[0]][cond])
+        #### for Cxy
+    else:
+
+        for cond in prms['conditions']:
+            dict_count[cond] = len(dict2reduce[cond])    
 
     #### for Pxx and Cyclefreq
     if np.sum([True for i in list(dict2reduce.keys()) if i in band_prep_list]) > 0:
     
         #### generate dict
         dict_reduced = {}
+
         for band_prep in band_prep_list:
             dict_reduced[band_prep] = {}
-            for cond in prms['conditions']:
-                dict_reduced[band_prep][cond] = []
 
+            for cond in prms['conditions']:
+                dict_reduced[band_prep][cond] = np.zeros(( dict2reduce[band_prep][cond][0].shape ))
+
+        #### fill
         for band_prep in band_prep_list:
 
             for cond in prms['conditions']:
 
-                dict_reduced[band_prep][cond].append(dict2reduce[band_prep][cond][0])
+                for session_i in range(dict_count[cond]):
 
+                    dict_reduced[band_prep][cond] += dict2reduce[band_prep][cond][session_i]
 
-        #### verify
-        for band_prep in band_prep_list:
-            for cond in prms['conditions']:
-                if len(dict_reduced[band_prep][cond][0].shape) != 2:
-                    raise ValueError(f'reducing false for Pxx or Cyclefreq : {band_prep}, {cond}')
+                dict_reduced[band_prep][cond] /= dict_count[cond]
 
     #### for Cxy
     elif np.sum([True for i in list(dict2reduce.keys()) if i in prms['conditions']]) > 0:
 
         #### generate dict
         dict_reduced = {}
-        for cond in prms['conditions']:
-            dict_reduced[cond] = []
 
         for cond in prms['conditions']:
 
-            dict_reduced[cond].append(dict2reduce[cond][0])
+            dict_reduced[cond] = np.zeros(( dict2reduce[cond][0].shape ))
 
-        #### verify
+        #### fill
         for cond in prms['conditions']:
-            if len(dict_reduced[cond][0].shape) != 2:
-                raise ValueError(f'reducing false for Cxy :, {cond}')
+
+            for session_i in range(dict_count[cond]):
+
+                dict_reduced[cond] += dict2reduce[cond][session_i]
+
+            dict_reduced[cond] /= dict_count[cond]
 
     #### for surrogates
     else:
@@ -81,25 +105,52 @@ def reduce_data(dict2reduce, prms):
         for key in list(dict2reduce.keys()):
             dict_reduced[key] = {}
             for cond in prms['conditions']:
-                dict_reduced[key][cond] = []
+                dict_reduced[key][cond] = np.zeros(( dict2reduce[key][cond][0].shape ))
 
+        #### fill
         #key = 'Cxy'
         for key in list(dict2reduce.keys()):
 
             for cond in prms['conditions']:
 
-                dict_reduced[key][cond].append(dict2reduce[key][cond][0])
+                for session_i in range(dict_count[cond]):
 
-        #### verify
-        for key in list(dict2reduce.keys()):
-            if key == 'Cxy':
-                for cond in prms['conditions']:
-                    if len(dict_reduced[key][cond][0].shape) != 2:
-                        raise ValueError(f'reducing false for Surrogates : {key}, {cond}')
-            else:
-                for cond in prms['conditions']:
-                    if len(dict_reduced[key][cond][0].shape) != 3:
-                        raise ValueError(f'reducing false for Surrogates : {key}, {cond}')
+                    dict_reduced[key][cond] += dict2reduce[key][cond][session_i]
+
+                dict_reduced[key][cond] /= dict_count[cond]
+
+    #### verify
+        #### for cyclefreq Pxx
+    if list(dict2reduce.keys())[0] in band_prep_list:
+
+        for band_prep in band_prep_list:
+            for cond in prms['conditions']:
+                try: 
+                    _ = dict_reduced[band_prep][cond].shape
+                except:
+                    raise ValueError('reducing wrong')
+        
+        #### for surrogates
+    elif len(list(dict2reduce.keys())) == 4 and list(dict2reduce.keys())[0] not in prms['conditions']:
+
+        list_surr = list(dict2reduce.keys())
+
+        for surr_i in list_surr:
+        
+            for cond in prms['conditions']:
+                try: 
+                    _ = dict_reduced[surr_i][cond].shape
+                except:
+                    raise ValueError('reducing wrong')
+    
+        #### for Cxy
+    else:
+
+        for cond in prms['conditions']:
+            try: 
+                _ = dict_reduced[cond].shape
+            except:
+                raise ValueError('reducing wrong')
 
     return dict_reduced
 
@@ -112,7 +163,7 @@ def load_surrogates(sujet, respfeatures_allcond, prms):
 
     os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
 
-    surrogates_allcond = {'Cxy' : {}, 'cyclefreq_lf' : {}, 'cyclefreq_hf' : {}, 'MI' : {}}
+    surrogates_allcond = {'Cxy' : {}, 'cyclefreq_lf' : {}, 'cyclefreq_hf' : {}, 'MVL' : {}}
 
     for cond in prms['conditions']:
 
@@ -121,23 +172,23 @@ def load_surrogates(sujet, respfeatures_allcond, prms):
             surrogates_allcond['Cxy'][cond] = [np.load(sujet + '_' + cond + '_' + str(1) + '_Coh.npy')]
             surrogates_allcond['cyclefreq_lf'][cond] = [np.load(sujet + '_' + cond + '_' + str(1) + '_cyclefreq_lf.npy')]
             surrogates_allcond['cyclefreq_hf'][cond] = [np.load(sujet + '_' + cond + '_' + str(1) + '_cyclefreq_hf.npy')]
-            surrogates_allcond['MI'][cond] = [np.load(f'{sujet}_{cond}_{str(session_i+1)}_MI_lf.npy')]
+            surrogates_allcond['MVL'][cond] = [np.load(f'{sujet}_{cond}_{str(1)}_MVL_lf.npy')]
 
         elif len(respfeatures_allcond[cond]) > 1:
 
-            data_load = {'Cxy' : [], 'cyclefreq_lf' : [], 'cyclefreq_hf' : [], 'MI' : {}}
+            data_load = {'Cxy' : [], 'cyclefreq_lf' : [], 'cyclefreq_hf' : [], 'MVL' : []}
 
             for session_i in range(len(respfeatures_allcond[cond])):
 
                 data_load['Cxy'].append(np.load(sujet + '_' + cond + '_' + str(session_i+1) + '_Coh.npy'))
                 data_load['cyclefreq_lf'].append(np.load(sujet + '_' + cond + '_' + str(session_i+1) + '_cyclefreq_lf.npy'))
                 data_load['cyclefreq_hf'].append(np.load(sujet + '_' + cond + '_' + str(session_i+1) + '_cyclefreq_hf.npy'))
-                data_load['MI'].append(np.load(f'{sujet}_{cond}_{str(session_i+1)}_MI_lf.npy'))
+                data_load['MVL'].append(np.load(f'{sujet}_{cond}_{str(session_i+1)}_MVL_lf.npy'))
             
             surrogates_allcond['Cxy'][cond] = data_load['Cxy']
             surrogates_allcond['cyclefreq_lf'][cond] = data_load['cyclefreq_lf']
             surrogates_allcond['cyclefreq_hf'][cond] = data_load['cyclefreq_hf']
-            surrogates_allcond['MI'][cond] = data_load['MI']
+            surrogates_allcond['MVL'][cond] = data_load['MVL']
 
 
     return surrogates_allcond
@@ -165,26 +216,53 @@ def compute_PxxCxyCyclefreq_for_cond(sujet, band_prep, cond, session_i, stretch_
     hzCxy = hzCxy[mask_hzCxy]
 
     #### compute
-    Cxy_for_cond = np.zeros(( np.size(data_tmp,0), len(hzCxy)))
-    Pxx_for_cond = np.zeros(( np.size(data_tmp,0), len(hzPxx)))
-    cyclefreq_for_cond = np.zeros(( np.size(data_tmp,0), stretch_point_surrogates))
+    Cxy_for_cond = np.zeros(( data_tmp.shape[0], len(hzCxy)))
+    Pxx_for_cond = np.zeros(( data_tmp.shape[0], len(hzPxx)))
+    cyclefreq_for_cond = np.zeros(( data_tmp.shape[0], stretch_point_surrogates))
+    # MI_for_cond = np.zeros(( data_tmp.shape[0] ))
+    MVL_for_cond = np.zeros(( data_tmp.shape[0] ))
+    # cyclefreq_binned_for_cond = np.zeros(( data_tmp.shape[0], MI_n_bin))
 
-    for n_chan in range(np.size(data_tmp,0)):
+    # MI_bin_i = int(stretch_point_surrogates / MI_n_bin)
 
+    for n_chan in range(data_tmp.shape[0]):
+
+        #### Pxx, Cxy, CycleFreq
         x = data_tmp[n_chan,:]
         hzPxx, Pxx = scipy.signal.welch(x, fs=prms['srate'], window=prms['hannw'], nperseg=prms['nwind'], noverlap=prms['noverlap'], nfft=prms['nfft'])
 
         y = respi
         hzPxx, Cxy = scipy.signal.coherence(x, y, fs=prms['srate'], window=prms['hannw'], nperseg=prms['nwind'], noverlap=prms['noverlap'], nfft=prms['nfft'])
 
-        x_stretch, trash = stretch_data(respfeatures_allcond.get(cond)[session_i], stretch_point_surrogates, x, prms['srate'])
+        x_stretch, trash = stretch_data(respfeatures_allcond[cond][session_i], stretch_point_surrogates, x, prms['srate'])
         x_stretch_mean = np.mean(x_stretch, 0)
 
         Cxy_for_cond[n_chan,:] = Cxy[mask_hzCxy]
         Pxx_for_cond[n_chan,:] = Pxx
         cyclefreq_for_cond[n_chan,:] = x_stretch_mean
 
-    return Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond
+        #### MVL
+        x_zscore = zscore(x)
+        x_stretch, trash = stretch_data(respfeatures_allcond[cond][session_i], stretch_point_surrogates, x_zscore, prms['srate'])
+
+        MVL_for_cond[n_chan] = get_MVL(np.abs(np.mean(x_stretch,axis=0)))
+
+        # #### MI
+        # x = x_stretch_mean
+
+        # x_bin = np.zeros(( MI_n_bin ))
+
+        # for bin_i in range(MI_n_bin):
+        #     x_bin[bin_i] = np.mean(x[MI_bin_i*bin_i:MI_bin_i*(bin_i+1)])
+
+        # cyclefreq_binned_for_cond[n_chan,:] = x_bin
+
+        # x_bin += np.abs(x_bin.min())*2 #supress zero values
+        # x_bin = x_bin/np.sum(x_bin) #transform into probabilities
+            
+        # MI_for_cond[n_chan] = Shannon_MI(x_bin)
+
+    return Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond, MVL_for_cond
 
         
 
@@ -197,8 +275,9 @@ def compute_all_PxxCxyCyclefreq(sujet, respfeatures_allcond, prms):
     Pxx_allcond = {'lf' : {}, 'hf' : {}}
     Cxy_allcond = {}
     cyclefreq_allcond = {'lf' : {}, 'hf' : {}}
+    MVL_allcond = {}
 
-    #band_prep = band_prep_list[0]
+    #band_prep = band_prep_list[1]
     for band_prep in band_prep_list:
 
         print(band_prep)
@@ -207,15 +286,16 @@ def compute_all_PxxCxyCyclefreq(sujet, respfeatures_allcond, prms):
 
             if ( len(respfeatures_allcond[cond]) == 1 ) & (band_prep == 'lf'):
 
-                Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond = compute_PxxCxyCyclefreq_for_cond(sujet, band_prep, cond, 0, stretch_point_surrogates, respfeatures_allcond, prms)
+                Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond, MVL_for_cond = compute_PxxCxyCyclefreq_for_cond(sujet, band_prep, cond, 0, stretch_point_surrogates, respfeatures_allcond, prms)
 
                 Pxx_allcond['lf'][cond] = [Pxx_for_cond]
                 Cxy_allcond[cond] = [Cxy_for_cond]
+                MVL_allcond[cond] = [MVL_for_cond]
                 cyclefreq_allcond['lf'][cond] = [cyclefreq_for_cond]
 
             elif ( len(respfeatures_allcond[cond]) == 1 ) & (band_prep == 'hf') :
 
-                Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond = compute_PxxCxyCyclefreq_for_cond(sujet, band_prep, cond, 0, stretch_point_surrogates, respfeatures_allcond, prms)
+                Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond, MVL_for_cond = compute_PxxCxyCyclefreq_for_cond(sujet, band_prep, cond, 0, stretch_point_surrogates, respfeatures_allcond, prms)
 
                 Pxx_allcond['hf'][cond] = [Pxx_for_cond]
                 cyclefreq_allcond['hf'][cond] = [cyclefreq_for_cond]
@@ -225,27 +305,32 @@ def compute_all_PxxCxyCyclefreq(sujet, respfeatures_allcond, prms):
                 Pxx_load = []
                 Cxy_load = []
                 cyclefreq_load = []
+                cyclefreq_binned_load = []
+                MVL_load = []
 
-                for session_i in range(len(respfeatures_allcond[cond])):
+                for session_i, _ in enumerate(respfeatures_allcond[cond]):
 
-                    Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond = compute_PxxCxyCyclefreq_for_cond(sujet, band_prep, cond, session_i, stretch_point_surrogates, respfeatures_allcond, prms)
+                    Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond, MVL_for_cond = compute_PxxCxyCyclefreq_for_cond(sujet, band_prep, cond, session_i, stretch_point_surrogates, respfeatures_allcond, prms)
 
                     Pxx_load.append(Pxx_for_cond)
                     Cxy_load.append(Cxy_for_cond)
                     cyclefreq_load.append(cyclefreq_for_cond)
+                    MVL_load.append(MVL_for_cond)
 
                 Pxx_allcond['lf'][cond] = Pxx_load
                 Cxy_allcond[cond] = Cxy_load
+                MVL_allcond[cond] = MVL_load
                 cyclefreq_allcond['lf'][cond] = cyclefreq_load
 
             elif (len(respfeatures_allcond[cond]) > 1) & (band_prep == 'hf'):
 
                 Pxx_load = []
                 cyclefreq_load = []
+                cyclefreq_binned_load = []
 
-                for session_i in range(len(respfeatures_allcond[cond])):
+                for session_i, _ in enumerate(respfeatures_allcond[cond]):
 
-                    Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond = compute_PxxCxyCyclefreq_for_cond(sujet, band_prep, cond, session_i, stretch_point_surrogates, respfeatures_allcond, prms)
+                    Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond, MVL_for_cond = compute_PxxCxyCyclefreq_for_cond(sujet, band_prep, cond, session_i, stretch_point_surrogates, respfeatures_allcond, prms)
 
                     Pxx_load.append(Pxx_for_cond)
                     cyclefreq_load.append(cyclefreq_for_cond)
@@ -253,43 +338,47 @@ def compute_all_PxxCxyCyclefreq(sujet, respfeatures_allcond, prms):
                 Pxx_allcond['hf'][cond] = Pxx_load
                 cyclefreq_allcond['hf'][cond] = cyclefreq_load
 
-    return Pxx_allcond, Cxy_allcond, cyclefreq_allcond
+    return Pxx_allcond, Cxy_allcond, cyclefreq_allcond, MVL_allcond
 
 
 
 
 
 
-def reduce_PxxCxy_cyclefreq(Pxx_allcond, Cxy_allcond, cyclefreq_allcond, surrogates_allcond, prms):
+def reduce_PxxCxy_cyclefreq(Pxx_allcond, Cxy_allcond, cyclefreq_allcond, MVL_allcond, surrogates_allcond, prms):
 
     Pxx_allcond_red = reduce_data(Pxx_allcond, prms)
-    cyclefreq_allcond_red = reduce_data(cyclefreq_allcond, prms)
-
     Cxy_allcond_red = reduce_data(Cxy_allcond, prms)
+    cyclefreq_allcond_red = reduce_data(cyclefreq_allcond, prms)
+    MVL_allcond_red = reduce_data(MVL_allcond, prms)
     surrogates_allcond_red = reduce_data(surrogates_allcond, prms)
     
-    return Pxx_allcond_red, cyclefreq_allcond_red, Cxy_allcond_red, surrogates_allcond_red
+    return Pxx_allcond_red, cyclefreq_allcond_red, Cxy_allcond_red, MVL_allcond_red, surrogates_allcond_red
 
 
 
 
 
 
-def save_Pxx_Cxy_Cyclefreq_Surrogates_allcond(sujet, Pxx_allcond, cyclefreq_allcond, Cxy_allcond, surrogates_allcond):
+def save_Pxx_Cxy_Cyclefreq_Surrogates_allcond(sujet, Pxx_allcond, cyclefreq_allcond, Cxy_allcond, MVL_allcond, surrogates_allcond):
 
     os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
 
-    with open(f'{sujet}_Pxx_allcond.pkl', 'wb') as f:
+    with open(f'allcond_{sujet}_Pxx.pkl', 'wb') as f:
         pickle.dump(Pxx_allcond, f)
 
-    with open(f'{sujet}_Cxy_allcond.pkl', 'wb') as f:
+    with open(f'allcond_{sujet}_Cxy.pkl', 'wb') as f:
         pickle.dump(Cxy_allcond, f)
 
-    with open(f'{sujet}_surrogates_allcond.pkl', 'wb') as f:
+    with open(f'allcond_{sujet}_surrogates.pkl', 'wb') as f:
         pickle.dump(surrogates_allcond, f)
 
-    with open(f'{sujet}_cyclefreq_allcond.pkl', 'wb') as f:
+    with open(f'allcond_{sujet}_cyclefreq.pkl', 'wb') as f:
         pickle.dump(cyclefreq_allcond, f)
+
+    with open(f'allcond_{sujet}_MVL.pkl', 'wb') as f:
+        pickle.dump(MVL_allcond, f)
+
 
 
 
@@ -297,13 +386,13 @@ def save_Pxx_Cxy_Cyclefreq_Surrogates_allcond(sujet, Pxx_allcond, cyclefreq_allc
 def compute_reduced_PxxCxyCyclefreqSurrogates(sujet, respfeatures_allcond, surrogates_allcond, prms):
 
 
-    if os.path.exists(os.path.join(path_precompute, sujet, 'PSD_Coh', f'{sujet}_Pxx_allcond.pkl')) == False:
+    if os.path.exists(os.path.join(path_precompute, sujet, 'PSD_Coh', f'allcond_{sujet}_Pxx.pkl')) == False:
     
-        Pxx_allcond, Cxy_allcond, cyclefreq_allcond = compute_all_PxxCxyCyclefreq(sujet, respfeatures_allcond, prms)
+        Pxx_allcond, Cxy_allcond, cyclefreq_allcond, MVL_allcond = compute_all_PxxCxyCyclefreq(sujet, respfeatures_allcond, prms)
 
-        Pxx_allcond, cyclefreq_allcond, Cxy_allcond, surrogates_allcond = reduce_PxxCxy_cyclefreq(Pxx_allcond, Cxy_allcond, cyclefreq_allcond, surrogates_allcond, prms)
+        Pxx_allcond_red, cyclefreq_allcond_red, Cxy_allcond_red, MVL_allcond_red, surrogates_allcond_red = reduce_PxxCxy_cyclefreq(Pxx_allcond, Cxy_allcond, cyclefreq_allcond, MVL_allcond, surrogates_allcond, prms)
 
-        save_Pxx_Cxy_Cyclefreq_Surrogates_allcond(sujet, Pxx_allcond, cyclefreq_allcond, Cxy_allcond, surrogates_allcond)
+        save_Pxx_Cxy_Cyclefreq_Surrogates_allcond(sujet, Pxx_allcond_red, cyclefreq_allcond_red, Cxy_allcond_red, MVL_allcond_red, surrogates_allcond_red)
 
         print('COMPUTE Pxx CF Cxy Surr')
 
@@ -315,6 +404,144 @@ def compute_reduced_PxxCxyCyclefreqSurrogates(sujet, respfeatures_allcond, surro
 
 
 
+
+########################################
+######## EXPORT DATA IN DF ########
+########################################
+
+
+def export_Cxy_MVL_in_df(sujet, respfeatures_allcond, surrogates_allcond, prms):
+
+    #### load data
+    Pxx_allcond, Cxy_allcond, surrogates_allcond, cyclefreq_allcond, MVL_allcond = get_Pxx_Cxy_Cyclefreq_Surrogates_allcond(sujet)
+    prms = get_params(sujet)
+    respfeatures_allcond = load_respfeatures(sujet)
+    df_loca = get_loca_df(sujet)
+    respi_i = prms['chan_list'].index('nasal')
+
+    #### data count
+    data_count = {}
+
+    for cond in prms['conditions']:
+        data_count[cond] = len(respfeatures_allcond[cond])
+
+    #### identify chan params
+    if sujet[:3] != 'pat':
+        chan_list, chan_list_keep = modify_name(prms['chan_list_ieeg'])
+    else:
+        chan_list = prms['chan_list_ieeg']
+
+    #### prepare df
+    df_export = pd.DataFrame(columns=['sujet', 'cond', 'chan', 'ROI', 'Lobe', 'side', 'Cxy', 'Cxy_surr', 'MVL', 'MVL_surr'])
+    
+    #### fill df
+    for chan_i, chan_name in enumerate(chan_list):
+
+        print_advancement(chan_i, len(chan_list), steps=[25, 50, 75])
+
+        ROI_i = df_loca['ROI'][df_loca['name'] == chan_name].values[0]
+        Lobe_i = df_loca['lobes'][df_loca['name'] == chan_name].values[0]
+        if chan_name.find('p') or chan_name.find("'"):
+            side_i = 'l'
+        else:
+            side_i = 'r' 
+
+        for cond in prms['conditions']:
+
+            Cxy_i = 0
+            Cxy_surr_i = 0
+
+            MVL_i = 0
+            MVL_surr_i = 0
+
+            for trial_i in range(data_count[cond]):
+
+                respi_tmp = load_data_sujet(sujet, 'lf', cond, trial_i)[respi_i,:]
+                hzPxx, Pxx = scipy.signal.welch(respi_tmp, fs=prms['srate'], window=prms['hannw'], nperseg=prms['nwind'], noverlap=prms['noverlap'], nfft=prms['nfft'])
+                Cxy_i += Cxy_allcond[cond][chan_i,np.argmax(Pxx)]
+                Cxy_surr_i += surrogates_allcond['Cxy'][cond][chan_i,np.argmax(Pxx)]
+                MVL_i += MVL_allcond[cond][chan_i]
+                MVL_surr_i += np.mean(surrogates_allcond['MVL'][cond][chan_i,:])
+
+            Cxy_i /= data_count[cond]
+            Cxy_surr_i /= data_count[cond]
+
+            MVL_i /= data_count[cond]
+            MVL_surr_i /= data_count[cond]
+
+            data_export_i =   {'sujet' : [sujet], 'cond' : [cond], 'chan' : [chan_name], 'ROI' : [ROI_i], 'Lobe' : [Lobe_i], 'side' : [side_i], 
+                            'Cxy' : [Cxy_i], 'Cxy_surr' : [Cxy_surr_i], 'MVL' : [MVL_i], 'MVL_surr' : [MVL_surr_i]}
+            df_export_i = pd.DataFrame.from_dict(data_export_i)
+            
+            df_export = pd.concat([df_export, df_export_i])
+
+    #### save
+    os.chdir(os.path.join(path_results, sujet, 'PSD_Coh', 'allcond'))
+    df_export.to_excel(f'{sujet}_df_Cxy_MVL.xlsx')
+
+
+
+
+
+
+
+def export_TF_in_df(sujet, respfeatures_allcond, prms):
+
+    #### load prms
+    prms = get_params(sujet)
+    respfeatures_allcond = load_respfeatures(sujet)
+    df_loca = get_loca_df(sujet)
+    
+    #### data count
+    data_count = {}
+
+    for cond in prms['conditions']:
+        data_count[cond] = len(respfeatures_allcond[cond])
+
+    #### identify chan params
+    if sujet[:3] != 'pat':
+        chan_list, chan_list_keep = modify_name(prms['chan_list_ieeg'])
+    else:
+        chan_list = prms['chan_list_ieeg']
+
+    #### prepare df
+    df_export = pd.DataFrame(columns=['sujet', 'cond', 'chan', 'ROI', 'Lobe', 'side', 'band', 'phase', 'Pxx'])
+
+    #### fill df
+    #chan_i, chan_name = 0, chan_list[0]
+    for chan_i, chan_name in enumerate(chan_list):
+
+        print_advancement(chan_i, len(chan_list), steps=[25, 50, 75])
+
+        ROI_i = df_loca['ROI'][df_loca['name'] == chan_name].values[0]
+        Lobe_i = df_loca['lobes'][df_loca['name'] == chan_name].values[0]
+
+        if chan_name.find('p') or chan_name.find("'"):
+            side_i = 'l'
+        else:
+            side_i = 'r' 
+
+        #band_prep = 'lf'
+        for band_prep in band_prep_list:
+            #cond = 'FR_CV'
+            for cond in prms['conditions']:
+                #band, freq = 'theta', [2, 10]
+                for band, freq in freq_band_dict[band_prep].items():
+
+                    data = get_tf_itpc_stretch_allcond(sujet, 'TF')[band_prep][cond][band][chan_i, :, :]
+                    Pxx = np.mean(data, axis=0)
+                    Pxx_inspi = np.mean(Pxx[0:int(stretch_point_TF*ratio_stretch_TF)])
+                    Pxx_expi = np.mean(Pxx[int(stretch_point_TF*ratio_stretch_TF):])
+
+                    data_export_i =   {'sujet' : [sujet]*2, 'cond' : [cond]*2, 'chan' : [chan_name]*2, 'ROI' : [ROI_i]*2, 'Lobe' : [Lobe_i]*2, 'side' : [side_i]*2, 
+                                    'band' : [band]*2, 'phase' : ['inspi', 'expi'], 'Pxx' : [Pxx_inspi, Pxx_expi]}
+                    df_export_i = pd.DataFrame.from_dict(data_export_i)
+                    
+                    df_export = pd.concat([df_export, df_export_i])
+
+    #### save
+    os.chdir(os.path.join(path_results, sujet, 'PSD_Coh', 'allcond'))
+    df_export.to_excel(f'{sujet}_df_TF_IE.xlsx')
 
 
 
@@ -332,36 +559,42 @@ def get_Pxx_Cxy_Cyclefreq_Surrogates_allcond(sujet):
     
     os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
         
-    with open(f'{sujet}_Pxx_allcond.pkl', 'rb') as f:
+    with open(f'allcond_{sujet}_Pxx.pkl', 'rb') as f:
         Pxx_allcond = pickle.load(f)
 
-    with open(f'{sujet}_Cxy_allcond.pkl', 'rb') as f:
+    with open(f'allcond_{sujet}_Cxy.pkl', 'rb') as f:
         Cxy_allcond = pickle.load(f)
 
-    with open(f'{sujet}_surrogates_allcond.pkl', 'rb') as f:
+    with open(f'allcond_{sujet}_surrogates.pkl', 'rb') as f:
         surrogates_allcond = pickle.load(f)
 
-    with open(f'{sujet}_cyclefreq_allcond.pkl', 'rb') as f:
+    with open(f'allcond_{sujet}_cyclefreq.pkl', 'rb') as f:
         cyclefreq_allcond = pickle.load(f)
+
+    with open(f'allcond_{sujet}_MVL.pkl', 'rb') as f:
+        MVL_allcond = pickle.load(f)
 
     os.chdir(source_path)
 
-    return Pxx_allcond, Cxy_allcond, surrogates_allcond, cyclefreq_allcond
+    return Pxx_allcond, Cxy_allcond, surrogates_allcond, cyclefreq_allcond, MVL_allcond
 
 
 
-#n_chan = 0
+#n_chan = 95
 def plot_save_PSD_Coh(sujet, n_chan):
 
     #### load data
-    Pxx_allcond, Cxy_allcond, surrogates_allcond, cyclefreq_allcond = get_Pxx_Cxy_Cyclefreq_Surrogates_allcond(sujet)
+    Pxx_allcond, Cxy_allcond, surrogates_allcond, cyclefreq_allcond, MVL_allcond = get_Pxx_Cxy_Cyclefreq_Surrogates_allcond(sujet)
     prms = get_params(sujet)
     respfeatures_allcond = load_respfeatures(sujet)
     df_loca = get_loca_df(sujet)
 
     #### identify chan params
-    chan_list_modified, chan_list_keep = modify_name(prms['chan_list_ieeg'])
-    chan_name = chan_list_modified[n_chan]
+    if sujet[:3] != 'pat':
+        chan_list_modified, chan_list_keep = modify_name(prms['chan_list_ieeg'])
+        chan_name = chan_list_modified[n_chan]
+    else:
+        chan_name = prms['chan_list_ieeg'][n_chan]
     chan_loca = df_loca['ROI'][df_loca['name'] == chan_name].values[0]
     
     #### plot
@@ -374,84 +607,60 @@ def plot_save_PSD_Coh(sujet, n_chan):
 
     band_prep = 'lf'
 
-    #cond_i, cond = 0, 'FR_CV'
-    for cond_i, cond in enumerate(prms['conditions']):
+    fig, axs = plt.subplots(nrows=4, ncols=len(prms['conditions']))
+    plt.suptitle(f'{sujet}_{chan_name}_{chan_loca}')
+    fig.set_figheight(10)
+    fig.set_figwidth(10)
 
-        fig, axs = plt.subplots(nrows=4, ncols=len(prms['conditions']))
-        plt.suptitle(f'{sujet}_{chan_name}_{chan_loca}')
+    #c, cond = 0, 'FR_CV'   
+    for c, cond in enumerate(prms['conditions']):
 
-        if len(prms['conditions']) == 1:
+        #### identify respi mean
+        respi_mean = []
+        for trial_i, _ in enumerate(respfeatures_allcond[cond]):
+            respi_mean.append(np.round(respfeatures_allcond[cond][trial_i]['cycle_freq'].mean(), 3))
+        respi_mean = np.round(np.mean(respi_mean),3)
+                
+        #### plot
+        ax = axs[0, c]
+        ax.set_title(cond, fontweight='bold', rotation=0)
+        ax.semilogy(hzPxx, Pxx_allcond['lf'][cond][n_chan,:], color='k')
+        ax.vlines(respi_mean, ymin=0, ymax=Pxx_allcond['lf'][cond][n_chan,:].max(), color='r')
+        ax.set_xlim(0,60)
 
-            #### identify respi mean
-            respi_mean = np.round(respfeatures_allcond[cond][0]['cycle_freq'].mean(), 3)
-            
-            #### plot
-            ax = axs[0]
-            ax.set_title(cond, fontweight='bold', rotation=0)
-            ax.semilogy(hzPxx, Pxx_allcond['lf'][cond][0][n_chan,:], color='k')
-            ax.vlines(respi_mean, ymin=0, ymax=Pxx_allcond['lf'][cond][0][n_chan,:].max(), color='r')
-            ax.set_xlim(0,60)
+        ax = axs[1, c]
+        Pxx_sel_min = Pxx_allcond['lf'][cond][n_chan,remove_zero_pad:][np.where(hzPxx[remove_zero_pad:] < 2)[0]].min()
+        Pxx_sel_max = Pxx_allcond['lf'][cond][n_chan,remove_zero_pad:][np.where(hzPxx[remove_zero_pad:] < 2)[0]].max()
+        ax.semilogy(hzPxx[remove_zero_pad:], Pxx_allcond['lf'][cond][n_chan,remove_zero_pad:], color='k')
+        ax.set_xlim(0, 2)
+        ax.set_ylim(Pxx_sel_min, Pxx_sel_max)
+        ax.vlines(respi_mean, ymin=0, ymax=Pxx_allcond['lf'][cond][n_chan,remove_zero_pad:].max(), color='r')
 
-            ax = axs[1]
-            ax.semilogy(hzPxx[remove_zero_pad:], Pxx_allcond['lf'][cond][0][n_chan,remove_zero_pad:], color='k')
-            ax.set_xlim(0, 2)
-            ax.vlines(respi_mean, ymin=0, ymax=Pxx_allcond['lf'][cond][0][n_chan,remove_zero_pad:].max(), color='r')
+        ax = axs[2, c]
+        ax.plot(hzCxy,Cxy_allcond[cond][n_chan,:], color='k')
+        ax.plot(hzCxy,surrogates_allcond['Cxy'][cond][n_chan,:], color='c')
+        ax.vlines(respi_mean, ymin=0, ymax=1, color='r')
 
-            ax = axs[2]
-            ax.plot(hzCxy,Cxy_allcond[cond][0][n_chan,:], color='k')
-            ax.plot(hzCxy,surrogates_allcond['Cxy'][cond][0][n_chan,:], color='c')
-            ax.vlines(respi_mean, ymin=0, ymax=1, color='r')
-
-            ax = axs[3]
-            ax.plot(cyclefreq_allcond['lf'][cond][0][n_chan,:], color='k')
-            ax.plot(surrogates_allcond['cyclefreq_lf'][cond][0][0, n_chan,:], color='b')
-            ax.plot(surrogates_allcond['cyclefreq_lf'][cond][0][1, n_chan,:], color='c', linestyle='dotted')
-            ax.plot(surrogates_allcond['cyclefreq_lf'][cond][0][2, n_chan,:], color='c', linestyle='dotted')
-            if stretch_TF_auto:
-                ax.vlines(prms['respi_ratio_allcond'][cond][0]*stretch_point_surrogates, ymin=surrogates_allcond['cyclefreq_lf'][cond][0][2, n_chan,:].min(), ymax=surrogates_allcond['cyclefreq_lf'][cond][0][2, n_chan,:].max(), colors='r')
-            else:
-                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=surrogates_allcond['cyclefreq_lf'][cond][0][2, n_chan,:].min(), ymax=surrogates_allcond['cyclefreq_lf'][cond][0][2, n_chan,:].max(), colors='r')
-            #plt.show()
-
+        ax = axs[3, c]
+        MVL_i = np.round(MVL_allcond[cond][n_chan], 5)
+        MVL_surr = np.percentile(surrogates_allcond['MVL'][cond][n_chan,:], 99)
+        if MVL_i > MVL_surr:
+            MVL_p = f'MVL : {MVL_i}, *** {int(MVL_i * 100 / MVL_surr)}%'
         else:
-            
-            for c, cond in enumerate(prms['conditions']):
+            MVL_p = f'MVL : {MVL_i}, NS {int(MVL_i * 100 / MVL_surr)}%'
+        # ax.set_title(MVL_p, rotation=0)
+        ax.set_xlabel(MVL_p)
 
-                #### identify respi mean
-                respi_mean = []
-                for trial_i, _ in enumerate(respfeatures_allcond[cond]):
-                    respi_mean.append(np.round(respfeatures_allcond[cond][trial_i]['cycle_freq'].mean(), 3))
-                respi_mean = np.round(np.mean(respi_mean),3)
-                     
-                #### plot
-                ax = axs[0, c]
-                ax.set_title(cond, fontweight='bold', rotation=0)
-                ax.semilogy(hzPxx, Pxx_allcond['lf'][cond][0][n_chan,:], color='k')
-                ax.vlines(respi_mean, ymin=0, ymax=Pxx_allcond['lf'][cond][0][n_chan,:].max(), color='r')
-                ax.set_xlim(0,60)
+        ax.plot(cyclefreq_allcond['lf'][cond][n_chan,:], color='k')
+        ax.plot(surrogates_allcond['cyclefreq_lf'][cond][0, n_chan,:], color='b')
+        ax.plot(surrogates_allcond['cyclefreq_lf'][cond][1, n_chan,:], color='c', linestyle='dotted')
+        ax.plot(surrogates_allcond['cyclefreq_lf'][cond][2, n_chan,:], color='c', linestyle='dotted')
+        if stretch_TF_auto:
+            ax.vlines(prms['respi_ratio_allcond'][cond]*stretch_point_surrogates, ymin=surrogates_allcond['cyclefreq_lf'][cond][2, n_chan,:].min(), ymax=surrogates_allcond['cyclefreq_lf'][cond][1, n_chan,:].max(), colors='r')
+        else:
+            ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=surrogates_allcond['cyclefreq_lf'][cond][2, n_chan,:].min(), ymax=surrogates_allcond['cyclefreq_lf'][cond][1, n_chan,:].max(), colors='r')
+        #plt.show() 
 
-                ax = axs[1, c]
-                ax.semilogy(hzPxx[remove_zero_pad:], Pxx_allcond['lf'][cond][0][n_chan,remove_zero_pad:], color='k')
-                ax.set_xlim(0, 2)
-                ax.vlines(respi_mean, ymin=0, ymax=Pxx_allcond['lf'][cond][0][n_chan,remove_zero_pad:].max(), color='r')
-
-                ax = axs[2, c]
-                ax.plot(hzCxy,Cxy_allcond[cond][0][n_chan,:], color='k')
-                ax.plot(hzCxy,surrogates_allcond['Cxy'][cond][0][n_chan,:], color='c')
-                ax.vlines(respi_mean, ymin=0, ymax=1, color='r')
-
-                ax = axs[3, c]
-                ax.plot(cyclefreq_allcond['lf'][cond][0][n_chan,:], color='k')
-                ax.plot(surrogates_allcond['cyclefreq_lf'][cond][0][0, n_chan,:], color='b')
-                ax.plot(surrogates_allcond['cyclefreq_lf'][cond][0][1, n_chan,:], color='c', linestyle='dotted')
-                ax.plot(surrogates_allcond['cyclefreq_lf'][cond][0][2, n_chan,:], color='c', linestyle='dotted')
-                if stretch_TF_auto:
-                    ax.vlines(prms['respi_ratio_allcond'][cond][0]*stretch_point_surrogates, ymin=surrogates_allcond['cyclefreq_lf'][cond][0][2, n_chan,:].min(), ymax=surrogates_allcond['cyclefreq_lf'][cond][0][1, n_chan,:].max(), colors='r')
-                else:
-                    ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=surrogates_allcond['cyclefreq_lf'][cond][0][2, n_chan,:].min(), ymax=surrogates_allcond['cyclefreq_lf'][cond][0][1, n_chan,:].max(), colors='r')
-                #plt.show() 
-        #plt.show()
-        
     #### save
     os.chdir(os.path.join(path_results, sujet, 'PSD_Coh', 'summary'))
     fig.savefig(f'{sujet}_{chan_name}_{chan_loca}_{band_prep}.jpeg', dpi=150)
@@ -476,20 +685,27 @@ def plot_save_PSD_Coh(sujet, n_chan):
 
 def compute_TF_ITPC(sujet, prms):
 
+    #### identify count
+    respfeatures_allcond = load_respfeatures(sujet)
+    data_count = {}
+
+    for cond in prms['conditions']:
+        data_count[cond] = len(respfeatures_allcond[cond])
+
     #tf_mode = 'TF'
     for tf_mode in ['TF', 'ITPC']:
     
         if tf_mode == 'TF':
             print('######## LOAD TF ########')
             os.chdir(os.path.join(path_precompute, sujet, 'TF'))
-            if os.path.exists(os.path.join(path_precompute, sujet, 'TF', f'{sujet}_tf_stretch_allcond.pkl')):
+            if os.path.exists(os.path.join(path_precompute, sujet, 'TF', f'allcond_{sujet}_tf_stretch.pkl')):
                 print('ALREADY COMPUTED')
                 continue
             
         elif tf_mode == 'ITPC':
             print('######## LOAD ITPC ########')
             os.chdir(os.path.join(path_precompute, sujet, 'ITPC'))
-            if os.path.exists(os.path.join(path_precompute, sujet, 'ITPC', f'{sujet}_itpc_stretch_allcond.pkl')):
+            if os.path.exists(os.path.join(path_precompute, sujet, 'ITPC', f'allcond_{sujet}_itpc_stretch.pkl')):
                 print('ALREADY COMPUTED')
                 continue
 
@@ -512,47 +728,54 @@ def compute_TF_ITPC(sujet, prms):
 
             tf_stretch_allcond[band_prep] = {}
 
+            #### chose nfrex
+            if band_prep == 'lf':
+                nfrex = nfrex_lf
+            elif band_prep == 'hf':
+                nfrex = nfrex_hf
+
             #cond = 'FR_CV'
             for cond in prms['conditions']:
 
                 tf_stretch_allcond[band_prep][cond] = {}
 
-                #### generate file to load
-                load_file = []
-                for file in os.listdir(): 
-                    if file.find(cond) != -1:
-                        load_file.append(file)
-                    else:
-                        continue
+                for session_i in range(data_count[cond]):
 
-                #### impose good order in dict
-                for band, freq in freq_band_dict[band_prep].items():
-                    tf_stretch_allcond[band_prep][cond][band] = 0
+                    #### impose good order in dict
+                    for band, freq in freq_band_dict[band_prep].items():
+                        tf_stretch_allcond[band_prep][cond][band] = np.zeros(( len(prms['chan_list_ieeg']), nfrex, stretch_point_TF ))
 
-                #### file load
-                for file in load_file:
+                    #### load file
+                    for band, freq in freq_band_dict[band_prep].items():
+                        
+                        for file_i in os.listdir(): 
+                            if file_i.find(f'{freq[0]}_{freq[1]}_{cond}_{session_i+1}') != -1:
+                                file_to_load = file_i
+                            else:
+                                continue
 
-                    for i, (band, freq) in enumerate(freq_band_dict[band_prep].items()):
+                        tf_stretch_allcond[band_prep][cond][band] += np.load(file_to_load)
+                        
+                #### mean
+                for session_i in range(data_count[cond]):
 
-                        if file.find(freq_band_str[band]) != -1:
-                            tf_stretch_allcond[band_prep][cond][band] = np.load(file)
-                        else:
-                            continue
-                            
+                    for band, freq in freq_band_dict[band_prep].items():
+
+                        tf_stretch_allcond[band_prep][cond][band] /= data_count[cond]
 
         #### verif
         for band_prep in band_prep_list:
             for cond in prms['conditions']:
                 for band, freq in freq_band_dict[band_prep].items():
-                    if tf_stretch_allcond[band_prep][cond][band].shape[0] != len(prms['chan_list_ieeg']) :
-                        print('ERROR FREQ BAND : ' + band)
-                    
+                    if len(tf_stretch_allcond[band_prep][cond][band]) != len(prms['chan_list_ieeg']):
+                        raise ValueError(f'reducing incorrect : {band_prep} {cond} {band}')
+               
         #### save
         if tf_mode == 'TF':
-            with open(f'{sujet}_tf_stretch_allcond.pkl', 'wb') as f:
+            with open(f'allcond_{sujet}_tf_stretch.pkl', 'wb') as f:
                 pickle.dump(tf_stretch_allcond, f)
         elif tf_mode == 'ITPC':
-            with open(f'{sujet}_itpc_stretch_allcond.pkl', 'wb') as f:
+            with open(f'allcond_{sujet}_itpc_stretch.pkl', 'wb') as f:
                 pickle.dump(tf_stretch_allcond, f)
 
     print('done')
@@ -577,7 +800,7 @@ def get_tf_itpc_stretch_allcond(sujet, tf_mode):
 
         os.chdir(os.path.join(path_precompute, sujet, 'TF'))
 
-        with open(f'{sujet}_tf_stretch_allcond.pkl', 'rb') as f:
+        with open(f'allcond_{sujet}_tf_stretch.pkl', 'rb') as f:
             tf_stretch_allcond = pickle.load(f)
 
 
@@ -585,7 +808,7 @@ def get_tf_itpc_stretch_allcond(sujet, tf_mode):
         
         os.chdir(os.path.join(path_precompute, sujet, 'ITPC'))
 
-        with open(f'{sujet}_itpc_stretch_allcond.pkl', 'rb') as f:
+        with open(f'allcond_{sujet}_itpc_stretch.pkl', 'rb') as f:
             tf_stretch_allcond = pickle.load(f)
 
     os.chdir(source_path)
@@ -607,8 +830,11 @@ def save_TF_ITPC_n_chan(sujet, n_chan, tf_mode, band_prep):
     elif tf_mode == 'ITPC':
         os.chdir(os.path.join(path_results, sujet, 'ITPC', 'summary'))
     
-    chan_list_modified, chan_list_keep = modify_name(prms['chan_list_ieeg'])
-    chan_name = chan_list_modified[n_chan]
+    if sujet[:3] != 'pat':
+        chan_list_modified, chan_list_keep = modify_name(prms['chan_list_ieeg'])
+        chan_name = chan_list_modified[n_chan]
+    else:
+        chan_name = prms['chan_list_ieeg'][n_chan]
     chan_loca = df_loca['ROI'][df_loca['name'] == chan_name].values[0]
 
     print_advancement(n_chan, len(prms['chan_list_ieeg']), steps=[25, 50, 75])
@@ -647,6 +873,9 @@ def save_TF_ITPC_n_chan(sujet, n_chan, tf_mode, band_prep):
     #### plot
     fig, axs = plt.subplots(nrows=len(freq_band), ncols=len(prms['conditions']))
     plt.suptitle(f'{sujet}_{chan_name}_{chan_loca}')
+
+    fig.set_figheight(10)
+    fig.set_figwidth(10)
 
     #### for plotting l_gamma down
     if band_prep == 'hf':
@@ -691,9 +920,9 @@ def save_TF_ITPC_n_chan(sujet, n_chan, tf_mode, band_prep):
             else:
                 ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='g')
 
-    #plt.show()
+            del data
 
-    del data
+    #plt.show()
 
     #### save
     fig.savefig(f'{sujet}_{chan_name}_{chan_loca}_{band_prep}.jpeg', dpi=150)
@@ -734,6 +963,7 @@ def compilation_compute_Pxx_Cxy_Cyclefreq(sujet):
 
     
 
+
 def compilation_compute_TF_ITPC(sujet):
 
     prms = get_params(sujet)
@@ -760,6 +990,22 @@ def compilation_compute_TF_ITPC(sujet):
 
 
 
+def compilation_export_df(sujet):
+
+    #### load params
+    prms = get_params(sujet)
+    respfeatures_allcond = load_respfeatures(sujet)
+        
+    surrogates_allcond = load_surrogates(sujet, respfeatures_allcond, prms)
+
+    #### export
+    export_Cxy_MVL_in_df(sujet, respfeatures_allcond, surrogates_allcond, prms)
+    export_TF_in_df(sujet, respfeatures_allcond, prms)
+
+
+
+
+
 ################################
 ######## EXECUTE ########
 ################################
@@ -779,7 +1025,7 @@ if __name__ == '__main__':
     # execute_function_in_slurm_bash_mem_choice('n8_res_power_analysis', 'compilation_compute_TF_ITPC', [sujet], 15)
 
 
-
-
-
-
+    #### export df
+    # compilation_export_df(sujet)
+    execute_function_in_slurm_bash('n11_res_power_analysis', 'compilation_export_df', [sujet])
+    

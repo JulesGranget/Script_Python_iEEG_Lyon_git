@@ -21,10 +21,10 @@ import scipy.signal
 perso_repo_computation = False
 
 #### whole protocole
-# sujet = 'CHEe'
+sujet = 'CHEe'
 # sujet = 'GOBc' 
 # sujet = 'MAZm' 
-sujet = 'TREt' 
+# sujet = 'TREt' 
 
 #### FR_CV only
 # sujet = 'MUGa'
@@ -333,8 +333,8 @@ percentile_cyclefreq_up = .99
 percentile_cyclefreq_dw = .01
 
 
-
-
+#### n bin for MI computation
+MI_n_bin = 18
 
 
 ################################
@@ -394,25 +394,4 @@ win_hrv = scipy.signal.windows.hann(nwind_hrv)
 f_RRI = (.1, .5)
 
 
-
-
-
-########################################
-######## COMPUTATIONAL NOTES ######## 
-########################################
-
-#### CHEe
-#
-
-#### GOBc
-#
-
-#### MAZm
-#
-
-#### MUGa
-#
-
-#### TREt
-#
 

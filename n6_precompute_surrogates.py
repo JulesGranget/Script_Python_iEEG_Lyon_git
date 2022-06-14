@@ -19,86 +19,6 @@ debug = False
 
 
 
-
-########################################
-######## ANALYSIS FUNCTIONS ########
-########################################
-
-
-
-def shuffle_CycleFreq(x):
-
-    cut = int(np.random.randint(low=0, high=len(x), size=1))
-    x_cut1 = x[:cut]
-    x_cut2 = x[cut:]*-1
-    x_shift = np.concatenate((x_cut2, x_cut1), axis=0)
-
-    return x_shift
-    
-
-def shuffle_Cxy(x):
-   half_size = x.shape[0]//2
-   ind = np.random.randint(low=0, high=half_size)
-   x_shift = x.copy()
-   
-   x_shift[ind:ind+half_size] *= -1
-   if np.random.rand() >=0.5:
-       x_shift *= -1
-
-   return x_shift
-
-
-def Kullback_Leibler_Distance(a, b):
-    a = np.asarray(a, dtype=float)
-    b = np.asarray(b, dtype=float)
-    return np.sum(np.where(a != 0, a * np.log(a / b), 0))
-
-def Shannon_Entropy(a):
-    a = np.asarray(a, dtype=float)
-    return - np.sum(np.where(a != 0, a * np.log(a), 0))
-
-def Modulation_Index(distrib, show=False, verbose=False):
-    distrib = np.asarray(distrib, dtype = float)
-    
-    if verbose:
-        if np.sum(distrib) != 1:
-            print(f'(!)  The sum of all bins is not 1 (sum = {round(np.sum(distrib), 2)})  (!)')
-        
-    N = distrib.size
-    uniform_distrib = np.ones(N) * (1/N)
-    mi = Kullback_Leibler_Distance(distrib, uniform_distrib) / np.log(N)
-    
-    if show:
-        bin_width_deg = 360 / N
-        
-        doubled_distrib = np.concatenate([distrib,distrib] )
-        x = np.arange(0, doubled_distrib.size*bin_width_deg, bin_width_deg)
-        fig, ax = plt.subplots(figsize = (8,4))
-        
-        doubled_uniform_distrib = np.concatenate([uniform_distrib,uniform_distrib] )
-        ax.scatter(x, doubled_uniform_distrib, s=2, color='r')
-        
-        ax.bar(x=x, height=doubled_distrib, width = bin_width_deg/1.1, align = 'edge')
-        ax.set_title(f'Modulation Index = {round(mi, 4)}')
-        ax.set_xlabel(f'Phase (Deg)')
-        ax.set_ylabel(f'Amplitude (Normalized)')
-        ax.set_xticks([0,360,720])
-
-    return mi
-
-def Shannon_MI(a):
-    a = np.asarray(a, dtype = float)
-    N = a.size
-    kl_divergence_shannon = np.log(N) - Shannon_Entropy(a)
-    return kl_divergence_shannon / np.log(N)
-
-
-
-
-
-
-
-
 ################################################
 ######## CXY CYCLE FREQ SURROGATES ########
 ################################################
@@ -169,7 +89,6 @@ def precompute_surrogates_coh(sujet, band_prep, cond, session_i):
 
 
 
-
 def precompute_surrogates_cyclefreq(sujet, band_prep, cond, session_i):
     
     print(cond)
@@ -188,7 +107,6 @@ def precompute_surrogates_cyclefreq(sujet, band_prep, cond, session_i):
 
     #### compute surrogates
     surrogates_n_chan = np.zeros((3, data_tmp.shape[0], stretch_point_surrogates))
-    MI_surrogates = np.zeros((data_tmp.shape[0], n_surrogates_cyclefreq))
 
     respfeatures_i = respfeatures_allcond[cond][session_i]
 
@@ -221,18 +139,7 @@ def precompute_surrogates_cyclefreq(sujet, band_prep, cond, session_i):
         up_percentile_values_tmp = surrogates_val_tmp_sorted[percentile_i_up,:]
         dw_percentile_values_tmp = surrogates_val_tmp_sorted[percentile_i_dw,:]
 
-        #### compute MI
-        MI_surrogates = np.array([])
-        for surr_i in range(n_surrogates_cyclefreq):
-
-            x = surrogates_val_tmp[surr_i,:]
-
-            x += np.abs(x.min())*2 #supress zero values
-            x = x/np.sum(x) #transform into probabilities
-            
-            MI_surrogates = np.append(MI_surrogates, Shannon_MI(x))
-
-        return mean_surrogate_tmp, up_percentile_values_tmp, dw_percentile_values_tmp, MI_surrogates
+        return mean_surrogate_tmp, up_percentile_values_tmp, dw_percentile_values_tmp
 
     compute_surrogates_cyclefreq_results = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_surrogates_cyclefreq_nchan)(n_chan) for n_chan in range(np.size(data_tmp,0)))
 
@@ -242,16 +149,239 @@ def precompute_surrogates_cyclefreq(sujet, band_prep, cond, session_i):
         surrogates_n_chan[0, n_chan, :] = compute_surrogates_cyclefreq_results[n_chan][0]
         surrogates_n_chan[1, n_chan, :] = compute_surrogates_cyclefreq_results[n_chan][1]
         surrogates_n_chan[2, n_chan, :] = compute_surrogates_cyclefreq_results[n_chan][2]
-        MI_surrogates[n_chan:] = compute_surrogates_cyclefreq_results[n_chan][3]
     
     #### save
     np.save(sujet + '_' + cond + '_' + str(session_i+1) + '_cyclefreq_' +  band_prep + '.npy', surrogates_n_chan)
+
+    print('done')
+
+
+
+
+
+
+################################
+######## MI / MVL ########
+################################
+
+
+
+
+def zscore(x):
+
+    x_zscore = (x - x.mean()) / x.std()
+
+    return x_zscore
+
+
+#x = x_stretch_linear
+def shuffle_windows(x):
+
+    n_cycles_stretch = int( x.shape[0]/stretch_point_surrogates )
+
+    shuffle_win = np.zeros(( n_cycles_stretch, stretch_point_surrogates ))
+
+    for cycle_i in range(n_cycles_stretch):
+
+        cut_i = np.random.randint(0, x.shape[0]-stretch_point_surrogates, 1)
+        shuffle_win[cycle_i,:] = x[int(cut_i):int(cut_i+stretch_point_surrogates)]
+
+    x_shuffled = np.mean(shuffle_win, axis=0)
+
+    if debug:
+        plt.plot(x_shuffled)
+        plt.show()
+
+    return x_shuffled
+
+
+
+def precompute_MI(sujet, band_prep, cond, session_i):
+
+    print(cond)
+
+    #### load params
+    respfeatures_allcond = load_respfeatures(sujet)
+    respfeatures_i = respfeatures_allcond[cond][session_i]
+    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet)
+
+    #### load data
+    os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
+    data_tmp = load_data_sujet(sujet, band_prep, cond, session_i)
+
+    if os.path.exists(f'{sujet}_{cond}_{str(session_i+1)}_MI_{band_prep}.npy') == True :
+        print('ALREADY COMPUTED')
+        return
+
+    #### compute surrogates
+    #n_chan = 95
+    def compute_surrogates_cyclefreq_nchan(n_chan):
+
+        print_advancement(n_chan, data_tmp.shape[0], steps=[25, 50, 75])
+
+        x = data_tmp[n_chan,:]
+        x_stretch, mean_inspi_ratio = stretch_data(respfeatures_i, stretch_point_surrogates, x, srate)
+        x_stretch_linear = x_stretch.reshape(-1) 
+
+        surrogates_stretch_tmp = np.zeros((n_surrogates_cyclefreq, stretch_point_surrogates))
+
+        for surr_i in range(n_surrogates_cyclefreq):
+
+            # print_advancement(surr_i, n_surrogates_cyclefreq, steps=[25, 50, 75])
+
+            surrogates_stretch_tmp[surr_i,:] = shuffle_windows(x_stretch_linear)
+
+        #### compute MI
+        MI_surrogates_i = np.array([])
+        MI_bin_i = int(stretch_point_surrogates / MI_n_bin)
+        x_bin_surr = np.zeros(( stretch_point_surrogates, MI_n_bin ))
+        for surr_i in range(n_surrogates_cyclefreq):
+
+            x = surrogates_stretch_tmp[surr_i,:]
+
+            x_bin = np.zeros(( MI_n_bin ))
+
+            for bin_i in range(MI_n_bin):
+                x_bin[bin_i] = np.mean(x[MI_bin_i*bin_i:MI_bin_i*(bin_i+1)])
+
+            # x += np.abs(x.min())*2
+            # x = x/np.sum(x)
+            x_bin += np.abs(x_bin.min())*2
+            x_bin = x_bin/np.sum(x_bin)
+
+            x_bin_surr[surr_i, :] = x_bin
+            
+            MI_surrogates_i = np.append(MI_surrogates_i, Shannon_MI(x_bin))
+
+        if debug:
+            times_binned = np.arange(int(stretch_point_surrogates/MI_n_bin), stretch_point_surrogates, int(stretch_point_surrogates/MI_n_bin))
+            _99th = np.percentile(MI_surrogates_i, 99) 
+            plot_i = np.where(MI_surrogates_i > _99th)[0]
+            for i in plot_i:
+                plt.plot(np.mean(x_stretch,axis=0), label='original')
+                plt.plot(x_bin_surr[i,:], label='shuffle')
+                plt.title(f'MI : {MI_surrogates_i[i]}')
+                plt.legend()
+                plt.show()
+
+            for i in range(n_surrogates_cyclefreq):
+                plt.plot(surrogates_stretch_tmp[i,:])
+            plt.plot(np.mean(x_stretch,axis=0), linewidth=5)
+            plt.show()
+
+        return MI_surrogates_i
+
+    compute_surrogates_cyclefreq_results = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_surrogates_cyclefreq_nchan)(n_chan) for n_chan in range(data_tmp.shape[0]))
+
+    #### fill results
+    MI_surrogates = np.zeros(( data_tmp.shape[0], n_surrogates_cyclefreq ))
+
+    for n_chan in range(data_tmp.shape[0]):
+
+        MI_surrogates[n_chan,:] = compute_surrogates_cyclefreq_results[n_chan]
+
+    #### verif
+    if debug:
+        count, values, fig = plt.hist(MI_surrogates[95,:])
+        plt.vlines(np.percentile(MI_surrogates[0,:], 99), ymin=0, ymax=count.max())
+        plt.vlines(np.percentile(MI_surrogates[0,:], 95), ymin=0, ymax=count.max())
+        plt.show()
+    
+    #### save
     np.save(f'{sujet}_{cond}_{str(session_i+1)}_MI_{band_prep}.npy', MI_surrogates)
 
     print('done')
 
 
 
+
+
+
+
+
+def precompute_MVL(sujet, band_prep, cond, session_i):
+
+    print(cond)
+
+    #### load params
+    respfeatures_allcond = load_respfeatures(sujet)
+    respfeatures_i = respfeatures_allcond[cond][session_i]
+    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet)
+
+    #### load data
+    os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
+    data_tmp = load_data_sujet(sujet, band_prep, cond, session_i)
+
+    if os.path.exists(f'{sujet}_{cond}_{str(session_i+1)}_MVL_{band_prep}.npy') == True :
+        print('ALREADY COMPUTED')
+        return
+
+    #### compute surrogates
+    #n_chan = 95
+    def compute_surrogates_cyclefreq_nchan(n_chan):
+
+        print_advancement(n_chan, data_tmp.shape[0], steps=[25, 50, 75])
+
+        #### stretch
+        x = data_tmp[n_chan,:]
+        x_zscore = zscore(x)
+        x_stretch, mean_inspi_ratio = stretch_data(respfeatures_i, stretch_point_surrogates, x_zscore, srate)
+
+        MVL_nchan = get_MVL(np.abs(np.mean(x_stretch,axis=0)))
+
+        x_stretch_linear = x_stretch.reshape(-1) 
+        
+        #### surrogates
+        surrogates_stretch_tmp = np.zeros((n_surrogates_cyclefreq, stretch_point_surrogates))
+
+        for surr_i in range(n_surrogates_cyclefreq):
+
+            # print_advancement(surr_i, n_surrogates_cyclefreq, steps=[25, 50, 75])
+
+            surrogates_stretch_tmp[surr_i,:] = shuffle_windows(x_stretch_linear)
+
+        #### compute MVL
+        MVL_surrogates_i = np.array([])
+        for surr_i in range(n_surrogates_cyclefreq):
+
+            x = surrogates_stretch_tmp[surr_i,:]
+            
+            MVL_surrogates_i = np.append(MVL_surrogates_i, get_MVL(np.abs(x)))
+
+        return MVL_nchan, MVL_surrogates_i
+
+    compute_surrogates_MVL = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_surrogates_cyclefreq_nchan)(n_chan) for n_chan in range(data_tmp.shape[0]))
+
+    #### fill results
+    MVL_surrogates = np.zeros(( data_tmp.shape[0], n_surrogates_cyclefreq ))
+    MVL_val = np.zeros(( data_tmp.shape[0] ))
+
+    for n_chan in range(data_tmp.shape[0]):
+
+        MVL_surrogates[n_chan,:] = compute_surrogates_MVL[n_chan][1]
+        MVL_val[n_chan] = compute_surrogates_MVL[n_chan][0]
+
+    #### verif
+    if debug:
+        n_chan = 95
+        count, values, fig = plt.hist(MVL_surrogates[n_chan,:])
+        plt.vlines(np.percentile(MVL_surrogates[n_chan,:], 99), ymin=0, ymax=count.max())
+        plt.vlines(np.percentile(MVL_surrogates[n_chan,:], 95), ymin=0, ymax=count.max())
+        plt.vlines(MVL_val[n_chan], ymin=0, ymax=count.max(), color='r')
+        plt.show()
+    
+    #### save
+    np.save(f'{sujet}_{cond}_{str(session_i+1)}_MVL_{band_prep}.npy', MVL_surrogates)
+
+    print('done')
+
+
+
+
+
+################################
+######## EXECUTE ########
+################################
 
 
 if __name__ == '__main__':
@@ -267,15 +397,20 @@ if __name__ == '__main__':
     #band_prep = band_prep_list[0]
     for band_prep in band_prep_list:
 
-        print('COMPUTE FOR ' + band_prep)
+        print(f'COMPUTE FOR {band_prep}')
 
-        #cond = 'FR_CV'
+        #cond = 'RD_CV'
         for cond in conditions:
 
             if len(respfeatures_allcond[cond]) == 1:
 
                 # precompute_surrogates_cyclefreq(sujet, band_prep, cond, 0)
                 execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_surrogates_cyclefreq', [sujet, band_prep, cond, 0])
+
+                # precompute_MI(sujet, band_prep, cond, 0)
+                # execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_MI', [sujet, band_prep, cond, 0])
+                # precompute_MVL(sujet, band_prep, cond, 0)
+                execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_MVL', [sujet, band_prep, cond, 0])               
 
                 if band_prep == 'lf':
                     # precompute_surrogates_coh(sujet, band_prep, cond, 0)
@@ -287,6 +422,11 @@ if __name__ == '__main__':
 
                     # precompute_surrogates_cyclefreq(sujet, band_prep, cond, session_i)
                     execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_surrogates_cyclefreq', [sujet, band_prep, cond, session_i])
+
+                    # precompute_MI(sujet, band_prep, cond, session_i)
+                    # execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_MI', [sujet, band_prep, cond, session_i])
+                    # precompute_MVL(sujet, band_prep, cond, 0)
+                    execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_MVL', [sujet, band_prep, cond, session_i])
 
                     if band_prep == 'lf':
                         # precompute_surrogates_coh(sujet, band_prep, cond, session_i)
