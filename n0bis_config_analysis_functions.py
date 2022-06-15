@@ -82,6 +82,7 @@ def generate_folder_structure(sujet):
     construct_token = create_folder('ITPC', construct_token)
     construct_token = create_folder('FC', construct_token)
     construct_token = create_folder('HRV', construct_token)
+    construct_token = create_folder('df', construct_token)
 
             #### TF
     os.chdir(os.path.join(path_general, 'Analyses', 'results', sujet, 'TF'))
@@ -123,6 +124,7 @@ def generate_folder_structure(sujet):
     construct_token = create_folder('allcond', construct_token)
     construct_token = create_folder('FR_CV', construct_token)
     construct_token = create_folder('anatomy', construct_token)
+    construct_token = create_folder('df', construct_token)
     os.chdir(os.path.join(path_general, 'Analyses', 'results', 'allplot', 'allcond'))
     construct_token = create_folder('TF', construct_token)
     construct_token = create_folder('ITPC', construct_token)

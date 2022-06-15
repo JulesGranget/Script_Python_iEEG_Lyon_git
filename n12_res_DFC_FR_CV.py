@@ -177,7 +177,7 @@ if __name__ == '__main__':
 
 
     cond = 'FR_CV'
-    
+
     process_dfc_res(sujet, cond)
         
 

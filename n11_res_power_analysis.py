@@ -8,6 +8,7 @@ import pandas as pd
 import joblib
 
 import pickle
+import gc
 
 from n0_config_params import *
 from n0bis_config_analysis_functions import *
@@ -245,7 +246,7 @@ def compute_PxxCxyCyclefreq_for_cond(sujet, band_prep, cond, session_i, stretch_
         x_zscore = zscore(x)
         x_stretch, trash = stretch_data(respfeatures_allcond[cond][session_i], stretch_point_surrogates, x_zscore, prms['srate'])
 
-        MVL_for_cond[n_chan] = get_MVL(np.abs(np.mean(x_stretch,axis=0)))
+        MVL_for_cond[n_chan] = get_MVL(np.mean(x_stretch,axis=0)-np.mean(x_stretch,axis=0).min())
 
         # #### MI
         # x = x_stretch_mean
@@ -394,154 +395,11 @@ def compute_reduced_PxxCxyCyclefreqSurrogates(sujet, respfeatures_allcond, surro
 
         save_Pxx_Cxy_Cyclefreq_Surrogates_allcond(sujet, Pxx_allcond_red, cyclefreq_allcond_red, Cxy_allcond_red, MVL_allcond_red, surrogates_allcond_red)
 
-        print('COMPUTE Pxx CF Cxy Surr')
-
     else:
 
         print('ALREADY COMPUTED')
 
     print('done') 
-
-
-
-
-########################################
-######## EXPORT DATA IN DF ########
-########################################
-
-
-def export_Cxy_MVL_in_df(sujet, respfeatures_allcond, surrogates_allcond, prms):
-
-    #### load data
-    Pxx_allcond, Cxy_allcond, surrogates_allcond, cyclefreq_allcond, MVL_allcond = get_Pxx_Cxy_Cyclefreq_Surrogates_allcond(sujet)
-    prms = get_params(sujet)
-    respfeatures_allcond = load_respfeatures(sujet)
-    df_loca = get_loca_df(sujet)
-    respi_i = prms['chan_list'].index('nasal')
-
-    #### data count
-    data_count = {}
-
-    for cond in prms['conditions']:
-        data_count[cond] = len(respfeatures_allcond[cond])
-
-    #### identify chan params
-    if sujet[:3] != 'pat':
-        chan_list, chan_list_keep = modify_name(prms['chan_list_ieeg'])
-    else:
-        chan_list = prms['chan_list_ieeg']
-
-    #### prepare df
-    df_export = pd.DataFrame(columns=['sujet', 'cond', 'chan', 'ROI', 'Lobe', 'side', 'Cxy', 'Cxy_surr', 'MVL', 'MVL_surr'])
-    
-    #### fill df
-    for chan_i, chan_name in enumerate(chan_list):
-
-        print_advancement(chan_i, len(chan_list), steps=[25, 50, 75])
-
-        ROI_i = df_loca['ROI'][df_loca['name'] == chan_name].values[0]
-        Lobe_i = df_loca['lobes'][df_loca['name'] == chan_name].values[0]
-        if chan_name.find('p') or chan_name.find("'"):
-            side_i = 'l'
-        else:
-            side_i = 'r' 
-
-        for cond in prms['conditions']:
-
-            Cxy_i = 0
-            Cxy_surr_i = 0
-
-            MVL_i = 0
-            MVL_surr_i = 0
-
-            for trial_i in range(data_count[cond]):
-
-                respi_tmp = load_data_sujet(sujet, 'lf', cond, trial_i)[respi_i,:]
-                hzPxx, Pxx = scipy.signal.welch(respi_tmp, fs=prms['srate'], window=prms['hannw'], nperseg=prms['nwind'], noverlap=prms['noverlap'], nfft=prms['nfft'])
-                Cxy_i += Cxy_allcond[cond][chan_i,np.argmax(Pxx)]
-                Cxy_surr_i += surrogates_allcond['Cxy'][cond][chan_i,np.argmax(Pxx)]
-                MVL_i += MVL_allcond[cond][chan_i]
-                MVL_surr_i += np.mean(surrogates_allcond['MVL'][cond][chan_i,:])
-
-            Cxy_i /= data_count[cond]
-            Cxy_surr_i /= data_count[cond]
-
-            MVL_i /= data_count[cond]
-            MVL_surr_i /= data_count[cond]
-
-            data_export_i =   {'sujet' : [sujet], 'cond' : [cond], 'chan' : [chan_name], 'ROI' : [ROI_i], 'Lobe' : [Lobe_i], 'side' : [side_i], 
-                            'Cxy' : [Cxy_i], 'Cxy_surr' : [Cxy_surr_i], 'MVL' : [MVL_i], 'MVL_surr' : [MVL_surr_i]}
-            df_export_i = pd.DataFrame.from_dict(data_export_i)
-            
-            df_export = pd.concat([df_export, df_export_i])
-
-    #### save
-    os.chdir(os.path.join(path_results, sujet, 'PSD_Coh', 'allcond'))
-    df_export.to_excel(f'{sujet}_df_Cxy_MVL.xlsx')
-
-
-
-
-
-
-
-def export_TF_in_df(sujet, respfeatures_allcond, prms):
-
-    #### load prms
-    prms = get_params(sujet)
-    respfeatures_allcond = load_respfeatures(sujet)
-    df_loca = get_loca_df(sujet)
-    
-    #### data count
-    data_count = {}
-
-    for cond in prms['conditions']:
-        data_count[cond] = len(respfeatures_allcond[cond])
-
-    #### identify chan params
-    if sujet[:3] != 'pat':
-        chan_list, chan_list_keep = modify_name(prms['chan_list_ieeg'])
-    else:
-        chan_list = prms['chan_list_ieeg']
-
-    #### prepare df
-    df_export = pd.DataFrame(columns=['sujet', 'cond', 'chan', 'ROI', 'Lobe', 'side', 'band', 'phase', 'Pxx'])
-
-    #### fill df
-    #chan_i, chan_name = 0, chan_list[0]
-    for chan_i, chan_name in enumerate(chan_list):
-
-        print_advancement(chan_i, len(chan_list), steps=[25, 50, 75])
-
-        ROI_i = df_loca['ROI'][df_loca['name'] == chan_name].values[0]
-        Lobe_i = df_loca['lobes'][df_loca['name'] == chan_name].values[0]
-
-        if chan_name.find('p') or chan_name.find("'"):
-            side_i = 'l'
-        else:
-            side_i = 'r' 
-
-        #band_prep = 'lf'
-        for band_prep in band_prep_list:
-            #cond = 'FR_CV'
-            for cond in prms['conditions']:
-                #band, freq = 'theta', [2, 10]
-                for band, freq in freq_band_dict[band_prep].items():
-
-                    data = get_tf_itpc_stretch_allcond(sujet, 'TF')[band_prep][cond][band][chan_i, :, :]
-                    Pxx = np.mean(data, axis=0)
-                    Pxx_inspi = np.mean(Pxx[0:int(stretch_point_TF*ratio_stretch_TF)])
-                    Pxx_expi = np.mean(Pxx[int(stretch_point_TF*ratio_stretch_TF):])
-
-                    data_export_i =   {'sujet' : [sujet]*2, 'cond' : [cond]*2, 'chan' : [chan_name]*2, 'ROI' : [ROI_i]*2, 'Lobe' : [Lobe_i]*2, 'side' : [side_i]*2, 
-                                    'band' : [band]*2, 'phase' : ['inspi', 'expi'], 'Pxx' : [Pxx_inspi, Pxx_expi]}
-                    df_export_i = pd.DataFrame.from_dict(data_export_i)
-                    
-                    df_export = pd.concat([df_export, df_export_i])
-
-    #### save
-    os.chdir(os.path.join(path_results, sujet, 'PSD_Coh', 'allcond'))
-    df_export.to_excel(f'{sujet}_df_TF_IE.xlsx')
 
 
 
@@ -580,7 +438,7 @@ def get_Pxx_Cxy_Cyclefreq_Surrogates_allcond(sujet):
 
 
 
-#n_chan = 95
+#n_chan = 0
 def plot_save_PSD_Coh(sujet, n_chan):
 
     #### load data
@@ -622,13 +480,19 @@ def plot_save_PSD_Coh(sujet, n_chan):
         respi_mean = np.round(np.mean(respi_mean),3)
                 
         #### plot
-        ax = axs[0, c]
+        if len(prms['conditions']) == 1:
+            ax = axs[0]
+        else:      
+            ax = axs[0, c]
         ax.set_title(cond, fontweight='bold', rotation=0)
         ax.semilogy(hzPxx, Pxx_allcond['lf'][cond][n_chan,:], color='k')
         ax.vlines(respi_mean, ymin=0, ymax=Pxx_allcond['lf'][cond][n_chan,:].max(), color='r')
         ax.set_xlim(0,60)
 
-        ax = axs[1, c]
+        if len(prms['conditions']) == 1:
+            ax = axs[1]
+        else:      
+            ax = axs[1, c]
         Pxx_sel_min = Pxx_allcond['lf'][cond][n_chan,remove_zero_pad:][np.where(hzPxx[remove_zero_pad:] < 2)[0]].min()
         Pxx_sel_max = Pxx_allcond['lf'][cond][n_chan,remove_zero_pad:][np.where(hzPxx[remove_zero_pad:] < 2)[0]].max()
         ax.semilogy(hzPxx[remove_zero_pad:], Pxx_allcond['lf'][cond][n_chan,remove_zero_pad:], color='k')
@@ -636,12 +500,18 @@ def plot_save_PSD_Coh(sujet, n_chan):
         ax.set_ylim(Pxx_sel_min, Pxx_sel_max)
         ax.vlines(respi_mean, ymin=0, ymax=Pxx_allcond['lf'][cond][n_chan,remove_zero_pad:].max(), color='r')
 
-        ax = axs[2, c]
+        if len(prms['conditions']) == 1:
+            ax = axs[2]
+        else:      
+            ax = axs[2, c]
         ax.plot(hzCxy,Cxy_allcond[cond][n_chan,:], color='k')
         ax.plot(hzCxy,surrogates_allcond['Cxy'][cond][n_chan,:], color='c')
         ax.vlines(respi_mean, ymin=0, ymax=1, color='r')
 
-        ax = axs[3, c]
+        if len(prms['conditions']) == 1:
+            ax = axs[3]
+        else:      
+            ax = axs[3, c]
         MVL_i = np.round(MVL_allcond[cond][n_chan], 5)
         MVL_surr = np.percentile(surrogates_allcond['MVL'][cond][n_chan,:], 99)
         if MVL_i > MVL_surr:
@@ -664,8 +534,9 @@ def plot_save_PSD_Coh(sujet, n_chan):
     #### save
     os.chdir(os.path.join(path_results, sujet, 'PSD_Coh', 'summary'))
     fig.savefig(f'{sujet}_{chan_name}_{chan_loca}_{band_prep}.jpeg', dpi=150)
+    fig.clf()
     plt.close('all')
-    del fig
+    gc.collect()
 
     return
 
@@ -818,7 +689,7 @@ def get_tf_itpc_stretch_allcond(sujet, tf_mode):
 
 
 
-#n_chan, tf_mode, band_prep = 0, 'TF', 'lf'
+#n_chan, tf_mode, band_prep = 0, 'ITPC', 'lf'
 def save_TF_ITPC_n_chan(sujet, n_chan, tf_mode, band_prep):
 
     #### load prms
@@ -860,6 +731,8 @@ def save_TF_ITPC_n_chan(sujet, n_chan, tf_mode, band_prep):
             scales['vmax_val'] = np.append(scales['vmax_val'], np.max(data))
             scales['median_val'] = np.append(scales['median_val'], np.median(data))
 
+            del data
+
         median_diff = np.max([np.abs(np.min(scales['vmin_val']) - np.median(scales['median_val'])), np.abs(np.max(scales['vmax_val']) - np.median(scales['median_val']))])
 
         vmin = np.median(scales['median_val']) - median_diff
@@ -894,7 +767,7 @@ def save_TF_ITPC_n_chan(sujet, n_chan, tf_mode, band_prep):
             data = get_tf_itpc_stretch_allcond(sujet, tf_mode)[band_prep][cond][band][n_chan, :, :]
             frex = np.linspace(freq[0], freq[1], np.size(data,0))
         
-            if len(conditions_allsubjects) == 1:
+            if len(prms['conditions']) == 1:
                 ax = axs[i]
             else:
                 ax = axs[i,c]
@@ -926,8 +799,9 @@ def save_TF_ITPC_n_chan(sujet, n_chan, tf_mode, band_prep):
 
     #### save
     fig.savefig(f'{sujet}_{chan_name}_{chan_loca}_{band_prep}.jpeg', dpi=150)
+    fig.clf()
     plt.close('all')
-    del fig
+    gc.collect()
 
 
 
@@ -952,11 +826,11 @@ def compilation_compute_Pxx_Cxy_Cyclefreq(sujet):
     surrogates_allcond = load_surrogates(sujet, respfeatures_allcond, prms)
 
     #### reduce surrogates
+    print('######## COMPUTE & REDUCE PSD AND COH ########')
     compute_reduced_PxxCxyCyclefreqSurrogates(sujet, respfeatures_allcond, surrogates_allcond, prms)
     
     #### compute joblib
     print('######## PLOT & SAVE PSD AND COH ########')
-
     joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(plot_save_PSD_Coh)(sujet, n_chan) for n_chan in range(len(prms['chan_list_ieeg'])))
 
     print('done')
@@ -970,7 +844,7 @@ def compilation_compute_TF_ITPC(sujet):
 
     compute_TF_ITPC(sujet, prms)
     
-    #tf_mode = 'TF'
+    #tf_mode = 'ITPC'
     for tf_mode in ['TF', 'ITPC']:
         
         if tf_mode == 'TF':
@@ -990,20 +864,6 @@ def compilation_compute_TF_ITPC(sujet):
 
 
 
-def compilation_export_df(sujet):
-
-    #### load params
-    prms = get_params(sujet)
-    respfeatures_allcond = load_respfeatures(sujet)
-        
-    surrogates_allcond = load_surrogates(sujet, respfeatures_allcond, prms)
-
-    #### export
-    export_Cxy_MVL_in_df(sujet, respfeatures_allcond, surrogates_allcond, prms)
-    export_TF_in_df(sujet, respfeatures_allcond, prms)
-
-
-
 
 
 ################################
@@ -1014,18 +874,13 @@ if __name__ == '__main__':
 
     
     #### Pxx Cxy CycleFreq
-    # compilation_compute_Pxx_Cxy_Cyclefreq(sujet)
-    execute_function_in_slurm_bash('n11_res_power_analysis', 'compilation_compute_Pxx_Cxy_Cyclefreq', [sujet])
-    # execute_function_in_slurm_bash_mem_choice('n8_res_power_analysis', 'compilation_compute_Pxx_Cxy_Cyclefreq', [sujet], 15)
+    compilation_compute_Pxx_Cxy_Cyclefreq(sujet)
+    # execute_function_in_slurm_bash('n11_res_power_analysis', 'compilation_compute_Pxx_Cxy_Cyclefreq', [sujet])
+    # execute_function_in_slurm_bash_mem_choice('n11_res_power_analysis', 'compilation_compute_Pxx_Cxy_Cyclefreq', [sujet], 15)
 
 
     #### TF & ITPC
-    # compilation_compute_TF_ITPC(sujet)
-    execute_function_in_slurm_bash('n11_res_power_analysis', 'compilation_compute_TF_ITPC', [sujet])
-    # execute_function_in_slurm_bash_mem_choice('n8_res_power_analysis', 'compilation_compute_TF_ITPC', [sujet], 15)
+    compilation_compute_TF_ITPC(sujet)
+    # execute_function_in_slurm_bash('n11_res_power_analysis', 'compilation_compute_TF_ITPC', [sujet])
+    # execute_function_in_slurm_bash_mem_choice('n11_res_power_analysis', 'compilation_compute_TF_ITPC', [sujet], 15)
 
-
-    #### export df
-    # compilation_export_df(sujet)
-    execute_function_in_slurm_bash('n11_res_power_analysis', 'compilation_export_df', [sujet])
-    

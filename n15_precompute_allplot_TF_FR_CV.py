@@ -493,7 +493,7 @@ if __name__ == '__main__':
     cond = 'FR_CV'
 
     # compilation_allplot_analysis(cond)
-    execute_function_in_slurm_bash('n13_precompute_allplot_TF_FR_CV', 'compilation_allplot_analysis', [cond])
+    execute_function_in_slurm_bash('n15_precompute_allplot_TF_FR_CV', 'compilation_allplot_analysis', [cond])
     
 
 

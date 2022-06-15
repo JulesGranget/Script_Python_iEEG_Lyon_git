@@ -327,7 +327,7 @@ def precompute_MVL(sujet, band_prep, cond, session_i):
         x_zscore = zscore(x)
         x_stretch, mean_inspi_ratio = stretch_data(respfeatures_i, stretch_point_surrogates, x_zscore, srate)
 
-        MVL_nchan = get_MVL(np.abs(np.mean(x_stretch,axis=0)))
+        MVL_nchan = get_MVL(np.mean(x_stretch,axis=0)-np.mean(x_stretch,axis=0).min())
 
         x_stretch_linear = x_stretch.reshape(-1) 
         
@@ -346,7 +346,7 @@ def precompute_MVL(sujet, band_prep, cond, session_i):
 
             x = surrogates_stretch_tmp[surr_i,:]
             
-            MVL_surrogates_i = np.append(MVL_surrogates_i, get_MVL(np.abs(x)))
+            MVL_surrogates_i = np.append(MVL_surrogates_i, get_MVL(x-x.min()))
 
         return MVL_nchan, MVL_surrogates_i
 
