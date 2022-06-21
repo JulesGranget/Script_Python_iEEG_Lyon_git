@@ -836,7 +836,7 @@ if __name__ == '__main__':
     #### compute fc metrics
     if compute_metrics:
         #compute_pli_ispc_allband(sujet)
-        execute_function_in_slurm_bash('n9_fc_analysis', 'compute_pli_ispc_allband', [sujet])
+        execute_function_in_slurm_bash('n14_fc_analysis', 'compute_pli_ispc_allband', [sujet])
 
     #### save fig
     if plot_fig:

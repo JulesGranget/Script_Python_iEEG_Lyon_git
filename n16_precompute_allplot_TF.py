@@ -443,7 +443,7 @@ if __name__ == '__main__':
     for cond in conditions_allsubjects:
 
         # compilation_allplot_analysis(cond)
-        execute_function_in_slurm_bash('n14_precompute_allplot_TF', 'compilation_allplot_analysis', [cond])
+        execute_function_in_slurm_bash('n16_precompute_allplot_TF', 'compilation_allplot_analysis', [cond])
     
 
 

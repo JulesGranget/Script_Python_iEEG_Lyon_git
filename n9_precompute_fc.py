@@ -454,7 +454,7 @@ if __name__ == '__main__':
             if band in ['beta', 'l_gamma', 'h_gamma']:
 
                 #get_pli_ispc_dfc(sujet, cond)
-                execute_function_in_slurm_bash('n8_precompute_DFC', 'get_pli_ispc_dfc', [sujet, cond, band_prep, band, freq])
-                # execute_function_in_slurm_bash_mem_choice('n8_precompute_DFC', 'get_pli_ispc_dfc', [sujet, cond, band_prep, band, freq], '30G')
+                execute_function_in_slurm_bash('n9_precompute_DFC', 'get_pli_ispc_dfc', [sujet, cond, band_prep, band, freq])
+                # execute_function_in_slurm_bash_mem_choice('n9_precompute_DFC', 'get_pli_ispc_dfc', [sujet, cond, band_prep, band, freq], '30G')
 
 

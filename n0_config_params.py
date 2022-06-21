@@ -24,11 +24,11 @@ perso_repo_computation = False
 # sujet = 'CHEe'
 # sujet = 'GOBc'
 # sujet = 'MAZm'
-sujet = 'TREt'
+# sujet = 'TREt'
 
 #### FR_CV only
 # sujet = 'MUGa'
-# sujet = 'BANc'
+sujet = 'BANc'
 # sujet = 'KOFs'
 # sujet = 'LEMl'
 

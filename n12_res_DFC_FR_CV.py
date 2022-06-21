@@ -3,13 +3,8 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.signal
 import mne
-
 from matplotlib import cm
-
-import pandas as pd
-import joblib
 import xarray as xr
 
 
@@ -22,149 +17,369 @@ debug = False
 
 
 
+
+
+
+################################################
+######## COMPUTE DATA RESPI PHASE ########
+################################################
+
+
+
+#mat, pairs, roi_in_data = data.data, data['pairs'].data, roi_in_data
+def from_dfc_to_mat_conn_trpz(mat, pairs, roi_in_data):
+
+    #### mean over pairs
+    pairs_unique = np.unique(pairs)
+
+    pairs_unique_mat = np.zeros(( pairs_unique.shape[0], mat.shape[1] ))
+    #pair_name_i = pairs_unique[0]
+    for pair_name_i, pair_name in enumerate(pairs_unique):
+        pairs_to_mean = np.where(pairs == pair_name)[0]
+        pairs_unique_mat[pair_name_i, :] = np.mean(mat[pairs_to_mean,:], axis=0)
+
+    #### fill mat
+    mat_cf = np.zeros(( len(roi_in_data), len(roi_in_data) ))
+
+    #x_i, x_name = 0, roi_in_data[0]
+    for x_i, x_name in enumerate(roi_in_data):
+        #y_i, y_name = 2, roi_in_data[2]
+        for y_i, y_name in enumerate(roi_in_data):
+            if x_name == y_name:
+                continue
+            val_to_place, pair_count = 0, 0
+            pair_to_find = f'{x_name}-{y_name}'
+            pair_to_find_rev = f'{y_name}-{x_name}'
+            if np.where(pairs_unique == pair_to_find)[0].shape[0] != 0:
+                x = mat[np.where(pairs_unique == pair_to_find)[0]]
+                val_to_place += np.trapz(x)
+                pair_count += 1
+            if np.where(pairs_unique == pair_to_find_rev)[0].shape[0] != 0:
+                x = mat[np.where(pairs_unique == pair_to_find_rev)[0]]
+                val_to_place += np.trapz(x)
+                pair_count += 1
+            val_to_place /= pair_count
+
+            mat_cf[x_i, y_i] = val_to_place
+
+    if debug:
+        plt.matshow(mat_cf)
+        plt.show()
+
+    return mat_cf
+
+
+
+
+
+
+def get_data_for_respi_phase(sujet):
+
+    #### get ROI list
+    os.chdir(os.path.join(path_precompute, sujet, 'DFC'))
+
+    file_to_load = [i for i in os.listdir() if ( i.find('reducedpairs') != -1 and i.find(band_name_dfc[0]) != -1)]
+    roi_in_data = xr.open_dataarray(file_to_load[0])['x'].data
+
+    #### load data 
+    allband_data = {}
+
+    for export_type in ['inspi', 'expi']:
+
+        allband_data[export_type] = {}
+
+        #band = 'beta'
+        for band in band_name_dfc:
+
+            file_to_load = [i for i in os.listdir() if ( i.find('allpairs') != -1 and i.find(band) != -1)]
+            data = xr.open_dataarray(file_to_load[0])
+
+            if export_type == 'inspi':
+                data_chunk = data[:, :, :int(stretch_point_TF*ratio_stretch_TF)]
+            elif export_type == 'expi':
+                data_chunk = data[:, :, int(stretch_point_TF*ratio_stretch_TF):]
+
+            mat_cf = np.zeros(( data['mat_type'].shape[0], roi_in_data.shape[0], roi_in_data.shape[0] ))
+
+            for cf_metric_i, cf_metric in enumerate(data['mat_type'].data):
+                mat_cf[cf_metric_i,:,:] = from_dfc_to_mat_conn_trpz(data_chunk.loc[cf_metric,:,:].data, data['pairs'].data, roi_in_data)
+
+            allband_data[export_type][band] = mat_cf
+
+    return allband_data
+
+
+
+
+
+
+
+
 ################################
 ######## SAVE FIG ########
 ################################
 
 
-def process_dfc_res(sujet, cond):
+def process_dfc_res(sujet, cond, export_type):
 
-
-    print(f'######## {cond} DFC ########')
+    print(f'######## {cond} DFC {export_type} ########')
 
     #### CONNECTIVITY PLOT ####
 
-    #### load data 
+    #### get params
     os.chdir(os.path.join(path_precompute, sujet, 'DFC'))
+    file_to_load = [i for i in os.listdir() if ( i.find('reducedpairs') != -1 and i.find(band_name_dfc[0]) != -1)]
+    roi_names = xr.open_dataarray(file_to_load[0])['x'].data
+    cf_metrics_list = xr.open_dataarray(file_to_load[0])['mat_type'].data
+    n_band = len(band_name_dfc)
 
-    allband_data = {}
-    for pair_type in ['allpairs', 'reducedpairs']:
-        
-        allband_data[pair_type] = {}
-        
-        for band in band_name_dfc:
-
-            file_to_load = [i for i in os.listdir() if ( i.find(pair_type) != -1 and i.find(band) != -1)]
-            allband_data[pair_type][band] = xr.open_dataarray(file_to_load[0])
-
-    #### go to results
-    os.chdir(os.path.join(path_results, sujet, 'FC', 'DFC', cond))
-
-    #### identify scales
-    scales = {}
-    for mat_type in ['ispc', 'wpli']:
-
-        scales[mat_type] = {'vmin' : np.array([]), 'vmax' : np.array([])}
+    if export_type == 'whole':
+            
+        #### load data 
+        allband_data = {}
 
         for band in band_name_dfc:
 
-            mat_zero_excluded = allband_data['reducedpairs'][band].loc[mat_type,:,:].data[allband_data['reducedpairs'][band].loc[mat_type,:,:].data != 0]
+            file_to_load = [i for i in os.listdir() if ( i.find('reducedpairs') != -1 and i.find(band) != -1)]
+            allband_data[band] = xr.open_dataarray(file_to_load[0]).data
 
-            scales[mat_type]['vmin'] = np.append(scales[mat_type]['vmin'], mat_zero_excluded.min())
-            scales[mat_type]['vmax'] = np.append(scales[mat_type]['vmax'], mat_zero_excluded.max())
+        #### go to results
+        os.chdir(os.path.join(path_results, sujet, 'FC', 'DFC', cond))
 
-        scales[mat_type]['vmin'], scales[mat_type]['vmax'] = scales[mat_type]['vmin'].mean(), scales[mat_type]['vmax'].mean()
+        #### identify scales
+        scales = {}
+        for mat_type_i, mat_type in enumerate(cf_metrics_list):
 
-    #### plot
-    roi_names = allband_data['reducedpairs']['l_gamma']['x'].values
-    n_freq = len(allband_data['allpairs'])
-    mat_type_color = {'ispc' : cm.OrRd, 'wpli' : cm.seismic}
+            scales[mat_type] = {'vmin' : np.array([]), 'vmax' : np.array([])}
 
-    #mat_type = 'ispc'
-    for mat_type in ['ispc', 'wpli']:
+            for band in band_name_dfc:
 
-        #### mat plot
-        fig, axs = plt.subplots(ncols=n_freq, figsize=(15,15))
-        plt.suptitle(mat_type)
-        for c, band in enumerate(band_name_dfc):
-            ax = axs[c]
-            ax.set_title(band)
-            # ax.matshow(allband_data['reducedpairs'][band].loc[mat_type,:,:], vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'])
-            ax.matshow(allband_data['reducedpairs'][band].loc[mat_type,:,:])
-            if c == 0:
-                ax.set_yticks(np.arange(roi_names.shape[0]))
-                ax.set_yticklabels(roi_names)
-        # plt.show()
-        fig.savefig(f'MAT_reduced_{sujet}_{cond}_{mat_type}.png')
-        plt.close('all')
+                mat_zero_excluded = allband_data[band][mat_type_i,:,:][allband_data[band][mat_type_i,:,:] != 0]
 
-        #### circle plot
-        nrows, ncols = 1, n_freq
-        fig = plt.figure()
-        for c, band in enumerate(band_name_dfc):
-            # mne.viz.plot_connectivity_circle(allband_data['reducedpairs'][band].loc[mat_type,:,:].values, node_names=roi_names, n_lines=None, 
-            #                                 title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
-            #                                 vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'], colormap=mat_type_color[mat_type], facecolor='w', 
-            #                                 textcolor='k')
-            mne.viz.plot_connectivity_circle(allband_data['reducedpairs'][band].loc[mat_type,:,:].values, node_names=roi_names, n_lines=None, 
-                                            title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
-                                            colormap=mat_type_color[mat_type], facecolor='w', 
-                                            textcolor='k')
-        plt.suptitle(f'{cond}_{mat_type}', color='k')
-        fig.set_figheight(10)
-        fig.set_figwidth(12)
-        # fig.show()
-        fig.savefig(f'CIRCLE_reduced_{cond}_{mat_type}.png')
-        plt.close('all')
+                scales[mat_type]['vmin'] = np.append(scales[mat_type]['vmin'], mat_zero_excluded.min())
+                scales[mat_type]['vmax'] = np.append(scales[mat_type]['vmax'], mat_zero_excluded.max())
+
+            scales[mat_type]['vmin'], scales[mat_type]['vmax'] = scales[mat_type]['vmin'].mean(), scales[mat_type]['vmax'].mean()
+
+        #### plot
+        mat_type_color = {'ispc' : cm.OrRd, 'wpli' : cm.seismic}
+
+        #mat_type = 'ispc'
+        for mat_type_i, mat_type in enumerate(cf_metrics_list):
+
+            #### mat plot
+            fig, axs = plt.subplots(ncols=n_band, figsize=(15,15))
+            plt.suptitle(mat_type)
+            for c, band in enumerate(band_name_dfc):
+                ax = axs[c]
+                ax.set_title(band)
+                # ax.matshow(allband_data[band][mat_type_i,:,:], vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'])
+                ax.matshow(allband_data[band][mat_type_i,:,:])
+                if c == 0:
+                    ax.set_yticks(np.arange(roi_names.shape[0]))
+                    ax.set_yticklabels(roi_names)
+            # plt.show()
+            fig.savefig(f'MAT_reduced_{sujet}_{cond}_{mat_type}.png')
+            plt.close('all')
+
+            #### circle plot
+            nrows, ncols = 1, n_band
+            fig = plt.figure()
+            for c, band in enumerate(band_name_dfc):
+                # mne.viz.plot_connectivity_circle(allband_data[band][mat_type_i,:,:], node_names=roi_names, n_lines=None, 
+                #                                 title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
+                #                                 vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'], colormap=mat_type_color[mat_type], facecolor='w', 
+                #                                 textcolor='k')
+                mne.viz.plot_connectivity_circle(allband_data[band][mat_type_i,:,:], node_names=roi_names, n_lines=None, 
+                                                title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
+                                                colormap=mat_type_color[mat_type], facecolor='w', 
+                                                textcolor='k')
+            plt.suptitle(f'{cond}_{mat_type}', color='k')
+            fig.set_figheight(10)
+            fig.set_figwidth(12)
+            # fig.show()
+            fig.savefig(f'CIRCLE_reduced_{cond}_{mat_type}.png')
+            plt.close('all')
 
 
-    #### thresh on previous plot
-    percentile_thresh_up = 99
-    percentile_thresh_down = 1
+        #### thresh on previous plot
+        percentile_thresh_up = 99
+        percentile_thresh_down = 1
 
-    mat_dfc_clean = allband_data['reducedpairs'].copy()
+        mat_dfc_clean = allband_data.copy()
 
-    for mat_type_i, mat_type in enumerate(['ispc', 'wpli']):
+        for mat_type_i, mat_type in enumerate(cf_metrics_list):
 
-        for band in band_name_dfc:
+            for band in band_name_dfc:
 
-            thresh_up = np.percentile(allband_data['reducedpairs'][band].loc[mat_type,:,:].values.reshape(-1), percentile_thresh_up)
-            thresh_down = np.percentile(allband_data['reducedpairs'][band].loc[mat_type,:,:].values.reshape(-1), percentile_thresh_down)
+                thresh_up = np.percentile(allband_data[band][mat_type_i,:,:].reshape(-1), percentile_thresh_up)
+                thresh_down = np.percentile(allband_data[band][mat_type_i,:,:].reshape(-1), percentile_thresh_down)
 
-            for x in range(mat_dfc_clean[band].loc[mat_type,:,:].values.shape[1]):
-                for y in range(mat_dfc_clean[band].loc[mat_type,:,:].values.shape[1]):
-                    if (mat_dfc_clean[band][mat_type_i,x,y] < thresh_up) & (mat_dfc_clean[band][mat_type_i,x,y] > thresh_down):
-                        mat_dfc_clean[band][mat_type_i,x,y] = 0
-                    if (mat_dfc_clean[band][mat_type_i,x,y] < thresh_up) & (mat_dfc_clean[band][mat_type_i,x,y] > thresh_down):
-                        mat_dfc_clean[band][mat_type_i,x,y] = 0
+                for x in range(mat_dfc_clean[band][mat_type_i,:,:].shape[1]):
+                    for y in range(mat_dfc_clean[band][mat_type_i,:,:].shape[1]):
+                        if (mat_dfc_clean[band][mat_type_i,x,y] < thresh_up) & (mat_dfc_clean[band][mat_type_i,x,y] > thresh_down):
+                            mat_dfc_clean[band][mat_type_i,x,y] = 0
+                        if (mat_dfc_clean[band][mat_type_i,x,y] < thresh_up) & (mat_dfc_clean[band][mat_type_i,x,y] > thresh_down):
+                            mat_dfc_clean[band][mat_type_i,x,y] = 0
 
-    #### plot
-    #mat_type = 'wpli'
-    for mat_type in ['ispc', 'wpli']:
+        #### plot
+        #mat_type = 'wpli'
+        for mat_type_i, mat_type in enumerate(cf_metrics_list):
 
-        #### mat plot
-        fig, axs = plt.subplots(ncols=n_freq, figsize=(15,15))
-        plt.suptitle(mat_type)
-        for c, band in enumerate(band_name_dfc):
-            ax = axs[c]
-            ax.set_title(band)
-            # ax.matshow(mat_dfc_clean[band].loc[mat_type,:,:], vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'])
-            ax.matshow(mat_dfc_clean[band].loc[mat_type,:,:])
-            if c == 0:
-                ax.set_yticks(np.arange(roi_names.shape[0]))
-                ax.set_yticklabels(roi_names)
-        # plt.show()
-        fig.savefig(f'MAT_thresh_{sujet}_{cond}_{mat_type}.png')
-        plt.close('all')
+            #### mat plot
+            fig, axs = plt.subplots(ncols=n_band, figsize=(15,15))
+            plt.suptitle(mat_type)
+            for c, band in enumerate(band_name_dfc):
+                ax = axs[c]
+                ax.set_title(band)
+                # ax.matshow(mat_dfc_clean[band][mat_type_i,:,:], vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'])
+                ax.matshow(mat_dfc_clean[band][mat_type_i,:,:])
+                if c == 0:
+                    ax.set_yticks(np.arange(roi_names.shape[0]))
+                    ax.set_yticklabels(roi_names)
+            # plt.show()
+            fig.savefig(f'MAT_thresh_{sujet}_{cond}_{mat_type}.png')
+            plt.close('all')
 
-        #### circle plot
-        nrows, ncols = 1, n_freq
-        fig = plt.figure()
-        for c, band in enumerate(band_name_dfc):
-            # mne.viz.plot_connectivity_circle(mat_dfc_clean[band].loc[mat_type,:,:].values, node_names=roi_names, n_lines=None, 
-            #                                 title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
-            #                                 vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'], colormap=cm.seismic, facecolor='w', 
-                                            # textcolor='k')
-            mne.viz.plot_connectivity_circle(mat_dfc_clean[band].loc[mat_type,:,:].values, node_names=roi_names, n_lines=None, 
-                                            title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
-                                            colormap=mat_type_color[mat_type], facecolor='w', 
-                                            textcolor='k')
-        plt.suptitle(f'{cond}_{mat_type}', color='k')
-        fig.set_figheight(10)
-        fig.set_figwidth(12)
-        # fig.show()
-        fig.savefig(f'CIRCLE_thresh_{cond}_{mat_type}.png')
-        plt.close('all')
+            #### circle plot
+            nrows, ncols = 1, n_band
+            fig = plt.figure()
+            for c, band in enumerate(band_name_dfc):
+                # mne.viz.plot_connectivity_circle(mat_dfc_clean[band][mat_type_i,:,:], node_names=roi_names, n_lines=None, 
+                mne.viz.plot_connectivity_circle(mat_dfc_clean[band][mat_type_i,:,:], node_names=roi_names, n_lines=None, 
+                                                title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
+                                                colormap=mat_type_color[mat_type], facecolor='w', 
+                                                textcolor='k')
+            plt.suptitle(f'{cond}_{mat_type}', color='k')
+            fig.set_figheight(10)
+            fig.set_figwidth(12)
+            # fig.show()
+            fig.savefig(f'CIRCLE_thresh_{cond}_{mat_type}.png')
+            plt.close('all')
+
+    else:
+
+        #### load data 
+        allband_data = get_data_for_respi_phase(sujet)
+        respi_phase_list = ['inspi', 'expi']
+        n_rows = len(respi_phase_list)
+
+        #### go to results
+        os.chdir(os.path.join(path_results, sujet, 'FC', 'DFC', cond))
+
+        #### plot
+        mat_type_color = {'ispc' : cm.OrRd, 'wpli' : cm.seismic}
+
+        #mat_type_i, mat_type = 0, 'ispc'
+        for mat_type_i, mat_type in enumerate(cf_metrics_list):
+
+            #### mat plot
+            fig, axs = plt.subplots(nrows=n_rows, ncols=n_band, figsize=(15,15))
+            plt.suptitle(mat_type)
+            for r, respi_phase in enumerate(respi_phase_list):
+                for c, band in enumerate(band_name_dfc):
+                    ax = axs[r, c]
+                    if c == 0:
+                        ax.set_ylabel(respi_phase)
+                    ax.set_title(band)
+                    # ax.matshow(allband_data[respi_phase][band][mat_type_i,:,:], vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'])
+                    ax.matshow(allband_data[respi_phase][band][mat_type_i,:,:])
+                    if c == 0:
+                        ax.set_yticks(np.arange(roi_names.shape[0]))
+                        ax.set_yticklabels(roi_names)
+            # plt.show()
+            fig.savefig(f'MAT_PHASE_reduced_{sujet}_{cond}_{mat_type}.png')
+            plt.close('all')
+
+            #### circle plot
+            nrows, ncols = n_rows, n_band
+            fig = plt.figure()
+            for r, respi_phase in enumerate(respi_phase_list):
+                if r == 1:
+                    r = len(band_name_dfc)
+                for c, band in enumerate(band_name_dfc):
+                    # mne.viz.plot_connectivity_circle(allband_data[respi_phase][band][mat_type_i,:,:], node_names=roi_names, n_lines=None, 
+                    #                                 title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
+                    #                                 vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'], colormap=mat_type_color[mat_type], facecolor='w', 
+                    #                                 textcolor='k')
+                    mne.viz.plot_connectivity_circle(allband_data[respi_phase][band][mat_type_i,:,:], node_names=roi_names, n_lines=None, 
+                                                    title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, r+c+1),
+                                                    colormap=mat_type_color[mat_type], facecolor='w', 
+                                                    textcolor='k')
+            plt.suptitle(f'{cond}_{mat_type}', color='k')
+            fig.set_figheight(10)
+            fig.set_figwidth(12)
+            # fig.show()
+            fig.savefig(f'CIRCLE_PHASE_reduced_{cond}_{mat_type}.png')
+            plt.close('all')
+
+
+        #### thresh on previous plot
+        percentile_thresh_up = 99
+        percentile_thresh_down = 1
+
+        mat_dfc_clean = allband_data.copy()
+
+        for respi_phase in respi_phase_list:
+
+            for mat_type_i, mat_type in enumerate(cf_metrics_list):
+
+                for band in band_name_dfc:
+
+                    thresh_up = np.percentile(allband_data[respi_phase][band][mat_type_i,:,:].reshape(-1), percentile_thresh_up)
+                    thresh_down = np.percentile(allband_data[respi_phase][band][mat_type_i,:,:].reshape(-1), percentile_thresh_down)
+
+                    for x in range(mat_dfc_clean[respi_phase][band][mat_type_i,:,:].shape[1]):
+                        for y in range(mat_dfc_clean[respi_phase][band][mat_type_i,:,:].shape[1]):
+                            if (mat_dfc_clean[respi_phase][band][mat_type_i,x,y] < thresh_up) & (mat_dfc_clean[respi_phase][band][mat_type_i,x,y] > thresh_down):
+                                mat_dfc_clean[respi_phase][band][mat_type_i,x,y] = 0
+                            if (mat_dfc_clean[respi_phase][band][mat_type_i,x,y] < thresh_up) & (mat_dfc_clean[respi_phase][band][mat_type_i,x,y] > thresh_down):
+                                mat_dfc_clean[respi_phase][band][mat_type_i,x,y] = 0
+
+        #### plot
+        #mat_type = 'wpli'
+        for mat_type_i, mat_type in enumerate(cf_metrics_list):
+
+            #### mat plot
+            fig, axs = plt.subplots(nrows=n_rows, ncols=n_band, figsize=(15,15))
+            plt.suptitle(mat_type)
+
+            for r, respi_phase in enumerate(respi_phase_list):
+                for c, band in enumerate(band_name_dfc):
+                    ax = axs[r, c]
+                    if c == 0:
+                        ax.set_ylabel(respi_phase)
+                    ax.set_title(band)
+                    # ax.matshow(mat_dfc_clean[respi_phase][band][mat_type_i,:,:], vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'])
+                    ax.matshow(mat_dfc_clean[respi_phase][band][mat_type_i,:,:])
+                    if c == 0:
+                        ax.set_yticks(np.arange(roi_names.shape[0]))
+                        ax.set_yticklabels(roi_names)
+            # plt.show()
+            fig.savefig(f'MAT_PHASE_thresh_{sujet}_{cond}_{mat_type}.png')
+            plt.close('all')
+
+            #### circle plot
+            nrows, ncols = n_rows, n_band
+            fig = plt.figure()
+            for r, respi_phase in enumerate(respi_phase_list):
+                if r == 1:
+                    r = len(band_name_dfc)
+                for c, band in enumerate(band_name_dfc):
+                    # mne.viz.plot_connectivity_circle(allband_data[respi_phase][band][mat_type_i,:,:], node_names=roi_names, n_lines=None, 
+                    #                                 title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
+                    #                                 vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'], colormap=mat_type_color[mat_type], facecolor='w', 
+                    #                                 textcolor='k')
+                    mne.viz.plot_connectivity_circle(mat_dfc_clean[respi_phase][band][mat_type_i,:,:], node_names=roi_names, n_lines=None, 
+                                                    title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, r+c+1),
+                                                    colormap=mat_type_color[mat_type], facecolor='w', 
+                                                    textcolor='k')
+            plt.suptitle(f'{cond}_{mat_type}', color='k')
+            fig.set_figheight(10)
+            fig.set_figwidth(12)
+            # fig.show()
+            fig.savefig(f'CIRCLE_PHASE_thresh_{cond}_{mat_type}.png')
+            plt.close('all')
 
 
 
@@ -175,10 +390,14 @@ def process_dfc_res(sujet, cond):
 
 if __name__ == '__main__':
 
+    for sujet in sujet_list_FR_CV:
 
-    cond = 'FR_CV'
+        print(sujet)
 
-    process_dfc_res(sujet, cond)
+        cond = 'FR_CV'
+
+        for export_type in ['whole', 'respi_phase']:
+            process_dfc_res(sujet, cond, export_type)
         
 
 
