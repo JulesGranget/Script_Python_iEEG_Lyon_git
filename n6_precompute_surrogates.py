@@ -167,13 +167,6 @@ def precompute_surrogates_cyclefreq(sujet, band_prep, cond, session_i):
 
 
 
-def zscore(x):
-
-    x_zscore = (x - x.mean()) / x.std()
-
-    return x_zscore
-
-
 #x = x_stretch_linear
 def shuffle_windows(x):
 

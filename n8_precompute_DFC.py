@@ -10,6 +10,7 @@ import joblib
 import xarray as xr
 
 import frites
+import networkx as nx
 
 
 from n0_config_params import *
@@ -30,7 +31,6 @@ debug = False
 
 def reduce_functionnal_mat(mat, df_sorted):
 
-    index_sorted = df_sorted.index.values
     chan_name_sorted = df_sorted['ROI'].values.tolist()
 
     #### which roi in data
@@ -103,19 +103,54 @@ def reduce_functionnal_mat(mat, df_sorted):
 
     return mat_reduced
 
+#mat = dfc_data['inspi']
+def from_dfc_to_mat_conn_mean(mat, pairs, roi_in_data):
+
+    #### mean over pairs
+    pairs_unique = np.unique(pairs)
+
+    pairs_unique_mat = np.zeros(( pairs_unique.shape[0], mat.shape[1] ))
+    #pair_name_i = pairs_unique[0]
+    for pair_name_i, pair_name in enumerate(pairs_unique):
+        pairs_to_mean = np.where(pairs == pair_name)[0]
+        pairs_unique_mat[pair_name_i, :] = np.mean(mat[pairs_to_mean,:], axis=0)
+
+    #### fill mat
+    mat_cf = np.zeros(( len(roi_in_data), len(roi_in_data) ))
+
+    #x_i, x_name = 0, roi_in_data[0]
+    for x_i, x_name in enumerate(roi_in_data):
+        #y_i, y_name = 2, roi_in_data[2]
+        for y_i, y_name in enumerate(roi_in_data):
+            if x_name == y_name:
+                continue
+            val_to_place, pair_count = 0, 0
+            pair_to_find = f'{x_name}-{y_name}'
+            pair_to_find_rev = f'{y_name}-{x_name}'
+            if np.where(pairs_unique == pair_to_find)[0].shape[0] != 0:
+                x = mat[np.where(pairs_unique == pair_to_find)[0]]
+                val_to_place += np.mean(x)
+                pair_count += 1
+            if np.where(pairs_unique == pair_to_find_rev)[0].shape[0] != 0:
+                x = mat[np.where(pairs_unique == pair_to_find_rev)[0]]
+                val_to_place += np.mean(x)
+                pair_count += 1
+            val_to_place /= pair_count
+
+            mat_cf[x_i, y_i] = val_to_place
+
+    if debug:
+        plt.matshow(mat_cf)
+        plt.show()
+
+    return mat_cf
 
 
 
 
 
-def sort_mat(mat, index_sorted):
 
-    mat_sorted = np.zeros((np.size(mat,0), np.size(mat,1)))
-    for i_before_sort_r, i_sort_r in enumerate(index_sorted):
-        for i_before_sort_c, i_sort_c in enumerate(index_sorted):
-            mat_sorted[i_sort_r,i_sort_c] = mat[i_before_sort_r,i_before_sort_c]
 
-    return mat_sorted
 
 
 
@@ -134,7 +169,7 @@ def get_pli_ispc_dfc_trial(sujet, cond, band_prep, band, freq, trial_i):
     #### get params
     prms = get_params(sujet)
 
-    if os.path.exists(os.path.join(path_precompute, sujet, 'FC', f'{sujet}_DFC_pli_ispc_{band}_{cond}.nc')):
+    if os.path.exists(os.path.join(path_precompute, sujet, 'DFC', f'{sujet}_DFC_wpli_ispc_{band}_{cond}_allpairs.nc')):
         print('ALREADY DONE')
         return
 
@@ -346,13 +381,21 @@ def get_pli_ispc_dfc_trial(sujet, cond, band_prep, band, freq, trial_i):
     #### reduce mat
     mat_dfc_mean = np.zeros(( 2, len(roi_in_data), len(roi_in_data) ))
 
-    mat_df_sorted = sort_mat(mat_stretch[ispc_mat_i, :, :], index_sorted)
-    mat_dfc_mean[ispc_mat_i,:,:] = reduce_functionnal_mat(mat_df_sorted, df_sorted)
+    mat_dfc_mean[ispc_mat_i,:,:] = from_dfc_to_mat_conn_mean(mat_stretch[ispc_mat_i, :, :], pairs_to_compute_anat, roi_in_data)
+    mat_dfc_mean[wpli_mat_i,:,:] = from_dfc_to_mat_conn_mean(mat_stretch[wpli_mat_i, :, :], pairs_to_compute_anat, roi_in_data)
 
-    mat_df_sorted = sort_mat(mat_stretch[wpli_mat_i, :, :], index_sorted)
-    mat_dfc_mean[wpli_mat_i,:,:] = reduce_functionnal_mat(mat_df_sorted, df_sorted)
+    # mat_df_sorted = sort_mat(mat_stretch[ispc_mat_i, :, :], index_sorted)
+    # mat_dfc_mean[ispc_mat_i,:,:] = reduce_functionnal_mat(mat_df_sorted, df_sorted)
+
+    # mat_df_sorted = sort_mat(mat_stretch[wpli_mat_i, :, :], index_sorted)
+    # mat_dfc_mean[wpli_mat_i,:,:] = reduce_functionnal_mat(mat_df_sorted, df_sorted)
 
     return mat_stretch, mat_dfc_mean
+
+
+
+
+
 
 
 
@@ -446,15 +489,17 @@ if __name__ == '__main__':
 
     cond = 'FR_CV'
 
-    #band_prep = 'hf'
+    print('######## PRECOMPUTE DFC ########') 
+    #band_prep = 'lf'
     for band_prep in band_prep_list:
-        #band, freq = 'h_gamma', [80,120]
+        #band, freq = 'beta', [10,40]
         for band, freq in freq_band_dict_FC_function[band_prep].items():
 
             if band in ['beta', 'l_gamma', 'h_gamma']:
 
-                #get_pli_ispc_dfc(sujet, cond)
+                # get_pli_ispc_dfc(sujet, cond, band_prep, band, freq)
                 # execute_function_in_slurm_bash('n8_precompute_DFC', 'get_pli_ispc_dfc', [sujet, cond, band_prep, band, freq])
                 execute_function_in_slurm_bash_mem_choice('n8_precompute_DFC', 'get_pli_ispc_dfc', [sujet, cond, band_prep, band, freq], '15G')
 
+    
 

@@ -28,13 +28,6 @@ debug = False
 
 
 
-def zscore(x):
-
-    x_zscore = (x - x.mean()) / x.std()
-
-    return x_zscore
-
-
 #dict2reduce = cyclefreq_binned_allcond
 def reduce_data(dict2reduce, prms):
 

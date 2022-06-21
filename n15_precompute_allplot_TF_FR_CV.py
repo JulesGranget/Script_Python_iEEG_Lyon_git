@@ -1,4 +1,6 @@
 
+
+
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -223,8 +225,9 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process, cond):
             
             #### average trials TF
             TF_load /= n_trials
+            TF_load_zscore = zscore_mat(TF_load[plot_tmp_i,:,:])
 
-            dict_TF_for_ROI_to_process[band] = (dict_TF_for_ROI_to_process[band] + TF_load[plot_tmp_i,:,:])
+            dict_TF_for_ROI_to_process[band] = (dict_TF_for_ROI_to_process[band] + TF_load_zscore)
 
             #### verif
             if debug:
@@ -247,8 +250,9 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process, cond):
             
             #### average trials ITPC
             ITPC_load /= n_trials
+            ITPC_load_zscore = zscore_mat(ITPC_load[plot_tmp_i,:,:])
 
-            dict_ITPC_for_ROI_to_process[band] = (dict_ITPC_for_ROI_to_process[band] + ITPC_load[plot_tmp_i,:,:])
+            dict_ITPC_for_ROI_to_process[band] = (dict_ITPC_for_ROI_to_process[band] + ITPC_load_zscore)
 
     #### mean
     for band, freq in dict_freq_band.items():
@@ -360,10 +364,11 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process, cond):
 
                     TF_load += np.load(f'{sujet_tmp}_tf_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}.npy')
             
-            #### average trials TF
+            #### average trials TF and normalize
             TF_load /= n_trials
+            TF_load_zscore = zscore_mat(TF_load[plot_tmp_i,:,:])
 
-            dict_TF_for_Lobe_to_process[band] = (dict_TF_for_Lobe_to_process[band] + TF_load[plot_tmp_i,:,:])
+            dict_TF_for_Lobe_to_process[band] = (dict_TF_for_Lobe_to_process[band] + TF_load_zscore)
 
         #### load ITPC and mean trial
         os.chdir(os.path.join(path_precompute, sujet_tmp, 'ITPC'))
@@ -381,8 +386,9 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process, cond):
             
             #### average trials ITPC
             ITPC_load /= n_trials
+            ITPC_load_zscore = zscore_mat(ITPC_load[plot_tmp_i,:,:])
 
-            dict_ITPC_for_Lobe_to_process[band] = (dict_ITPC_for_Lobe_to_process[band] + ITPC_load[plot_tmp_i,:,:])
+            dict_ITPC_for_Lobe_to_process[band] = (dict_ITPC_for_Lobe_to_process[band] + ITPC_load_zscore)
 
     #### mean
     for band, freq in dict_freq_band.items():
@@ -449,7 +455,7 @@ def compilation_allplot_analysis(cond):
                     plt.pcolormesh(ROI_band[1,1,:,:])
                     plt.show()
 
-            np.save(f'ROI_{cond}_{band}_allband.npy', ROI_band)
+            np.save(f'ROI_TF_ITPC_{cond}_{band}_allband.npy', ROI_band)
 
 
     #### compute TF & ITPC for Lobes
@@ -468,7 +474,7 @@ def compilation_allplot_analysis(cond):
                 Lobe_band[Lobe_to_process_i, 0, :, :] = res[Lobe_to_process_i][0][band]
                 Lobe_band[Lobe_to_process_i, 1, :, :] = res[Lobe_to_process_i][1][band]
 
-            np.save(f'Lobes_{cond}_{band}_allband.npy', Lobe_band)
+            np.save(f'Lobes_TF_ITPC_{cond}_{band}_allband.npy', Lobe_band)
 
     print('done')
 

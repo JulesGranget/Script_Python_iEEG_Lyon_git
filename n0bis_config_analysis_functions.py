@@ -135,6 +135,7 @@ def generate_folder_structure(sujet):
     construct_token = create_folder('ITPC', construct_token)
     construct_token = create_folder('DFC', construct_token)
     construct_token = create_folder('PSD_Coh', construct_token)
+    construct_token = create_folder('stats', construct_token)
 
             #### TF
     os.chdir(os.path.join(path_general, 'Analyses', 'results', 'allplot', 'FR_CV', 'TF'))
@@ -1094,3 +1095,24 @@ def print_advancement(i, i_final, steps=[25, 50, 75]):
             print(f'{step}%')
 
 
+
+################################
+######## MISCALLENOUS ########
+################################
+
+
+def zscore(x):
+
+    x_zscore = (x - x.mean()) / x.std()
+
+    return x_zscore
+
+def zscore_mat(x):
+
+    _zscore_mat = np.zeros(( x.shape[0], x.shape[1] ))
+    
+    for i in range(x.shape[0]):
+
+        _zscore_mat[i,:] = zscore(x[i,:])
+
+    return _zscore_mat
