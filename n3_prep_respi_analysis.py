@@ -29,22 +29,9 @@ def load_respi_allcond_data(sujet):
     #### get params
     conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions_for_sujet(sujet, conditions_allsubjects)
 
-    #### adjust conditions
-    os.chdir(os.path.join(path_prep, sujet, 'sections'))
-    dirlist_subject = os.listdir()
-
-    cond_keep = []
-    for cond in conditions_allsubjects:
-
-        for file in dirlist_subject:
-
-            if file.find(cond) != -1 : 
-                cond_keep.append(cond)
-                break
-
-    conditions = cond_keep
-
     #### load data
+    os.chdir(os.path.join(path_prep, sujet, 'sections'))
+
     raw_allcond = {}
 
     for cond in conditions:

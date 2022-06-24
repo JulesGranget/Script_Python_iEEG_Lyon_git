@@ -67,7 +67,7 @@ def precompute_surrogates_coh(sujet, band_prep, cond, session_i):
 
             x_shift = shuffle_Cxy(x)
             #y_shift = shuffle_Cxy(y)
-            hzCxy_tmp, Cxy = scipy.signal.coherence(x_shift, y, fs=srate, window=hannw, nperseg=None, noverlap=noverlap, nfft=nfft)
+            hzCxy_tmp, Cxy = scipy.signal.coherence(x_shift, y, fs=srate, window=hannw, nperseg=nwind, noverlap=noverlap, nfft=nfft)
 
             surrogates_val_tmp[surr_i,:] = Cxy[mask_hzCxy]
 
@@ -122,8 +122,8 @@ def precompute_surrogates_cyclefreq(sujet, band_prep, cond, session_i):
 
             # print_advancement(surr_i, n_surrogates_cyclefreq, steps=[25, 50, 75])
 
-            x_shift = shuffle_CycleFreq(x)
-            #y_shift = shuffle_CycleFreq(y)
+            x_shift = shuffle_Cxy(x)
+            #y_shift = shuffle_Cxy(y)
 
             x_stretch, mean_inspi_ratio = stretch_data(respfeatures_i, stretch_point_surrogates, x_shift, srate)
 

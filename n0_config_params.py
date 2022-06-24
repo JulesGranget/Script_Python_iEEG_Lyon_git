@@ -211,6 +211,25 @@ aux_chan = {
 }
 
 
+
+prep_step_lf = {
+'mean_centered' : {'execute': True},
+'line_noise_removing' : {'execute': True},
+'high_pass' : {'execute': False, 'params' : {'l_freq' : None, 'h_freq': None}},
+'low_pass' : {'execute': True, 'params' : {'l_freq' : 0, 'h_freq': 45}},
+'average_reref' : {'execute': False},
+}
+
+prep_step_hf = {
+'mean_centered' : {'execute': True},
+'line_noise_removing' : {'execute': True},
+'high_pass' : {'execute': True, 'params' : {'l_freq' : 55, 'h_freq': None}},
+'low_pass' : {'execute': False, 'params' : {'l_freq' : 0, 'h_freq': 45}},
+'average_reref' : {'execute': False},
+}
+
+
+
 ################################
 ######## ECG PARAMS ########
 ################################ 
@@ -274,26 +293,6 @@ sujet_manual_detection = ['pat_03105_1551', 'pat_03128_1591']
 sujet_for_more_filter = ['pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949', 'pat_03138_1601']
 
 
-################################
-######## PREP PARAMS ########
-################################ 
-
-prep_step_lf = {
-'mean_centered_detrend' : {'execute': True},
-'line_noise_removing' : {'execute': True},
-'high_pass' : {'execute': False, 'params' : {'l_freq' : None, 'h_freq': None}},
-'low_pass' : {'execute': True, 'params' : {'l_freq' : 0, 'h_freq': 45}},
-'average_reref' : {'execute': False},
-}
-
-prep_step_hf = {
-'mean_centered_detrend' : {'execute': True},
-'line_noise_removing' : {'execute': True},
-'high_pass' : {'execute': True, 'params' : {'l_freq' : 55, 'h_freq': None}},
-'low_pass' : {'execute': False, 'params' : {'l_freq' : 0, 'h_freq': 45}},
-'average_reref' : {'execute': False},
-}
-
 
 
 
@@ -304,10 +303,10 @@ prep_step_hf = {
 
 #### Pxx Cxy
 
-zero_pad_coeff = 15
+zero_pad_coeff = 2
 
 def get_params_spectral_analysis(srate):
-    nwind = int( 20*srate ) # window length in seconds*srate
+    nwind = int( 50*srate ) # window length in seconds*srate
     nfft = nwind*zero_pad_coeff # if no zero padding nfft = nwind
     noverlap = np.round(nwind/2) # number of points of overlap here 50%
     hannw = scipy.signal.windows.hann(nwind) # hann window
@@ -321,6 +320,8 @@ remove_zero_pad = zero_pad_coeff - 5
 
 #### stretch
 stretch_point_surrogates = 1000
+stretch_point_IE = [300, 500]
+stretch_point_EI = [900, 100]
 
 #### coh
 n_surrogates_coh = 1000

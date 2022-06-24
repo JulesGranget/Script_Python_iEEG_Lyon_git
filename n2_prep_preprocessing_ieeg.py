@@ -249,7 +249,7 @@ def extract_data_trc(sujet):
 
     #### identify iEEG / respi / ECG
     print('#### AUX IDENTIFICATION ####')
-    nasal_i = chan_list.index(aux_chan.get(sujet).get('nasal'))
+    nasal_i = chan_list.index(aux_chan[sujet]['nasal'])
     ecg_i = chan_list.index(aux_chan.get(sujet).get('ECG'))
     
     if aux_chan.get(sujet).get('ventral') == None:
@@ -358,7 +358,7 @@ def preprocessing_ieeg(data, chan_list, srate, prep_step):
     # 2. Initiate preprocessing step
 
 
-    def mean_centered_detrend(raw):
+    def mean_centered(raw):
         
         data = raw.get_data()
         
@@ -547,9 +547,9 @@ def preprocessing_ieeg(data, chan_list, srate, prep_step):
     else:
         raw = raw_init
 
-    if prep_step.get('mean_centered_detrend').get('execute') :
-        print('mean_centered_detrend')
-        raw_post = mean_centered_detrend(raw)
+    if prep_step.get('mean_centered').get('execute') :
+        print('mean_centered')
+        raw_post = mean_centered(raw)
         #compare_pre_post(raw.get_data(), raw_post.get_data(), 5)
         raw = raw_post
 

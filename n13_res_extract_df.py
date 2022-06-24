@@ -265,9 +265,11 @@ def export_TF_in_df(sujet, respfeatures_allcond, prms):
                     Pxx = np.mean(data, axis=0)
                     Pxx_inspi = np.mean(Pxx[0:int(stretch_point_TF*ratio_stretch_TF)])
                     Pxx_expi = np.mean(Pxx[int(stretch_point_TF*ratio_stretch_TF):])
+                    Pxx_IE = np.mean(Pxx[stretch_point_IE[0]:stretch_point_IE[1]])
+                    Pxx_EI = np.mean(Pxx[stretch_point_EI[0]:]) + np.mean(Pxx[:stretch_point_EI[1]])
 
-                    data_export_i =   {'sujet' : [sujet]*2, 'cond' : [cond]*2, 'chan' : [chan_name]*2, 'ROI' : [ROI_i]*2, 'Lobe' : [Lobe_i]*2, 'side' : [side_i]*2, 
-                                    'band' : [band]*2, 'phase' : ['inspi', 'expi'], 'Pxx' : [Pxx_inspi, Pxx_expi]}
+                    data_export_i =   {'sujet' : [sujet]*4, 'cond' : [cond]*4, 'chan' : [chan_name]*4, 'ROI' : [ROI_i]*4, 'Lobe' : [Lobe_i]*4, 'side' : [side_i]*4, 
+                                    'band' : [band]*4, 'phase' : ['inspi', 'expi'], 'Pxx' : [Pxx_inspi, Pxx_expi, Pxx_IE, Pxx_EI]}
                     df_export_i = pd.DataFrame.from_dict(data_export_i)
                     
                     df_export = pd.concat([df_export, df_export_i])
