@@ -1,5 +1,3 @@
-
-
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -33,7 +31,7 @@ def reduce_data(dict2reduce, prms):
 
     #### identify count
     dict_count = {}
-        #### for cyclefreq Pxx
+        #### for cyclefreq & Pxx
     if list(dict2reduce.keys())[0] in band_prep_list:
 
         for cond in prms['conditions']:
@@ -43,13 +41,13 @@ def reduce_data(dict2reduce, prms):
 
         for cond in prms['conditions']:
             dict_count[cond] = len(dict2reduce[list(dict2reduce.keys())[0]][cond])
-        #### for Cxy
+        #### for Cxy & MVL
     else:
 
         for cond in prms['conditions']:
             dict_count[cond] = len(dict2reduce[cond])    
 
-    #### for Pxx and Cyclefreq
+    #### for Pxx & Cyclefreq reduce
     if np.sum([True for i in list(dict2reduce.keys()) if i in band_prep_list]) > 0:
     
         #### generate dict
@@ -72,7 +70,7 @@ def reduce_data(dict2reduce, prms):
 
                 dict_reduced[band_prep][cond] /= dict_count[cond]
 
-    #### for Cxy
+    #### for Cxy & MVL reduce
     elif np.sum([True for i in list(dict2reduce.keys()) if i in prms['conditions']]) > 0:
 
         #### generate dict
@@ -114,7 +112,7 @@ def reduce_data(dict2reduce, prms):
                 dict_reduced[key][cond] /= dict_count[cond]
 
     #### verify
-        #### for cyclefreq Pxx
+        #### for cyclefreq & Pxx
     if list(dict2reduce.keys())[0] in band_prep_list:
 
         for band_prep in band_prep_list:
@@ -137,7 +135,7 @@ def reduce_data(dict2reduce, prms):
                 except:
                     raise ValueError('reducing wrong')
     
-        #### for Cxy
+        #### for Cxy & MVL
     else:
 
         for cond in prms['conditions']:
@@ -194,7 +192,7 @@ def load_surrogates(sujet, respfeatures_allcond, prms):
 
 
 #### compute Pxx & Cxy & Cyclefreq
-def compute_PxxCxyCyclefreq_for_cond(sujet, band_prep, cond, session_i, stretch_point_surrogates, respfeatures_allcond, prms):
+def compute_PxxCxyCyclefreq_for_cond_session(sujet, band_prep, cond, session_i, stretch_point_surrogates, respfeatures_allcond, prms):
     
     print(cond)
 
@@ -280,7 +278,7 @@ def compute_all_PxxCxyCyclefreq(sujet, respfeatures_allcond, prms):
 
             if ( len(respfeatures_allcond[cond]) == 1 ) & (band_prep == 'lf'):
 
-                Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond, MVL_for_cond = compute_PxxCxyCyclefreq_for_cond(sujet, band_prep, cond, 0, stretch_point_surrogates, respfeatures_allcond, prms)
+                Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond, MVL_for_cond = compute_PxxCxyCyclefreq_for_cond_session(sujet, band_prep, cond, 0, stretch_point_surrogates, respfeatures_allcond, prms)
 
                 Pxx_allcond['lf'][cond] = [Pxx_for_cond]
                 Cxy_allcond[cond] = [Cxy_for_cond]
@@ -289,7 +287,7 @@ def compute_all_PxxCxyCyclefreq(sujet, respfeatures_allcond, prms):
 
             elif ( len(respfeatures_allcond[cond]) == 1 ) & (band_prep == 'hf') :
 
-                Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond, MVL_for_cond = compute_PxxCxyCyclefreq_for_cond(sujet, band_prep, cond, 0, stretch_point_surrogates, respfeatures_allcond, prms)
+                Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond, MVL_for_cond = compute_PxxCxyCyclefreq_for_cond_session(sujet, band_prep, cond, 0, stretch_point_surrogates, respfeatures_allcond, prms)
 
                 Pxx_allcond['hf'][cond] = [Pxx_for_cond]
                 cyclefreq_allcond['hf'][cond] = [cyclefreq_for_cond]
@@ -299,12 +297,11 @@ def compute_all_PxxCxyCyclefreq(sujet, respfeatures_allcond, prms):
                 Pxx_load = []
                 Cxy_load = []
                 cyclefreq_load = []
-                cyclefreq_binned_load = []
                 MVL_load = []
 
                 for session_i, _ in enumerate(respfeatures_allcond[cond]):
 
-                    Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond, MVL_for_cond = compute_PxxCxyCyclefreq_for_cond(sujet, band_prep, cond, session_i, stretch_point_surrogates, respfeatures_allcond, prms)
+                    Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond, MVL_for_cond = compute_PxxCxyCyclefreq_for_cond_session(sujet, band_prep, cond, session_i, stretch_point_surrogates, respfeatures_allcond, prms)
 
                     Pxx_load.append(Pxx_for_cond)
                     Cxy_load.append(Cxy_for_cond)
@@ -320,11 +317,10 @@ def compute_all_PxxCxyCyclefreq(sujet, respfeatures_allcond, prms):
 
                 Pxx_load = []
                 cyclefreq_load = []
-                cyclefreq_binned_load = []
 
                 for session_i, _ in enumerate(respfeatures_allcond[cond]):
 
-                    Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond, MVL_for_cond = compute_PxxCxyCyclefreq_for_cond(sujet, band_prep, cond, session_i, stretch_point_surrogates, respfeatures_allcond, prms)
+                    Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond, MVL_for_cond = compute_PxxCxyCyclefreq_for_cond_session(sujet, band_prep, cond, session_i, stretch_point_surrogates, respfeatures_allcond, prms)
 
                     Pxx_load.append(Pxx_for_cond)
                     cyclefreq_load.append(cyclefreq_for_cond)
@@ -337,56 +333,38 @@ def compute_all_PxxCxyCyclefreq(sujet, respfeatures_allcond, prms):
 
 
 
-
-
-def reduce_PxxCxy_cyclefreq(Pxx_allcond, Cxy_allcond, cyclefreq_allcond, MVL_allcond, surrogates_allcond, prms):
-
-    Pxx_allcond_red = reduce_data(Pxx_allcond, prms)
-    Cxy_allcond_red = reduce_data(Cxy_allcond, prms)
-    cyclefreq_allcond_red = reduce_data(cyclefreq_allcond, prms)
-    MVL_allcond_red = reduce_data(MVL_allcond, prms)
-    surrogates_allcond_red = reduce_data(surrogates_allcond, prms)
-    
-    return Pxx_allcond_red, cyclefreq_allcond_red, Cxy_allcond_red, MVL_allcond_red, surrogates_allcond_red
-
-
-
-
-
-
-def save_Pxx_Cxy_Cyclefreq_Surrogates_allcond(sujet, Pxx_allcond, cyclefreq_allcond, Cxy_allcond, MVL_allcond, surrogates_allcond):
-
-    os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
-
-    with open(f'allcond_{sujet}_Pxx.pkl', 'wb') as f:
-        pickle.dump(Pxx_allcond, f)
-
-    with open(f'allcond_{sujet}_Cxy.pkl', 'wb') as f:
-        pickle.dump(Cxy_allcond, f)
-
-    with open(f'allcond_{sujet}_surrogates.pkl', 'wb') as f:
-        pickle.dump(surrogates_allcond, f)
-
-    with open(f'allcond_{sujet}_cyclefreq.pkl', 'wb') as f:
-        pickle.dump(cyclefreq_allcond, f)
-
-    with open(f'allcond_{sujet}_MVL.pkl', 'wb') as f:
-        pickle.dump(MVL_allcond, f)
-
-
-
-
-
 def compute_reduced_PxxCxyCyclefreqSurrogates(sujet, respfeatures_allcond, surrogates_allcond, prms):
 
 
     if os.path.exists(os.path.join(path_precompute, sujet, 'PSD_Coh', f'allcond_{sujet}_Pxx.pkl')) == False:
     
+        #### compute metrics
         Pxx_allcond, Cxy_allcond, cyclefreq_allcond, MVL_allcond = compute_all_PxxCxyCyclefreq(sujet, respfeatures_allcond, prms)
 
-        Pxx_allcond_red, cyclefreq_allcond_red, Cxy_allcond_red, MVL_allcond_red, surrogates_allcond_red = reduce_PxxCxy_cyclefreq(Pxx_allcond, Cxy_allcond, cyclefreq_allcond, MVL_allcond, surrogates_allcond, prms)
+        #### reduce
+        Pxx_allcond_red = reduce_data(Pxx_allcond, prms)
+        Cxy_allcond_red = reduce_data(Cxy_allcond, prms)
+        cyclefreq_allcond_red = reduce_data(cyclefreq_allcond, prms)
+        MVL_allcond_red = reduce_data(MVL_allcond, prms)
+        surrogates_allcond_red = reduce_data(surrogates_allcond, prms)
 
-        save_Pxx_Cxy_Cyclefreq_Surrogates_allcond(sujet, Pxx_allcond_red, cyclefreq_allcond_red, Cxy_allcond_red, MVL_allcond_red, surrogates_allcond_red)
+        #### save 
+        os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
+
+        with open(f'allcond_{sujet}_Pxx.pkl', 'wb') as f:
+            pickle.dump(Pxx_allcond_red, f)
+
+        with open(f'allcond_{sujet}_Cxy.pkl', 'wb') as f:
+            pickle.dump(Cxy_allcond_red, f)
+
+        with open(f'allcond_{sujet}_surrogates.pkl', 'wb') as f:
+            pickle.dump(surrogates_allcond_red, f)
+
+        with open(f'allcond_{sujet}_cyclefreq.pkl', 'wb') as f:
+            pickle.dump(cyclefreq_allcond_red, f)
+
+        with open(f'allcond_{sujet}_MVL.pkl', 'wb') as f:
+            pickle.dump(MVL_allcond_red, f)
 
     else:
 
@@ -404,7 +382,7 @@ def compute_reduced_PxxCxyCyclefreqSurrogates(sujet, respfeatures_allcond, surro
 
 
 
-def get_Pxx_Cxy_Cyclefreq_Surrogates_allcond(sujet):
+def get_Pxx_Cxy_Cyclefreq_MVL_Surrogates_allcond(sujet):
 
     source_path = os.getcwd()
     
@@ -432,10 +410,10 @@ def get_Pxx_Cxy_Cyclefreq_Surrogates_allcond(sujet):
 
 
 #n_chan = 0
-def plot_save_PSD_Coh(sujet, n_chan):
+def plot_save_PSD_Cxy_CF_MVL(sujet, n_chan):
 
     #### load data
-    Pxx_allcond, Cxy_allcond, surrogates_allcond, cyclefreq_allcond, MVL_allcond = get_Pxx_Cxy_Cyclefreq_Surrogates_allcond(sujet)
+    Pxx_allcond, Cxy_allcond, surrogates_allcond, cyclefreq_allcond, MVL_allcond = get_Pxx_Cxy_Cyclefreq_MVL_Surrogates_allcond(sujet)
     prms = get_params(sujet)
     respfeatures_allcond = load_respfeatures(sujet)
     df_loca = get_loca_df(sujet)
@@ -469,7 +447,7 @@ def plot_save_PSD_Coh(sujet, n_chan):
         #### identify respi mean
         respi_mean = []
         for trial_i, _ in enumerate(respfeatures_allcond[cond]):
-            respi_mean.append(np.round(respfeatures_allcond[cond][trial_i]['cycle_freq'].mean(), 3))
+            respi_mean.append(np.round(respfeatures_allcond[cond][trial_i]['cycle_freq'].median(), 3))
         respi_mean = np.round(np.mean(respi_mean),3)
                 
         #### plot
@@ -572,17 +550,6 @@ def compute_TF_ITPC(sujet, prms):
             if os.path.exists(os.path.join(path_precompute, sujet, 'ITPC', f'allcond_{sujet}_itpc_stretch.pkl')):
                 print('ALREADY COMPUTED')
                 continue
-
-        #### generate str to search file
-        freq_band_str = {}
-
-        for band_prep in band_prep_list:
-
-            freq_band = freq_band_dict[band_prep]
-
-            for band, freq in freq_band.items():
-                freq_band_str[band] = str(freq[0]) + '_' + str(freq[1])
-
 
         #### load file with reducing to one TF
         tf_stretch_allcond = {}
@@ -734,6 +701,9 @@ def save_TF_ITPC_n_chan(sujet, n_chan, tf_mode, band_prep):
         vmaxs[cond] = vmax
         vmins[cond] = vmin
 
+    vmax_allcond = np.median(vmaxs.values())
+    vmin_allcond = np.median(vmins.values())
+
     del scales
 
     #### plot
@@ -771,10 +741,12 @@ def save_TF_ITPC_n_chan(sujet, n_chan, tf_mode, band_prep):
             time = range(stretch_point_TF)
 
             if tf_mode == 'TF':
-                ax.pcolormesh(time, frex, data, vmin=vmins[cond], vmax=vmaxs[cond], shading='gouraud', cmap=plt.get_cmap('seismic'))
+                # ax.pcolormesh(time, frex, data, vmin=vmins[cond], vmax=vmaxs[cond], shading='gouraud', cmap=plt.get_cmap('seismic'))
+                ax.pcolormesh(time, frex, data, vmin=vmin_allcond, vmax=vmax_allcond, shading='gouraud', cmap=plt.get_cmap('seismic'))
                 # ax.pcolormesh(time, frex, data, shading='gouraud', cmap=plt.get_cmap('seismic'))
             if tf_mode == 'ITPC':
-                ax.pcolormesh(time, frex, data, vmin=vmins[cond], vmax=vmaxs[cond], shading='gouraud', cmap=plt.get_cmap('seismic'))
+                # ax.pcolormesh(time, frex, data, vmin=vmins[cond], vmax=vmaxs[cond], shading='gouraud', cmap=plt.get_cmap('seismic'))
+                ax.pcolormesh(time, frex, data, vmin=vmin_allcond, vmax=vmax_allcond, shading='gouraud', cmap=plt.get_cmap('seismic'))
                 # ax.pcolormesh(time, frex, data, shading='gouraud', cmap=plt.get_cmap('seismic'))
 
             if c == 0:
@@ -810,7 +782,7 @@ def save_TF_ITPC_n_chan(sujet, n_chan, tf_mode, band_prep):
 ######## COMPILATION FUNCTION ########
 ########################################
 
-def compilation_compute_Pxx_Cxy_Cyclefreq(sujet):
+def compilation_compute_Pxx_Cxy_Cyclefreq_MVL(sujet):
     
     #### load params
     prms = get_params(sujet)
@@ -818,13 +790,13 @@ def compilation_compute_Pxx_Cxy_Cyclefreq(sujet):
         
     surrogates_allcond = load_surrogates(sujet, respfeatures_allcond, prms)
 
-    #### reduce surrogates
+    #### compute & reduce surrogates
     print('######## COMPUTE & REDUCE PSD AND COH ########')
     compute_reduced_PxxCxyCyclefreqSurrogates(sujet, respfeatures_allcond, surrogates_allcond, prms)
     
     #### compute joblib
     print('######## PLOT & SAVE PSD AND COH ########')
-    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(plot_save_PSD_Coh)(sujet, n_chan) for n_chan in range(len(prms['chan_list_ieeg'])))
+    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(plot_save_PSD_Cxy_CF_MVL)(sujet, n_chan) for n_chan in range(len(prms['chan_list_ieeg'])))
 
     print('done')
 
@@ -867,13 +839,12 @@ if __name__ == '__main__':
 
     
     #### Pxx Cxy CycleFreq
-    compilation_compute_Pxx_Cxy_Cyclefreq(sujet)
-    # execute_function_in_slurm_bash('n11_res_power_analysis', 'compilation_compute_Pxx_Cxy_Cyclefreq', [sujet])
-    # execute_function_in_slurm_bash_mem_choice('n11_res_power_analysis', 'compilation_compute_Pxx_Cxy_Cyclefreq', [sujet], 15)
+    compilation_compute_Pxx_Cxy_Cyclefreq_MVL(sujet)
+    # execute_function_in_slurm_bash('n11_res_power_analysis', 'compilation_compute_Pxx_Cxy_Cyclefreq_MVL', [sujet])
+    # execute_function_in_slurm_bash_mem_choice('n11_res_power_analysis', 'compilation_compute_Pxx_Cxy_Cyclefreq_MVL', [sujet], 15)
 
 
     #### TF & ITPC
     compilation_compute_TF_ITPC(sujet)
     # execute_function_in_slurm_bash('n11_res_power_analysis', 'compilation_compute_TF_ITPC', [sujet])
     # execute_function_in_slurm_bash_mem_choice('n11_res_power_analysis', 'compilation_compute_TF_ITPC', [sujet], 15)
-

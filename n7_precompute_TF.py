@@ -61,6 +61,7 @@ def compute_stretch_tf_dB(sujet, tf, cond, session_i, respfeatures_allcond, stre
 
     stretch_tf_db_nchan_res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(stretch_tf_db_n_chan)(n_chan) for n_chan in range(np.size(tf,0)))
 
+    #### extarct
     tf_mean_allchan = np.zeros((np.size(tf,0), np.size(tf,1), stretch_point_TF))
 
     for n_chan in range(np.size(tf,0)):
@@ -213,6 +214,7 @@ def precompute_tf_itpc(sujet, cond, session_i, freq_band_list, band_prep_list):
 
             compute_itpc_n_chan_res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_itpc_n_chan)(n_chan) for n_chan in range(np.size(data,0)))
             
+            #### extract
             itpc_allchan = np.zeros((np.size(data,0),nfrex,stretch_point_TF))
 
             for n_chan in range(np.size(data,0)):

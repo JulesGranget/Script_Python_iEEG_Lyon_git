@@ -22,18 +22,8 @@ debug = False
 ################################################
 
 
-
-#mat, pairs, roi_in_data = data.data, data['pairs'].data, roi_in_data
-def from_dfc_to_mat_conn_trpz(mat, pairs, roi_in_data):
-
-    #### mean over pairs
-    pairs_unique = np.unique(pairs)
-
-    pairs_unique_mat = np.zeros(( pairs_unique.shape[0], mat.shape[1] ))
-    #pair_name_i = pairs_unique[0]
-    for pair_name_i, pair_name in enumerate(pairs_unique):
-        pairs_to_mean = np.where(pairs == pair_name)[0]
-        pairs_unique_mat[pair_name_i, :] = np.mean(mat[pairs_to_mean,:], axis=0)
+#data_dfc, pairs, roi_in_data = data_chunk.loc[cf_metric,:,:].data, data['pairs'].data, roi_in_data
+def from_dfc_to_mat_conn_trpz(data_dfc, pairs, roi_in_data):
 
     #### fill mat
     mat_cf = np.zeros(( len(roi_in_data), len(roi_in_data) ))
@@ -44,18 +34,14 @@ def from_dfc_to_mat_conn_trpz(mat, pairs, roi_in_data):
         for y_i, y_name in enumerate(roi_in_data):
             if x_name == y_name:
                 continue
-            val_to_place, pair_count = 0, 0
             pair_to_find = f'{x_name}-{y_name}'
             pair_to_find_rev = f'{y_name}-{x_name}'
-            if np.where(pairs_unique == pair_to_find)[0].shape[0] != 0:
-                x = mat[np.where(pairs_unique == pair_to_find)[0]]
-                val_to_place += np.trapz(x)
-                pair_count += 1
-            if np.where(pairs_unique == pair_to_find_rev)[0].shape[0] != 0:
-                x = mat[np.where(pairs_unique == pair_to_find_rev)[0]]
-                val_to_place += np.trapz(x)
-                pair_count += 1
-            val_to_place /= pair_count
+            
+            x = data_dfc[pairs == pair_to_find]
+            x_rev = data_dfc[pairs == pair_to_find_rev]
+
+            x_mean = np.vstack([x, x_rev]).mean(axis=0)
+            val_to_place = np.trapz(x_mean)
 
             mat_cf[x_i, y_i] = val_to_place
 
@@ -421,6 +407,20 @@ def save_fig_dfc(cond, mat, ROI_list):
 
         scales[mat_type]['vmin'], scales[mat_type]['vmax'] = scales[mat_type]['vmin'].min(), scales[mat_type]['vmax'].max()
 
+    #### identify scales abs
+    scales_abs = {}
+    for mat_type_i, mat_type in enumerate(cf_metrics_list):
+
+        scales_abs[mat_type] = {}
+
+        for band in band_name_dfc:
+
+            max_list = np.array(())
+            max_list = np.append(max_list, mat[mat_type][band].max())
+            max_list = np.append(max_list, np.abs(mat[mat_type][band].min()))
+
+            scales_abs[mat_type][band] = max_list.max()
+
     #mat_type = 'ispc'
     for mat_type in ['ispc', 'wpli']:
 
@@ -430,7 +430,8 @@ def save_fig_dfc(cond, mat, ROI_list):
         for c, band in enumerate(band_name_dfc):
             ax = axs[c]
             ax.set_title(band)
-            ax.matshow(mat[mat_type][band], vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'])
+            ax.matshow(mat[mat_type][band], vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], cmap=cm.seismic)
+            # ax.matshow(mat[mat_type][band], vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'])
             # ax.matshow(mat[mat_type][band])
             if c == 0:
                 ax.set_yticks(np.arange(roi_names.shape[0]))
@@ -443,14 +444,18 @@ def save_fig_dfc(cond, mat, ROI_list):
         nrows, ncols = 1, n_band
         fig = plt.figure()
         for c, band in enumerate(band_name_dfc):
-            mne.viz.plot_connectivity_circle(mat[mat_type][band], node_names=roi_names, n_lines=None, 
-                                            title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
-                                            vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'], colormap=mat_type_color[mat_type], facecolor='w', 
-                                            textcolor='k')
+            # mne.viz.plot_connectivity_circle(mat[mat_type][band], node_names=roi_names, n_lines=None, 
+            #                                 title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
+            #                                 vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'], colormap=mat_type_color[mat_type], facecolor='w', 
+            #                                 textcolor='k')
             # mne.viz.plot_connectivity_circle(mat[mat_type][band], node_names=roi_names, n_lines=None, 
             #                                 title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
             #                                 colormap=mat_type_color[mat_type], facecolor='w', 
             #                                 textcolor='k')
+            mne.viz.plot_connectivity_circle(mat[mat_type][band], node_names=roi_names, n_lines=None, 
+                                                title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
+                                                vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], colormap=cm.seismic, facecolor='w', 
+                                                textcolor='k')
         plt.suptitle(f'{cond}_{mat_type}', color='k')
         fig.set_figheight(10)
         fig.set_figwidth(12)
@@ -474,10 +479,12 @@ def save_fig_dfc(cond, mat, ROI_list):
 
             for x in range(mat_dfc_clean[mat_type][band].shape[1]):
                 for y in range(mat_dfc_clean[mat_type][band].shape[1]):
-                    if (mat_dfc_clean[mat_type][band][x,y] < thresh_up) & (mat_dfc_clean[mat_type][band][x,y] > thresh_down):
-                        mat_dfc_clean[mat_type][band][x,y] = 0
-                    if (mat_dfc_clean[mat_type][band][x,y] < thresh_up) & (mat_dfc_clean[mat_type][band][x,y] > thresh_down):
-                        mat_dfc_clean[mat_type][band][x,y] = 0
+                    if mat_type_i == 0:
+                        if mat_dfc_clean[mat_type][band][x,y] < thresh_up:
+                            mat_dfc_clean[mat_type][band][x,y] = 0
+                    else:
+                        if (mat_dfc_clean[mat_type][band][x,y] < thresh_up) & (mat_dfc_clean[mat_type][band][x,y] > thresh_down):
+                            mat_dfc_clean[mat_type][band][x,y] = 0
 
     #### plot
     #mat_type = 'wpli'
@@ -485,11 +492,12 @@ def save_fig_dfc(cond, mat, ROI_list):
 
         #### mat plot
         fig, axs = plt.subplots(ncols=n_band, figsize=(15,15))
-        plt.suptitle(mat_type)
+        plt.suptitle(f'{mat_type} : THRESH')
         for c, band in enumerate(band_name_dfc):
             ax = axs[c]
             ax.set_title(band)
-            ax.matshow(mat_dfc_clean[mat_type][band], vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'])
+            ax.matshow(mat_dfc_clean[mat_type][band], vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], cmap=cm.seismic)
+            # ax.matshow(mat_dfc_clean[mat_type][band], vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'])
             # ax.matshow(mat_dfc_clean[mat_type][band])
             if c == 0:
                 ax.set_yticks(np.arange(roi_names.shape[0]))
@@ -502,15 +510,19 @@ def save_fig_dfc(cond, mat, ROI_list):
         nrows, ncols = 1, n_band
         fig = plt.figure()
         for c, band in enumerate(band_name_dfc):
-            mne.viz.plot_connectivity_circle(mat_dfc_clean[mat_type][band], node_names=roi_names, n_lines=None, 
-                                            title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
-                                            vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'], colormap=cm.seismic, facecolor='w', 
-                                            textcolor='k')
+            # mne.viz.plot_connectivity_circle(mat_dfc_clean[mat_type][band], node_names=roi_names, n_lines=None, 
+            #                                 title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
+            #                                 vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'], colormap=cm.seismic, facecolor='w', 
+            #                                 textcolor='k')
             # mne.viz.plot_connectivity_circle(mat_dfc_clean[mat_type][band], node_names=roi_names, n_lines=None, 
             #                                 title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
             #                                 colormap=mat_type_color[mat_type], facecolor='w', 
             #                                 textcolor='k')
-        plt.suptitle(f'{cond}_{mat_type}', color='k')
+            mne.viz.plot_connectivity_circle(mat_dfc_clean[mat_type][band], node_names=roi_names, n_lines=None, 
+                                                title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
+                                                vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], colormap=cm.seismic, facecolor='w', 
+                                                textcolor='k')
+        plt.suptitle(f'{cond}_{mat_type} : THRESH', color='k')
         fig.set_figheight(10)
         fig.set_figwidth(12)
         # fig.show()
@@ -533,7 +545,7 @@ def save_fig_dfc_respi_phase(cond, mat, ROI_list):
     respi_phase_list = ['inspi', 'expi']
     n_rows = len(respi_phase_list)
 
-    print(f'######## PLOT {cond} ########')
+    print(f'######## PLOT {cond} PHASE ########')
 
     #### identify scales
     scales = {}
@@ -554,6 +566,23 @@ def save_fig_dfc_respi_phase(cond, mat, ROI_list):
 
             scales[mat_type]['vmin'], scales[mat_type]['vmax'] = scales[mat_type]['vmin'].min(), scales[mat_type]['vmax'].max()
 
+    #### identify scales abs
+    scales_abs = {}
+
+    for respi_phase in respi_phase_list:
+
+        for mat_type_i, mat_type in enumerate(cf_metrics_list):
+
+            scales_abs[mat_type] = {}
+
+            for band in band_name_dfc:
+
+                max_list = np.array(())
+                max_list = np.append(max_list, mat[respi_phase][mat_type][band].max())
+                max_list = np.append(max_list, np.abs(mat[respi_phase][mat_type][band].min()))
+
+                scales_abs[mat_type][band] = max_list.max()
+
     #### plot
     os.chdir(os.path.join(path_results, 'allplot', cond, 'DFC', 'ROI'))
     roi_names = ROI_list
@@ -571,7 +600,8 @@ def save_fig_dfc_respi_phase(cond, mat, ROI_list):
                 if c == 0:
                     ax.set_ylabel(respi_phase)
                 ax.set_title(band)
-                ax.matshow(mat[respi_phase][mat_type][band], vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'])
+                ax.matshow(mat[respi_phase][mat_type][band], vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], cmap=cm.seismic)
+                # ax.matshow(mat[respi_phase][mat_type][band], vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'])
                 # ax.matshow(mat[respi_phase][mat_type][band])
                 if c == 0:
                     ax.set_yticks(np.arange(roi_names.shape[0]))
@@ -587,14 +617,18 @@ def save_fig_dfc_respi_phase(cond, mat, ROI_list):
             if r == 1:
                 r = len(band_name_dfc)
             for c, band in enumerate(band_name_dfc):
-                mne.viz.plot_connectivity_circle(mat[respi_phase][mat_type][band], node_names=roi_names, n_lines=None, 
-                                                title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, r+c+1),
-                                                vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'], colormap=mat_type_color[mat_type], facecolor='w', 
-                                                textcolor='k')
+                # mne.viz.plot_connectivity_circle(mat[respi_phase][mat_type][band], node_names=roi_names, n_lines=None, 
+                #                                 title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, r+c+1),
+                #                                 vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'], colormap=mat_type_color[mat_type], facecolor='w', 
+                #                                 textcolor='k')
                 # mne.viz.plot_connectivity_circle(mat[respi_phase][mat_type][band], node_names=roi_names, n_lines=None, 
                 #                                 title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, r+c+1),
                 #                                 colormap=mat_type_color[mat_type], facecolor='w', 
                 #                                 textcolor='k')
+                mne.viz.plot_connectivity_circle(mat[respi_phase][mat_type][band], node_names=roi_names, n_lines=None, 
+                                                title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, r+c+1),
+                                                vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], colormap=cm.seismic, facecolor='w', 
+                                                textcolor='k')
         plt.suptitle(f'{cond}_{mat_type}', color='k')
         fig.set_figheight(10)
         fig.set_figwidth(12)
@@ -620,10 +654,12 @@ def save_fig_dfc_respi_phase(cond, mat, ROI_list):
 
                 for x in range(mat_dfc_clean[respi_phase][mat_type][band].shape[1]):
                     for y in range(mat_dfc_clean[respi_phase][mat_type][band].shape[1]):
-                        if (mat_dfc_clean[respi_phase][mat_type][band][x,y] < thresh_up) & (mat_dfc_clean[respi_phase][mat_type][band][x,y] > thresh_down):
-                            mat_dfc_clean[respi_phase][mat_type][band][x,y] = 0
-                        if (mat_dfc_clean[respi_phase][mat_type][band][x,y] < thresh_up) & (mat_dfc_clean[respi_phase][mat_type][band][x,y] > thresh_down):
-                            mat_dfc_clean[respi_phase][mat_type][band][x,y] = 0
+                        if mat_type_i == 0:
+                            if mat_dfc_clean[respi_phase][mat_type][band][x,y] < thresh_up:
+                                mat_dfc_clean[respi_phase][mat_type][band][x,y] = 0
+                        else:
+                            if (mat_dfc_clean[respi_phase][mat_type][band][x,y] < thresh_up) & (mat_dfc_clean[respi_phase][mat_type][band][x,y] > thresh_down):
+                                mat_dfc_clean[respi_phase][mat_type][band][x,y] = 0
 
     #### plot
     #mat_type = 'wpli'
@@ -631,7 +667,7 @@ def save_fig_dfc_respi_phase(cond, mat, ROI_list):
 
         #### mat plot
         fig, axs = plt.subplots(nrows=n_rows, ncols=n_band, figsize=(15,15))
-        plt.suptitle(mat_type)
+        plt.suptitle(f'{mat_type} : THRESH')
 
         for r, respi_phase in enumerate(respi_phase_list):
             for c, band in enumerate(band_name_dfc):
@@ -640,8 +676,9 @@ def save_fig_dfc_respi_phase(cond, mat, ROI_list):
                     ax.set_ylabel(respi_phase)
                     ax.yaxis.set_label_coords(-.5, .5)
                 ax.set_title(band)
+                ax.matshow(mat_dfc_clean[respi_phase][mat_type][band], vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], cmap=cm.seismic)
                 # ax.matshow(mat_dfc_clean[respi_phase][mat_type][band], vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'])
-                ax.matshow(mat_dfc_clean[respi_phase][mat_type][band])
+                # ax.matshow(mat_dfc_clean[respi_phase][mat_type][band])
                 if c == 0:
                     ax.set_yticks(np.arange(roi_names.shape[0]))
                     ax.set_yticklabels(roi_names)
@@ -656,15 +693,19 @@ def save_fig_dfc_respi_phase(cond, mat, ROI_list):
             if r == 1:
                 r = len(band_name_dfc)
             for c, band in enumerate(band_name_dfc):
-                # mne.viz.plot_connectivity_circle(mat[respi_phase][mat_type][band], node_names=roi_names, n_lines=None, 
+                # mne.viz.plot_connectivity_circle(mat_dfc_clean[respi_phase][mat_type][band], node_names=roi_names, n_lines=None, 
                 #                                 title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
                 #                                 vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'], colormap=mat_type_color[mat_type], facecolor='w', 
                 #                                 textcolor='k')
+                # mne.viz.plot_connectivity_circle(mat_dfc_clean[respi_phase][mat_type][band], node_names=roi_names, n_lines=None, 
+                #                                 title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, r+c+1),
+                #                                 colormap=mat_type_color[mat_type], facecolor='w', 
+                #                                 textcolor='k')
                 mne.viz.plot_connectivity_circle(mat_dfc_clean[respi_phase][mat_type][band], node_names=roi_names, n_lines=None, 
                                                 title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, r+c+1),
-                                                colormap=mat_type_color[mat_type], facecolor='w', 
+                                                vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], colormap=cm.seismic, facecolor='w', 
                                                 textcolor='k')
-        plt.suptitle(f'{cond}_{mat_type}', color='k')
+        plt.suptitle(f'{cond}_{mat_type} : THRESH', color='k')
         fig.set_figheight(10)
         fig.set_figwidth(12)
         # fig.show()
@@ -700,6 +741,7 @@ def save_fig_dfc_respi_phase_diff(cond, mat, ROI_list):
 
             mat_diff[mat_type][band] = mat['inspi'][mat_type][band] - mat['expi'][mat_type][band]
 
+    mat_original = mat.copy()
     mat = mat_diff
 
     #### identify scales
@@ -719,6 +761,23 @@ def save_fig_dfc_respi_phase_diff(cond, mat, ROI_list):
 
         scales[mat_type]['vmin'], scales[mat_type]['vmax'] = scales[mat_type]['vmin'].min(), scales[mat_type]['vmax'].max()
 
+    #### identify scales abs
+    scales_abs = {}
+
+    for respi_phase in respi_phase_list:
+
+        for mat_type_i, mat_type in enumerate(cf_metrics_list):
+
+            scales_abs[mat_type] = {}
+
+            for band in band_name_dfc:
+
+                max_list = np.array(())
+                max_list = np.append(max_list, mat_original[respi_phase][mat_type][band].max())
+                max_list = np.append(max_list, np.abs(mat_original[respi_phase][mat_type][band].min()))
+
+                scales_abs[mat_type][band] = max_list.max()
+
     #### plot
     os.chdir(os.path.join(path_results, 'allplot', cond, 'DFC', 'ROI'))
     roi_names = ROI_list
@@ -733,7 +792,8 @@ def save_fig_dfc_respi_phase_diff(cond, mat, ROI_list):
         for c, band in enumerate(band_name_dfc):
             ax = axs[c]
             ax.set_title(band)
-            ax.matshow(mat[mat_type][band], vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'])
+            ax.matshow(mat[mat_type][band], vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], cmap=cm.seismic)
+            # ax.matshow(mat[mat_type][band], vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'])
             # ax.matshow(allband_data[band][mat_type])
             if c == 0:
                 ax.set_yticks(np.arange(roi_names.shape[0]))
@@ -750,10 +810,14 @@ def save_fig_dfc_respi_phase_diff(cond, mat, ROI_list):
             #                                 title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
             #                                 vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'], colormap=mat_type_color[mat_type], facecolor='w', 
             #                                 textcolor='k')
+            # mne.viz.plot_connectivity_circle(mat[mat_type][band], node_names=roi_names, n_lines=None, 
+            #                                 title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
+            #                                 colormap=mat_type_color[mat_type], facecolor='w', 
+            #                                 textcolor='k')
             mne.viz.plot_connectivity_circle(mat[mat_type][band], node_names=roi_names, n_lines=None, 
-                                            title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
-                                            colormap=mat_type_color[mat_type], facecolor='w', 
-                                            textcolor='k')
+                                                title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
+                                                vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], colormap=cm.seismic, facecolor='w', 
+                                                textcolor='k')
         plt.suptitle(f'{cond}_{mat_type} inspi - expi', color='k')
         fig.set_figheight(10)
         fig.set_figwidth(12)
@@ -777,9 +841,7 @@ def save_fig_dfc_respi_phase_diff(cond, mat, ROI_list):
             for x in range(mat_dfc_clean[mat_type][band].shape[1]):
                 for y in range(mat_dfc_clean[mat_type][band].shape[1]):
                     if (mat_dfc_clean[mat_type][band][x,y] < thresh_up) & (mat_dfc_clean[mat_type][band][x,y] > thresh_down):
-                        mat_dfc_clean[mat_type][band][x,y] = 0
-                    if (mat_dfc_clean[mat_type][band][x,y] < thresh_up) & (mat_dfc_clean[mat_type][band][x,y] > thresh_down):
-                        mat_dfc_clean[mat_type][band][x,y] = 0
+                            mat_dfc_clean[mat_type][band][x,y] = 0
 
     #### plot
     #mat_type = 'wpli'
@@ -787,15 +849,16 @@ def save_fig_dfc_respi_phase_diff(cond, mat, ROI_list):
 
         #### mat plot
         fig, axs = plt.subplots(nrows=n_rows, ncols=n_band, figsize=(15,15))
-        plt.suptitle(f'{mat_type} inspi - expi')
+        plt.suptitle(f'{mat_type} THRESH inspi - expi')
 
         for c, band in enumerate(band_name_dfc):
             ax = axs[c]
             if c == 0:
                 ax.yaxis.set_label_coords(-.5, .5)
             ax.set_title(band)
+            ax.matshow(mat_dfc_clean[mat_type][band], vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], cmap=cm.seismic)
             # ax.matshow(mat_dfc_clean[mat_type][band], vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'])
-            ax.matshow(mat_dfc_clean[mat_type][band])
+            # ax.matshow(mat_dfc_clean[mat_type][band])
             if c == 0:
                 ax.set_yticks(np.arange(roi_names.shape[0]))
                 ax.set_yticklabels(roi_names)
@@ -811,11 +874,15 @@ def save_fig_dfc_respi_phase_diff(cond, mat, ROI_list):
             #                                 title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
             #                                 vmin=scales[mat_type]['vmin'], vmax=scales[mat_type]['vmax'], colormap=mat_type_color[mat_type], facecolor='w', 
             #                                 textcolor='k')
+            # mne.viz.plot_connectivity_circle(mat_dfc_clean[mat_type][band], node_names=roi_names, n_lines=None, 
+            #                                 title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
+            #                                 colormap=mat_type_color[mat_type], facecolor='w', 
+            #                                 textcolor='k')
             mne.viz.plot_connectivity_circle(mat_dfc_clean[mat_type][band], node_names=roi_names, n_lines=None, 
-                                            title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
-                                            colormap=mat_type_color[mat_type], facecolor='w', 
-                                            textcolor='k')
-        plt.suptitle(f'{cond}_{mat_type} inspi - expi', color='k')
+                                                    title=band, show=False, padding=7, fig=fig, subplot=(nrows, ncols, c+1),
+                                                    vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], colormap=cm.seismic, facecolor='w', 
+                                                    textcolor='k')
+        plt.suptitle(f'{cond}_{mat_type} THRESH inspi - expi', color='k')
         fig.set_figheight(10)
         fig.set_figwidth(12)
         # fig.show()

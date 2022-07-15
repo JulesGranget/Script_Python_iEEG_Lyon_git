@@ -375,7 +375,7 @@ freq_band_fc_analysis = {'theta' : [4, 8], 'alpha' : [9,12], 'beta' : [15,40], '
 percentile_thresh = 90
 
 #### for DFC
-slwin_dict = {'theta' : 5, 'alpha' : 3, 'beta' : .3, 'l_gamma' : .3, 'h_gamma' : .3}
+slwin_dict = {'theta' : 5, 'alpha' : 3, 'beta' : 1, 'l_gamma' : .3, 'h_gamma' : .3} # seconds
 slwin_step_coeff = .1  # in %, 10% move
 
 band_name_dfc = ['beta', 'l_gamma', 'h_gamma']

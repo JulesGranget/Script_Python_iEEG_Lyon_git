@@ -104,7 +104,7 @@ def reduce_functionnal_mat(mat, df_sorted):
     return mat_reduced
 
 #mat = dfc_data['inspi']
-def from_dfc_to_mat_conn_mean(mat, pairs, roi_in_data):
+def from_dfc_to_mat_conn_trapz(mat, pairs, roi_in_data):
 
     #### mean over pairs
     pairs_unique = np.unique(pairs)
@@ -124,17 +124,22 @@ def from_dfc_to_mat_conn_mean(mat, pairs, roi_in_data):
         for y_i, y_name in enumerate(roi_in_data):
             if x_name == y_name:
                 continue
-            val_to_place, pair_count = 0, 0
+            
             pair_to_find = f'{x_name}-{y_name}'
             pair_to_find_rev = f'{y_name}-{x_name}'
+
+            mat_i_to_mean = np.array([])
             if np.where(pairs_unique == pair_to_find)[0].shape[0] != 0:
-                x = mat[np.where(pairs_unique == pair_to_find)[0]]
-                val_to_place += np.mean(x)
-                pair_count += 1
+                mat_i_to_mean = np.append(mat_i_to_mean, np.where(pairs_unique == pair_to_find)[0])
             if np.where(pairs_unique == pair_to_find_rev)[0].shape[0] != 0:
-                x = mat[np.where(pairs_unique == pair_to_find_rev)[0]]
-                val_to_place += np.mean(x)
+                mat_i_to_mean = np.append(mat_i_to_mean, np.where(pairs_unique == pair_to_find_rev)[0])
+
+            val_to_place, pair_count = 0, 0
+            for i_to_mean in mat_i_to_mean:
+                x = mat[i_to_mean]
+                val_to_place += np.trapz(x)
                 pair_count += 1
+
             val_to_place /= pair_count
 
             mat_cf[x_i, y_i] = val_to_place
@@ -211,23 +216,7 @@ def get_pli_ispc_dfc_trial(sujet, cond, band_prep, band, freq, trial_i):
     #### identify roi in data
     df_loca = get_loca_df(sujet)
     df_sorted = df_loca.sort_values(['lobes', 'ROI'])
-    index_sorted = df_sorted.index.values
-    chan_name_sorted = df_sorted['ROI'].values.tolist()
-
-    roi_in_data = []
-    rep_count = 0
-    for i, name_i in enumerate(chan_name_sorted):
-        if i == 0:
-            roi_in_data.append(name_i)
-            continue
-        else:
-            if name_i == chan_name_sorted[i-(rep_count+1)]:
-                rep_count += 1
-                continue
-            if name_i != chan_name_sorted[i-(rep_count+1)]:
-                roi_in_data.append(name_i)
-                rep_count = 0
-                continue
+    roi_in_data = df_sorted['ROI'].unique().values
 
     #### compute index
     pairs_possible = []
@@ -249,19 +238,17 @@ def get_pli_ispc_dfc_trial(sujet, cond, band_prep, band, freq, trial_i):
         plot_A, plot_B = pair_i.split('-')
         anat_A, anat_B = df_loca['ROI'][prms['chan_list_ieeg'].index(plot_A)], df_loca['ROI'][prms['chan_list_ieeg'].index(plot_B)]
         pairs_to_compute_anat.append(f'{anat_A}-{anat_B}')
-        
 
     #### identify slwin
     slwin_len = slwin_dict[band]    # in sec
     slwin_step = slwin_len*slwin_step_coeff  # in sec
     times_conv = np.arange(0, convolutions.shape[-1]/prms['srate'], 1/prms['srate'])
     win_sample = frites.conn.define_windows(times_conv, slwin_len=slwin_len, slwin_step=slwin_step)[0]
-    times = np.linspace(0, convolutions.shape[-1]/prms['srate'], len(win_sample))
 
     print('COMPUTE')   
 
     #pair_to_compute = pairs_to_compute[0]
-    def compute_ispc_pli(pair_to_compute_i, pair_to_compute):
+    def compute_ispc_wpli(pair_to_compute_i, pair_to_compute):
 
         print_advancement(pair_to_compute_i, len(pairs_to_compute), steps=[25, 50, 75])
 
@@ -279,29 +266,28 @@ def get_pli_ispc_dfc_trial(sujet, cond, band_prep, band, freq, trial_i):
             as1 = convolutions[pair_A_i,:,slwin_values[0]:slwin_values[-1]]
             as2 = convolutions[pair_B_i,:,slwin_values[0]:slwin_values[-1]]
 
-            # collect "eulerized" phase angle differences
+            ##### collect "eulerized" phase angle differences
             cdd = np.exp(1j*(np.angle(as1)-np.angle(as2)))
             
-            # compute ISPC and PLI (and average over trials!)
+            ##### compute ISPC and WPLI (and average over trials!)
             ispc_dfc_i[slwin_values_i] = np.abs(np.mean(cdd))
             # pli_dfc_i[slwin_values_i] = np.abs(np.mean(np.sign(np.imag(cdd))))
-            wpli_dfc_i[slwin_values_i] = np.mean( np.abs(np.imag(cdd))*np.sign(np.imag(cdd)) ) / np.mean(np.abs(np.imag(cdd)))
+            wpli_dfc_i[slwin_values_i] = np.mean( np.imag(cdd) ) / np.mean( np.abs(np.imag(cdd)) )
 
         return ispc_dfc_i, wpli_dfc_i
 
-    compute_ispc_pli_res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_ispc_pli)(pair_to_compute_i, pair_to_compute) for pair_to_compute_i, pair_to_compute in enumerate(pairs_to_compute))
+    compute_ispc_pli_res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_ispc_wpli)(pair_to_compute_i, pair_to_compute) for pair_to_compute_i, pair_to_compute in enumerate(pairs_to_compute))
 
-    #### compute metrics
+    #### extract
     wpli_mat = np.zeros((len(pairs_to_compute),np.size(win_sample,0)))
     ispc_mat = np.zeros((len(pairs_to_compute),np.size(win_sample,0)))
 
-    #### load in mat    
     for pair_to_compute_i, pair_to_compute in enumerate(pairs_to_compute):
                 
         ispc_mat[pair_to_compute_i,:] = compute_ispc_pli_res[pair_to_compute_i][0]
         wpli_mat[pair_to_compute_i,:] = compute_ispc_pli_res[pair_to_compute_i][1]
 
-    #### resample
+    #### resample for stretch
     os.chdir(path_memmap)
     matrix_resampled = np.memmap(f'{sujet}_{cond}_{band_prep}_{band}_{trial_i}_fc_mat_resample.dat', dtype=np.float32, mode='w+', shape=(2, len(pairs_to_compute), convolutions.shape[-1]))
 
@@ -345,13 +331,8 @@ def get_pli_ispc_dfc_trial(sujet, cond, band_prep, band, freq, trial_i):
     #### load respfeatures
     resp_features = load_respfeatures(sujet)[cond][trial_i]
 
-    #### get n stretch cycle
-    os.chdir(os.path.join(path_results, sujet, 'RESPI'))
-    df_count = pd.read_excel(f'{sujet}_count_cycles.xlsx')
-    n_cycle = df_count['count'][df_count['cond'] == cond].values[0]
-
     #### stretch
-    mat_stretch = np.zeros(( 2, len(pairs_to_compute), stretch_point_TF ))
+    mat_dfc_stretch = np.zeros(( 2, len(pairs_to_compute), stretch_point_TF ))
 
     for pair_i, _ in enumerate(pairs_to_compute):
 
@@ -359,15 +340,15 @@ def get_pli_ispc_dfc_trial(sujet, cond, band_prep, band, freq, trial_i):
         
         x = matrix_resampled[ispc_mat_i,pair_i,:]
         x_stretch, _ = stretch_data(resp_features, stretch_point_TF, x, prms['srate'])
-        mat_stretch[ispc_mat_i,pair_i,:] = np.mean(x_stretch, axis=0)
+        mat_dfc_stretch[ispc_mat_i,pair_i,:] = np.mean(x_stretch, axis=0)
 
         x = matrix_resampled[wpli_mat_i,pair_i,:]
         x_stretch, _ = stretch_data(resp_features, stretch_point_TF, x, prms['srate'])
-        mat_stretch[wpli_mat_i,pair_i,:] = np.mean(x_stretch, axis=0)
+        mat_dfc_stretch[wpli_mat_i,pair_i,:] = np.mean(x_stretch, axis=0)
 
     if debug:
-        x = (mat_stretch[ispc_mat_i,0,:] - mat_stretch[ispc_mat_i,0,:].mean()) / mat_stretch[ispc_mat_i,0,:].std()
-        y = (mat_stretch[wpli_mat_i,0,:] - mat_stretch[wpli_mat_i,0,:].mean()) / mat_stretch[wpli_mat_i,0,:].std()
+        x = (mat_dfc_stretch[ispc_mat_i,0,:] - mat_dfc_stretch[ispc_mat_i,0,:].mean()) / mat_dfc_stretch[ispc_mat_i,0,:].std()
+        y = (mat_dfc_stretch[wpli_mat_i,0,:] - mat_dfc_stretch[wpli_mat_i,0,:].mean()) / mat_dfc_stretch[wpli_mat_i,0,:].std()
         plt.plot(x, label='ispc')
         plt.plot(y, label='wpli')
         plt.legend()
@@ -381,8 +362,8 @@ def get_pli_ispc_dfc_trial(sujet, cond, band_prep, band, freq, trial_i):
     #### reduce mat
     mat_dfc_mean = np.zeros(( 2, len(roi_in_data), len(roi_in_data) ))
 
-    mat_dfc_mean[ispc_mat_i,:,:] = from_dfc_to_mat_conn_mean(mat_stretch[ispc_mat_i, :, :], pairs_to_compute_anat, roi_in_data)
-    mat_dfc_mean[wpli_mat_i,:,:] = from_dfc_to_mat_conn_mean(mat_stretch[wpli_mat_i, :, :], pairs_to_compute_anat, roi_in_data)
+    mat_dfc_mean[ispc_mat_i,:,:] = from_dfc_to_mat_conn_trapz(mat_dfc_stretch[ispc_mat_i, :, :], pairs_to_compute_anat, roi_in_data)
+    mat_dfc_mean[wpli_mat_i,:,:] = from_dfc_to_mat_conn_trapz(mat_dfc_stretch[wpli_mat_i, :, :], pairs_to_compute_anat, roi_in_data)
 
     # mat_df_sorted = sort_mat(mat_stretch[ispc_mat_i, :, :], index_sorted)
     # mat_dfc_mean[ispc_mat_i,:,:] = reduce_functionnal_mat(mat_df_sorted, df_sorted)
@@ -390,7 +371,7 @@ def get_pli_ispc_dfc_trial(sujet, cond, band_prep, band, freq, trial_i):
     # mat_df_sorted = sort_mat(mat_stretch[wpli_mat_i, :, :], index_sorted)
     # mat_dfc_mean[wpli_mat_i,:,:] = reduce_functionnal_mat(mat_df_sorted, df_sorted)
 
-    return mat_stretch, mat_dfc_mean
+    return mat_dfc_stretch, mat_dfc_mean
 
 
 
@@ -399,7 +380,7 @@ def get_pli_ispc_dfc_trial(sujet, cond, band_prep, band, freq, trial_i):
 
 
 
-def get_pli_ispc_dfc(sujet, cond, band_prep, band, freq):
+def get_wpli_ispc_dfc(sujet, cond, band_prep, band, freq):
 
     #### get n trial for cond
     os.chdir(os.path.join(path_precompute, sujet, 'TF'))
@@ -411,9 +392,9 @@ def get_pli_ispc_dfc(sujet, cond, band_prep, band, freq):
 
     #trial_i = 0
     for trial_i in range(n_trials):
-        #mat_stretch_i, mat_dfc_mean_i = mat_stretch, mat_dfc_mean
-        mat_stretch_i, mat_dfc_mean_i = get_pli_ispc_dfc_trial(sujet, cond, band_prep, band, freq, trial_i)
-        mat_stretch.append(mat_stretch_i)
+        #mat_dfc_stretch_i, mat_dfc_mean_i = mat_stretch, mat_dfc_mean
+        mat_dfc_stretch_i, mat_dfc_mean_i = get_pli_ispc_dfc_trial(sujet, cond, band_prep, band, freq, trial_i)
+        mat_stretch.append(mat_dfc_stretch_i)
         mat_dfc.append(mat_dfc_mean_i)
 
     #### mean across trials
@@ -433,8 +414,8 @@ def get_pli_ispc_dfc(sujet, cond, band_prep, band, freq):
     df_loca = get_loca_df(sujet)
 
     pairs_to_compute = []
-    for pair_A_i, pair_A in enumerate(prms['chan_list_ieeg']):
-        for pair_B_i, pair_B in enumerate(prms['chan_list_ieeg']):
+    for pair_A in prms['chan_list_ieeg']:
+        for pair_B in prms['chan_list_ieeg']:
             if pair_A == pair_B or f'{pair_A}-{pair_B}' in pairs_to_compute or f'{pair_B}-{pair_A}' in pairs_to_compute:
                 continue
             pairs_to_compute.append(f'{pair_A}-{pair_B}')
@@ -445,24 +426,8 @@ def get_pli_ispc_dfc(sujet, cond, band_prep, band, freq):
         anat_A, anat_B = df_loca['ROI'][prms['chan_list_ieeg'].index(plot_A)], df_loca['ROI'][prms['chan_list_ieeg'].index(plot_B)]
         pairs_to_compute_anat.append(f'{anat_A}-{anat_B}')
 
-    df_loca = get_loca_df(sujet)
     df_sorted = df_loca.sort_values(['lobes', 'ROI'])
-    chan_name_sorted = df_sorted['ROI'].values.tolist()
-
-    roi_in_data = []
-    rep_count = 0
-    for i, name_i in enumerate(chan_name_sorted):
-        if i == 0:
-            roi_in_data.append(name_i)
-            continue
-        else:
-            if name_i == chan_name_sorted[i-(rep_count+1)]:
-                rep_count += 1
-                continue
-            if name_i != chan_name_sorted[i-(rep_count+1)]:
-                roi_in_data.append(name_i)
-                rep_count = 0
-                continue
+    roi_in_data = df_sorted['ROI'].unique().values
 
     #### export
     #### save allpairs
@@ -498,8 +463,8 @@ if __name__ == '__main__':
             if band in ['beta', 'l_gamma', 'h_gamma']:
 
                 # get_pli_ispc_dfc(sujet, cond, band_prep, band, freq)
-                # execute_function_in_slurm_bash('n8_precompute_DFC', 'get_pli_ispc_dfc', [sujet, cond, band_prep, band, freq])
-                execute_function_in_slurm_bash_mem_choice('n8_precompute_DFC', 'get_pli_ispc_dfc', [sujet, cond, band_prep, band, freq], '15G')
+                # execute_function_in_slurm_bash('n8_precompute_DFC', 'get_wpli_ispc_dfc', [sujet, cond, band_prep, band, freq])
+                execute_function_in_slurm_bash_mem_choice('n8_precompute_DFC', 'get_wpli_ispc_dfc', [sujet, cond, band_prep, band, freq], '15G')
 
     
 
