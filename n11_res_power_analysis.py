@@ -1,3 +1,4 @@
+
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -648,8 +649,24 @@ def get_tf_itpc_stretch_allcond(sujet, tf_mode):
 
 
 
+def zscore(data):
 
-#n_chan, tf_mode, band_prep = 0, 'ITPC', 'lf'
+    data_zscore = (data - data.mean()) / data.std()
+
+    return data_zscore
+
+
+
+def robust_zscore(data):
+    
+    _median = np.median(data) 
+    MAD = np.median(np.abs(data-np.median(data)))
+    data_zscore = (0.6745*(data-_median))/ MAD
+        
+    return data_zscore
+
+
+#n_chan, tf_mode, band_prep = 0, 'TF', 'lf'
 def save_TF_ITPC_n_chan(sujet, n_chan, tf_mode, band_prep):
 
     #### load prms
@@ -672,7 +689,7 @@ def save_TF_ITPC_n_chan(sujet, n_chan, tf_mode, band_prep):
 
     freq_band = freq_band_dict[band_prep]
 
-    #### determine plot scale
+    #### scale
     vmaxs = {}
     vmins = {}
     for cond in prms['conditions']:
@@ -700,11 +717,6 @@ def save_TF_ITPC_n_chan(sujet, n_chan, tf_mode, band_prep):
 
         vmaxs[cond] = vmax
         vmins[cond] = vmin
-
-    vmax_allcond = np.median(vmaxs.values())
-    vmin_allcond = np.median(vmins.values())
-
-    del scales
 
     #### plot
     fig, axs = plt.subplots(nrows=len(freq_band), ncols=len(prms['conditions']))
@@ -740,19 +752,14 @@ def save_TF_ITPC_n_chan(sujet, n_chan, tf_mode, band_prep):
 
             time = range(stretch_point_TF)
 
-            if tf_mode == 'TF':
-                # ax.pcolormesh(time, frex, data, vmin=vmins[cond], vmax=vmaxs[cond], shading='gouraud', cmap=plt.get_cmap('seismic'))
-                ax.pcolormesh(time, frex, data, vmin=vmin_allcond, vmax=vmax_allcond, shading='gouraud', cmap=plt.get_cmap('seismic'))
-                # ax.pcolormesh(time, frex, data, shading='gouraud', cmap=plt.get_cmap('seismic'))
-            if tf_mode == 'ITPC':
-                # ax.pcolormesh(time, frex, data, vmin=vmins[cond], vmax=vmaxs[cond], shading='gouraud', cmap=plt.get_cmap('seismic'))
-                ax.pcolormesh(time, frex, data, vmin=vmin_allcond, vmax=vmax_allcond, shading='gouraud', cmap=plt.get_cmap('seismic'))
-                # ax.pcolormesh(time, frex, data, shading='gouraud', cmap=plt.get_cmap('seismic'))
+            # ax.pcolormesh(time, frex, data, vmin=vmins[cond], vmax=vmaxs[cond], shading='gouraud', cmap=plt.get_cmap('seismic'))
+            # ax.pcolormesh(time, frex, data, shading='gouraud', cmap=plt.get_cmap('seismic'))
+            # ax.pcolormesh(time, frex, zscore(data), shading='gouraud', cmap=plt.get_cmap('seismic'))
+            ax.pcolormesh(time, frex, robust_zscore(data), vmin=-robust_zscore(data).max(), vmax=robust_zscore(data).max(), shading='gouraud', cmap=plt.get_cmap('seismic'))
 
             if c == 0:
                 ax.set_ylabel(band)
 
-            
             if stretch_TF_auto:
                 ax.vlines(prms['respi_ratio_allcond'][cond][0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='g')
             else:
@@ -763,14 +770,11 @@ def save_TF_ITPC_n_chan(sujet, n_chan, tf_mode, band_prep):
     #plt.show()
 
     #### save
-    fig.savefig(f'{sujet}_{chan_name}_{chan_loca}_{band_prep}.jpeg', dpi=150)
+    # fig.savefig(f'{sujet}_{chan_name}_{chan_loca}_{band_prep}.jpeg', dpi=150)
+    fig.savefig(f'{sujet}_{chan_name}_{chan_loca}_{band_prep}_robust_noscaled.jpeg', dpi=150)
     fig.clf()
     plt.close('all')
     gc.collect()
-
-
-
-
 
 
 

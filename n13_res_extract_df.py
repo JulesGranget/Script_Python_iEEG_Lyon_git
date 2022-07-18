@@ -263,10 +263,10 @@ def export_TF_in_df(sujet, respfeatures_allcond, prms):
 
                     data = get_tf_itpc_stretch_allcond(sujet, 'TF')[band_prep][cond][band][chan_i, :, :]
                     Pxx = np.mean(data, axis=0)
-                    Pxx_inspi = np.mean(Pxx[0:int(stretch_point_TF*ratio_stretch_TF)])
-                    Pxx_expi = np.mean(Pxx[int(stretch_point_TF*ratio_stretch_TF):])
-                    Pxx_IE = np.mean(Pxx[stretch_point_IE[0]:stretch_point_IE[1]])
-                    Pxx_EI = np.mean(Pxx[stretch_point_EI[0]:]) + np.mean(Pxx[:stretch_point_EI[1]])
+                    Pxx_inspi = np.trapz(Pxx[0:int(stretch_point_TF*ratio_stretch_TF)])
+                    Pxx_expi = np.trapz(Pxx[int(stretch_point_TF*ratio_stretch_TF):])
+                    Pxx_IE = np.trapz(Pxx[stretch_point_IE[0]:stretch_point_IE[1]])
+                    Pxx_EI = np.trapz(Pxx[stretch_point_EI[0]:]) + np.trapz(Pxx[:stretch_point_EI[1]])
 
                     data_export_i =   {'sujet' : [sujet]*4, 'cond' : [cond]*4, 'chan' : [chan_name]*4, 'ROI' : [ROI_i]*4, 'Lobe' : [Lobe_i]*4, 'side' : [side_i]*4, 
                                     'band' : [band]*4, 'phase' : ['inspi', 'expi'], 'Pxx' : [Pxx_inspi, Pxx_expi, Pxx_IE, Pxx_EI]}

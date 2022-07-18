@@ -569,19 +569,20 @@ def save_fig_dfc_respi_phase(cond, mat, ROI_list):
     #### identify scales abs
     scales_abs = {}
 
-    for respi_phase in respi_phase_list:
+    for mat_type_i, mat_type in enumerate(cf_metrics_list):
 
-        for mat_type_i, mat_type in enumerate(cf_metrics_list):
+        scales_abs[mat_type] = {}
 
-            scales_abs[mat_type] = {}
+        for band in band_name_dfc:
 
-            for band in band_name_dfc:
+            max_list = np.array(())
 
-                max_list = np.array(())
+            for respi_phase in respi_phase_list:
+
                 max_list = np.append(max_list, mat[respi_phase][mat_type][band].max())
                 max_list = np.append(max_list, np.abs(mat[respi_phase][mat_type][band].min()))
 
-                scales_abs[mat_type][band] = max_list.max()
+            scales_abs[mat_type][band] = max_list.max()
 
     #### plot
     os.chdir(os.path.join(path_results, 'allplot', cond, 'DFC', 'ROI'))
@@ -752,31 +753,34 @@ def save_fig_dfc_respi_phase_diff(cond, mat, ROI_list):
         scales[mat_type] = {'vmin' : np.array([]), 'vmax' : np.array([])}
 
         for band in band_name_dfc:
+            
+            for respi_phase in respi_phase_list:
 
-            # mat_scaled = mat[band][mat_type_i,:,:][allband_data[respi_phase_i][band][mat_type_i,:,:] != 0]
-            mat_scaled = mat[mat_type][band]
+                # mat_scaled = mat[band][mat_type_i,:,:][allband_data[respi_phase_i][band][mat_type_i,:,:] != 0]
+                mat_scaled = mat_original[respi_phase][mat_type][band]
 
-            scales[mat_type]['vmin'] = np.append(scales[mat_type]['vmin'], mat_scaled.min())
-            scales[mat_type]['vmax'] = np.append(scales[mat_type]['vmax'], mat_scaled.max())
+                scales[mat_type]['vmin'] = np.append(scales[mat_type]['vmin'], mat_scaled.min())
+                scales[mat_type]['vmax'] = np.append(scales[mat_type]['vmax'], mat_scaled.max())
 
         scales[mat_type]['vmin'], scales[mat_type]['vmax'] = scales[mat_type]['vmin'].min(), scales[mat_type]['vmax'].max()
 
     #### identify scales abs
     scales_abs = {}
 
-    for respi_phase in respi_phase_list:
+    for mat_type_i, mat_type in enumerate(cf_metrics_list):
 
-        for mat_type_i, mat_type in enumerate(cf_metrics_list):
+        scales_abs[mat_type] = {}
 
-            scales_abs[mat_type] = {}
+        for band in band_name_dfc:
 
-            for band in band_name_dfc:
+            max_list = np.array(())
 
-                max_list = np.array(())
+            for respi_phase in respi_phase_list:
+
                 max_list = np.append(max_list, mat_original[respi_phase][mat_type][band].max())
                 max_list = np.append(max_list, np.abs(mat_original[respi_phase][mat_type][band].min()))
 
-                scales_abs[mat_type][band] = max_list.max()
+            scales_abs[mat_type][band] = max_list.max()
 
     #### plot
     os.chdir(os.path.join(path_results, 'allplot', cond, 'DFC', 'ROI'))

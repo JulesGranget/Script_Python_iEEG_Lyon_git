@@ -169,6 +169,13 @@ def open_TForITPC_data(i_to_extract, cond, mat_type, anat_type):
 
 
 
+def robust_zscore(data):
+    
+    _median = np.median(data) 
+    MAD = np.median(np.abs(data-np.median(data)))
+    data_zscore = (0.6745*(data-_median))/ MAD
+        
+    return data_zscore
 
 
 
@@ -193,7 +200,6 @@ def compute_for_one_ROI_allcond(ROI_name, mat_type):
         [band_names.append(band_name_i) for band_name_i in list(band_freq_i.keys())]
         [freq_values.append(freq_values_i) for freq_values_i in list(band_freq_i.values())]
 
-      
     #### load mat
     ROI_mat_dict = {}
     for cond in cond_to_compute:
@@ -330,12 +336,15 @@ def compute_for_one_ROI_allcond(ROI_name, mat_type):
                     if cond_i == 0:
                         ax.set_ylabel(band)
                     if band_prep == 'lf':
-                        ax.pcolormesh(time, frex, data, vmin=values_scales_lf[cond]['vmin'], vmax=values_scales_lf[cond]['vmax'], shading='gouraud', cmap=plt.get_cmap('seismic'))
+                        ax.pcolormesh(time, frex, robust_zscore(data), vmin=-robust_zscore(data).max(), vmax=robust_zscore(data).max(), shading='gouraud', cmap=plt.get_cmap('seismic'))
+                        # ax.pcolormesh(time, frex, data, vmin=values_scales_lf[cond]['vmin'], vmax=values_scales_lf[cond]['vmax'], shading='gouraud', cmap=plt.get_cmap('seismic'))
                         # ax.pcolormesh(time, frex, data, shading='gouraud', cmap=plt.get_cmap('seismic'))
                     elif band_prep == 'hf' and band == 'l_gamma':
-                        ax.pcolormesh(time, frex, data, vmin=values_scales_hf[cond]['vmin'], vmax=values_scales_hf[cond]['vmax'], shading='gouraud', cmap=plt.get_cmap('seismic'))
+                        ax.pcolormesh(time, frex, robust_zscore(data), vmin=-robust_zscore(data).max(), vmax=robust_zscore(data).max(), shading='gouraud', cmap=plt.get_cmap('seismic'))
+                        # ax.pcolormesh(time, frex, data, vmin=values_scales_hf[cond]['vmin'], vmax=values_scales_hf[cond]['vmax'], shading='gouraud', cmap=plt.get_cmap('seismic'))
                     else:
-                        ax.pcolormesh(time, frex, data, vmin=np.median(data), vmax=data.max(), shading='gouraud', cmap=plt.get_cmap('seismic'))
+                        ax.pcolormesh(time, frex, robust_zscore(data), vmin=-robust_zscore(data).max(), vmax=robust_zscore(data).max(), shading='gouraud', cmap=plt.get_cmap('seismic'))
+                        # ax.pcolormesh(time, frex, data, vmin=np.median(data), vmax=data.max(), shading='gouraud', cmap=plt.get_cmap('seismic'))
 
                     ax.vlines(ratio_stretch_TF*stretch_point, ymin=freq[0], ymax=freq[1], colors='g')
 
@@ -502,13 +511,16 @@ def compute_for_one_Lobe_allcond(Lobe_name, mat_type):
                 if cond_i == 0:
                     ax.set_ylabel(band)
                 if band_prep == 'lf':
-                    ax.pcolormesh(time, frex, data, vmin=values_scales_lf[cond]['vmin'], vmax=values_scales_lf[cond]['vmax'], shading='gouraud', cmap=plt.get_cmap('seismic'))
+                    ax.pcolormesh(time, frex, robust_zscore(data), vmin=-robust_zscore(data).max(), vmax=robust_zscore(data).max(), shading='gouraud', cmap=plt.get_cmap('seismic'))
+                    # ax.pcolormesh(time, frex, data, vmin=values_scales_lf[cond]['vmin'], vmax=values_scales_lf[cond]['vmax'], shading='gouraud', cmap=plt.get_cmap('seismic'))
                     # ax.pcolormesh(time, frex, data, shading='gouraud', cmap=plt.get_cmap('seismic'))
                 elif band_prep == 'hf' and band == 'l_gamma':
-                    ax.pcolormesh(time, frex, data, vmin=values_scales_hf[cond]['vmin'], vmax=values_scales_hf[cond]['vmax'], shading='gouraud', cmap=plt.get_cmap('seismic'))
+                    ax.pcolormesh(time, frex, robust_zscore(data), vmin=-robust_zscore(data).max(), vmax=robust_zscore(data).max(), shading='gouraud', cmap=plt.get_cmap('seismic'))
+                    # ax.pcolormesh(time, frex, data, vmin=values_scales_hf[cond]['vmin'], vmax=values_scales_hf[cond]['vmax'], shading='gouraud', cmap=plt.get_cmap('seismic'))
                     # ax.pcolormesh(time, frex, data, shading='gouraud', cmap=plt.get_cmap('seismic'))
                 else:
-                    ax.pcolormesh(time, frex, data, vmin=np.median(data), vmax=data.max(), shading='gouraud', cmap=plt.get_cmap('seismic'))
+                    ax.pcolormesh(time, frex, robust_zscore(data), vmin=-robust_zscore(data).max(), vmax=robust_zscore(data).max(), shading='gouraud', cmap=plt.get_cmap('seismic'))
+                    # ax.pcolormesh(time, frex, data, vmin=np.median(data), vmax=data.max(), shading='gouraud', cmap=plt.get_cmap('seismic'))
 
                 ax.vlines(ratio_stretch_TF*stretch_point, ymin=freq[0], ymax=freq[1], colors='g')
 

@@ -74,9 +74,6 @@ def get_ROI_Lobes_list_and_Plots(FR_CV_compute=False):
         lobe_dict_count[lobe_list[i]] = 0
         lobe_dict_plots[lobe_list[i]] = []
 
-    #### initiate for cond
-    sujet_for_cond = []
-
     #### search for ROI & lobe that have been counted
 
     if FR_CV_compute:
@@ -136,7 +133,6 @@ def get_ROI_Lobes_list_and_Plots(FR_CV_compute=False):
 def get_TF_and_ITPC_for_ROI(ROI_to_process, cond):
 
     #### load anat
-    ROI_list_allband, Lobe_list_allband = get_all_ROI_and_Lobes_name()
     ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(FR_CV_compute=True)
 
     #### identify stretch point
@@ -441,6 +437,7 @@ def compilation_allplot_analysis(cond):
     #### extract & save
     os.chdir(os.path.join(path_precompute, 'allplot'))
     for freq_band_i, freq_band_dict in enumerate(freq_band_list):
+        
         for band in list(freq_band_dict.keys()):
 
             ROI_band = np.zeros((len(ROI_to_include), 2, nfrex_hf, stretch_point))

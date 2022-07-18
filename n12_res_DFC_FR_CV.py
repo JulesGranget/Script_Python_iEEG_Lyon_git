@@ -4,7 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import mne
 from matplotlib import cm
-from sympy import Max
 import xarray as xr
 
 
@@ -151,6 +150,7 @@ def process_dfc_res(sujet, cond, export_type):
             
         #### identify scales abs
         scales_abs = {}
+
         for mat_type_i, mat_type in enumerate(cf_metrics_list):
 
             scales_abs[mat_type] = {}
@@ -158,6 +158,7 @@ def process_dfc_res(sujet, cond, export_type):
             for band in band_name_dfc:
 
                 max_list = np.array(())
+
                 max_list = np.append(max_list, allband_data[band][mat_type_i,:,:].max())
                 max_list = np.append(max_list, np.abs(allband_data[band][mat_type_i,:,:].min()))
 
@@ -310,19 +311,20 @@ def process_dfc_res(sujet, cond, export_type):
         #### identify scales abs
         scales_abs = {}
 
-        for respi_phase in respi_phase_list:
+        for mat_type_i, mat_type in enumerate(cf_metrics_list):
 
-            for mat_type_i, mat_type in enumerate(cf_metrics_list):
+            scales_abs[mat_type] = {}
 
-                scales_abs[mat_type] = {}
+            for band in band_name_dfc:
 
-                for band in band_name_dfc:
+                max_list = np.array(())
 
-                    max_list = np.array(())
+                for respi_phase in respi_phase_list:
+
                     max_list = np.append(max_list, allband_data[respi_phase][band][mat_type_i,:,:].max())
                     max_list = np.append(max_list, np.abs(allband_data[respi_phase][band][mat_type_i,:,:].min()))
 
-                    scales_abs[mat_type][band] = max_list.max()
+                scales_abs[mat_type][band] = max_list.max()
 
         #mat_type_i, mat_type = 0, 'ispc'
         for mat_type_i, mat_type in enumerate(cf_metrics_list):
@@ -451,7 +453,7 @@ def process_dfc_res(sujet, cond, export_type):
 
         #### load data 
         allband_data = get_data_for_respi_phase(sujet)
-        allband_data_original = get_data_for_respi_phase(sujet)
+        allband_data_original = allband_data.copy()
         respi_phase_list = ['inspi', 'expi']
         n_rows = 1
 
@@ -492,19 +494,20 @@ def process_dfc_res(sujet, cond, export_type):
         #### identify scales abs
         scales_abs = {}
 
-        for respi_phase in respi_phase_list:
+        for mat_type_i, mat_type in enumerate(cf_metrics_list):
 
-            for mat_type_i, mat_type in enumerate(cf_metrics_list):
+            scales_abs[mat_type] = {}
 
-                scales_abs[mat_type] = {}
+            for band in band_name_dfc:
 
-                for band in band_name_dfc:
+                max_list = np.array(())
 
-                    max_list = np.array(())
+                for respi_phase in respi_phase_list:
+
                     max_list = np.append(max_list, allband_data_original[respi_phase][band][mat_type_i,:,:].max())
                     max_list = np.append(max_list, np.abs(allband_data_original[respi_phase][band][mat_type_i,:,:].min()))
 
-                    scales_abs[mat_type][band] = max_list.max()
+                scales_abs[mat_type][band] = max_list.max()
 
         #mat_type_i, mat_type = 0, 'ispc'
         for mat_type_i, mat_type in enumerate(cf_metrics_list):
