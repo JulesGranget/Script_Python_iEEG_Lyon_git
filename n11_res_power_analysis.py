@@ -770,8 +770,7 @@ def save_TF_ITPC_n_chan(sujet, n_chan, tf_mode, band_prep):
     #plt.show()
 
     #### save
-    # fig.savefig(f'{sujet}_{chan_name}_{chan_loca}_{band_prep}.jpeg', dpi=150)
-    fig.savefig(f'{sujet}_{chan_name}_{chan_loca}_{band_prep}_robust_noscaled.jpeg', dpi=150)
+    fig.savefig(f'{sujet}_{chan_name}_{chan_loca}_{band_prep}.jpeg', dpi=150)
     fig.clf()
     plt.close('all')
     gc.collect()

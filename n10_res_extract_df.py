@@ -269,7 +269,7 @@ def export_TF_in_df(sujet, respfeatures_allcond, prms):
                     Pxx_EI = np.trapz(Pxx[stretch_point_EI[0]:]) + np.trapz(Pxx[:stretch_point_EI[1]])
 
                     data_export_i =   {'sujet' : [sujet]*4, 'cond' : [cond]*4, 'chan' : [chan_name]*4, 'ROI' : [ROI_i]*4, 'Lobe' : [Lobe_i]*4, 'side' : [side_i]*4, 
-                                    'band' : [band]*4, 'phase' : ['inspi', 'expi'], 'Pxx' : [Pxx_inspi, Pxx_expi, Pxx_IE, Pxx_EI]}
+                                    'band' : [band]*4, 'phase' : ['inspi', 'expi', 'IE', 'EI'], 'Pxx' : [Pxx_inspi, Pxx_expi, Pxx_IE, Pxx_EI]}
                     df_export_i = pd.DataFrame.from_dict(data_export_i)
                     
                     df_export = pd.concat([df_export, df_export_i])
@@ -334,7 +334,7 @@ def from_dfc_to_mat_conn_trpz(mat, pairs, roi_in_data):
 
 
 
-def compute_graph_metric(sujet):
+def compute_graph_metric(sujet, prms):
 
     os.chdir(os.path.join(path_precompute, sujet, 'DFC'))
 
@@ -348,7 +348,7 @@ def compute_graph_metric(sujet):
 
     #### compute
     #cond = 'FR_CV'
-    for cond in ['FR_CV']:
+    for cond in prms['conditions']:
         #band_prep = 'hf'
         for band_prep in band_prep_list:
             #band, freq = 'l_gamma', [50,80]
@@ -484,7 +484,7 @@ def compilation_export_df(sujet):
     #### export
     export_Cxy_MVL_in_df(sujet, respfeatures_allcond, surrogates_allcond, prms)
     export_TF_in_df(sujet, respfeatures_allcond, prms)
-    compute_graph_metric(sujet)
+    compute_graph_metric(sujet, prms)
 
 
 

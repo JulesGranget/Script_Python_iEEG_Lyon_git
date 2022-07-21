@@ -66,6 +66,7 @@ def generate_folder_structure(sujet):
     construct_token = create_folder('PSD_Coh', construct_token)
     construct_token = create_folder('baselines', construct_token)
     construct_token = create_folder('DFC', construct_token)
+    construct_token = create_folder('FC', construct_token)
 
         #### anatomy
     os.chdir(os.path.join(path_general, 'Analyses', 'anatomy'))
@@ -81,6 +82,7 @@ def generate_folder_structure(sujet):
     construct_token = create_folder('PSD_Coh', construct_token)
     construct_token = create_folder('ITPC', construct_token)
     construct_token = create_folder('FC', construct_token)
+    construct_token = create_folder('DFC', construct_token)
     construct_token = create_folder('HRV', construct_token)
     construct_token = create_folder('df', construct_token)
 
@@ -99,25 +101,10 @@ def generate_folder_structure(sujet):
     construct_token = create_folder('summary', construct_token)
     construct_token = create_folder('allcond', construct_token)
 
-            #### FC
-    os.chdir(os.path.join(path_general, 'Analyses', 'results', sujet, 'FC'))
-    construct_token = create_folder('PLI', construct_token)
-    construct_token = create_folder('ISPC', construct_token)
-    construct_token = create_folder('DFC', construct_token)
-
-                #### DFC
-    os.chdir(os.path.join(path_general, 'Analyses', 'results', sujet, 'FC', 'DFC'))
-    construct_token = create_folder('FR_CV', construct_token)
-
-                #### PLI
-    os.chdir(os.path.join(path_general, 'Analyses', 'results', sujet, 'FC', 'PLI'))
-    construct_token = create_folder('figures', construct_token)
-    construct_token = create_folder('matrix', construct_token)
-
-                #### ISPC
-    os.chdir(os.path.join(path_general, 'Analyses', 'results', sujet, 'FC', 'ISPC'))
-    construct_token = create_folder('figures', construct_token)
-    construct_token = create_folder('matrix', construct_token)
+            #### DFC
+    os.chdir(os.path.join(path_general, 'Analyses', 'results', sujet, 'DFC'))
+    construct_token = create_folder('summary', construct_token)
+    construct_token = create_folder('allcond', construct_token)
 
         #### allplot
     os.chdir(os.path.join(path_general, 'Analyses', 'results', 'allplot'))

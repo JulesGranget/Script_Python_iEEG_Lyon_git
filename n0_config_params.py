@@ -21,14 +21,14 @@ import scipy.signal
 perso_repo_computation = False
 
 #### whole protocole
-# sujet = 'CHEe'
-# sujet = 'GOBc'
-# sujet = 'MAZm'
-# sujet = 'TREt'
+# sujet = 'CHEe' OK
+# sujet = 'GOBc' OK
+# sujet = 'MAZm' OK
+# sujet = 'TREt' OK
 
 #### FR_CV only
-# sujet = 'MUGa'
-sujet = 'BANc'
+sujet = 'MUGa'
+# sujet = 'BANc'
 # sujet = 'KOFs'
 # sujet = 'LEMl'
 
@@ -60,6 +60,8 @@ condition_diff = [['FV','SV']]
 
 band_prep_list = ['lf', 'hf']
 freq_band_list = [{'theta' : [2,10], 'alpha' : [8,14], 'beta' : [10,40], 'whole' : [2,50]}, {'l_gamma' : [50, 80], 'h_gamma' : [80, 120]}]
+
+freq_band_list_precompute = [{'theta_1' : [2,10], 'theta_2' : [4,8], 'alpha_1' : [8,12], 'alpha_2' : [8,14], 'beta_1' : [12,40], 'beta_2' : [10,40], 'whole_1' : [2,50]}, {'l_gamma_1' : [50, 80], 'h_gamma_1' : [80, 120]}]
 
 freq_band_dict_FC = {'wb' : {'theta' : [4,8], 'alpha' : [8,12], 'beta' : [12,40]},
                 'lf' : {'theta' : [4,8], 'alpha' : [8,12], 'beta' : [12,40], 'whole' : [2,50]},
@@ -314,9 +316,7 @@ def get_params_spectral_analysis(srate):
     return nwind, nfft, noverlap, hannw
 
 #### plot Pxx Cxy  
-if zero_pad_coeff - 5 <= 0:
-    remove_zero_pad = 0
-remove_zero_pad = zero_pad_coeff - 5
+remove_zero_pad = 5
 
 #### stretch
 stretch_point_surrogates = 1000
@@ -378,7 +378,7 @@ percentile_thresh = 90
 slwin_dict = {'theta' : 5, 'alpha' : 3, 'beta' : 1, 'l_gamma' : .3, 'h_gamma' : .3} # seconds
 slwin_step_coeff = .1  # in %, 10% move
 
-band_name_dfc = ['beta', 'l_gamma', 'h_gamma']
+band_name_fc_dfc = ['beta', 'l_gamma', 'h_gamma']
 
 
 ################################

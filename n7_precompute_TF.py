@@ -80,9 +80,10 @@ def compute_stretch_tf_dB(sujet, tf, cond, session_i, respfeatures_allcond, stre
 ######## PRECOMPUTE TF ########
 ################################
 
+# _freq_band_list = freq_band_list_precompute
+def precompute_tf(sujet, cond, session_i, _freq_band_list, band_prep_list):
 
-def precompute_tf(sujet, cond, session_i, freq_band_list, band_prep_list):
-
+    print(f'{sujet} {cond} {session_i+1}')
     print('TF PRECOMPUTE')
 
     conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet)
@@ -95,14 +96,17 @@ def precompute_tf(sujet, cond, session_i, freq_band_list, band_prep_list):
         #### select data without aux chan
         data = load_data_sujet(sujet, band_prep, cond, session_i)[:len(chan_list_ieeg),:]
 
-        freq_band = freq_band_list[band_prep_i] 
+        freq_band = _freq_band_list[band_prep_i] 
 
-        #band, freq = list(freq_band.items())[0]
+        #band, freq = list(freq_band.items())[1]
         for band, freq in freq_band.items():
+
+            #### supress indice
+            band = band[:-2]
 
             os.chdir(os.path.join(path_precompute, sujet, 'TF'))
 
-            if os.path.exists(sujet + '_tf_' + str(freq[0]) + '_' + str(freq[1]) + '_' + cond + '_' + str(session_i+1) + '.npy') == True :
+            if os.path.exists(sujet + '_tf_' + str(freq[0]) + '_' + str(freq[1]) + '_' + cond + '_' + str(session_i+1) + '.npy') :
                 print('ALREADY COMPUTED')
                 continue
             
@@ -113,7 +117,7 @@ def precompute_tf(sujet, cond, session_i, freq_band_list, band_prep_list):
             wavelets, nfrex = get_wavelets(sujet, band_prep, freq)
 
             os.chdir(path_memmap)
-            tf_allchan = np.memmap(f'{sujet}_{cond}_{session_i}_{band}_precompute_convolutions.dat', dtype=np.float64, mode='w+', shape=(data.shape[0], nfrex, data.shape[1]))
+            tf_allchan = np.memmap(f'{sujet}_{cond}_{session_i}_{band}_{str(freq[0])}_{str(freq[1])}_precompute_convolutions.dat', dtype=np.float64, mode='w+', shape=(data.shape[0], nfrex, data.shape[1]))
 
             def compute_tf_convolution_nchan(n_chan):
 
@@ -143,11 +147,10 @@ def precompute_tf(sujet, cond, session_i, freq_band_list, band_prep_list):
             np.save(sujet + '_tf_' + str(freq[0]) + '_' + str(freq[1]) + '_' + cond + '_' + str(session_i+1) + '.npy', tf_allband_stretched)
             
             os.chdir(path_memmap)
-            os.remove(f'{sujet}_{cond}_{session_i}_{band}_precompute_convolutions.dat')
-
+            os.remove(f'{sujet}_{cond}_{session_i}_{band}_{str(freq[0])}_{str(freq[1])}_precompute_convolutions.dat')
 
     print('done')
-    print(sujet)
+    
 
 
 ################################
@@ -156,8 +159,9 @@ def precompute_tf(sujet, cond, session_i, freq_band_list, band_prep_list):
 
 
 
-def precompute_tf_itpc(sujet, cond, session_i, freq_band_list, band_prep_list):
+def precompute_tf_itpc(sujet, cond, session_i, _freq_band_list, band_prep_list):
 
+    print(f'{sujet} {cond} {session_i+1}')
     print('ITPC PRECOMPUTE')
 
     conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet)
@@ -170,7 +174,7 @@ def precompute_tf_itpc(sujet, cond, session_i, freq_band_list, band_prep_list):
         #### select data without aux chan
         data = load_data_sujet(sujet, band_prep, cond, session_i)[:len(chan_list_ieeg),:]
 
-        freq_band = freq_band_list[band_prep_i]
+        freq_band = _freq_band_list[band_prep_i]
 
         #band, freq = list(freq_band.items())[0]
         for band, freq in freq_band.items():
@@ -228,9 +232,7 @@ def precompute_tf_itpc(sujet, cond, session_i, freq_band_list, band_prep_list):
 
             del itpc_allchan
 
-
     print('done')
-    print(sujet)
 
 
 ########################################
@@ -242,12 +244,10 @@ if __name__ == '__main__':
 
 
     #### load data
-
     conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet)
     respfeatures_allcond = load_respfeatures(sujet)
 
     #### compute all
-
     print('######## PRECOMPUTE TF & ITPC ########')
 
     #### compute and save tf
@@ -255,23 +255,21 @@ if __name__ == '__main__':
     #session_i = 0
     for cond in conditions:
 
-        print(cond)
-
         if len(respfeatures_allcond[cond]) == 1:
     
-            # precompute_tf(cond, 0, freq_band_list, band_prep_list)
-            execute_function_in_slurm_bash('n7_precompute_TF', 'precompute_tf', [sujet, cond, 0, freq_band_list, band_prep_list])
-            # precompute_tf_itpc(cond, 0, freq_band_list, band_prep_list)
-            execute_function_in_slurm_bash('n7_precompute_TF', 'precompute_tf_itpc', [sujet, cond, 0, freq_band_list, band_prep_list])
+            precompute_tf(sujet, cond, 0, freq_band_list_precompute, band_prep_list)
+            # execute_function_in_slurm_bash('n7_precompute_TF', 'precompute_tf', [sujet, cond, 0, freq_band_list_precompute, band_prep_list])
+            precompute_tf_itpc(sujet, cond, 0, freq_band_list, band_prep_list)
+            # execute_function_in_slurm_bash('n7_precompute_TF', 'precompute_tf_itpc', [sujet, cond, 0, freq_band_list, band_prep_list])
         
         elif len(respfeatures_allcond[cond]) > 1:
 
             for session_i in range(len(respfeatures_allcond[cond])):
 
-                # precompute_tf(cond, session_i, freq_band_list, band_prep_list)
-                execute_function_in_slurm_bash('n7_precompute_TF', 'precompute_tf', [sujet, cond, session_i, freq_band_list, band_prep_list])
-                # precompute_tf_itpc(cond, session_i, freq_band_list, band_prep_list)
-                execute_function_in_slurm_bash('n7_precompute_TF', 'precompute_tf_itpc', [sujet, cond, session_i, freq_band_list, band_prep_list])
+                precompute_tf(sujet, cond, session_i, freq_band_list_precompute, band_prep_list)
+                # execute_function_in_slurm_bash('n7_precompute_TF', 'precompute_tf', [sujet, cond, session_i, freq_band_list_precompute, band_prep_list])
+                precompute_tf_itpc(sujet, cond, session_i, freq_band_list, band_prep_list)
+                # execute_function_in_slurm_bash('n7_precompute_TF', 'precompute_tf_itpc', [sujet, cond, session_i, freq_band_list, band_prep_list])
 
 
 

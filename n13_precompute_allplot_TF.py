@@ -2,6 +2,7 @@
 
 
 import os
+from re import S
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal
@@ -51,7 +52,7 @@ def get_all_ROI_and_Lobes_name():
 
 
 
-def get_ROI_Lobes_list_and_Plots(FR_CV_compute=False):
+def get_ROI_Lobes_list_and_Plots(cond):
 
     #### generate anat list
     os.chdir(os.path.join(path_anatomy, 'nomenclature'))
@@ -74,13 +75,14 @@ def get_ROI_Lobes_list_and_Plots(FR_CV_compute=False):
         lobe_dict_count[lobe_list[i]] = 0
         lobe_dict_plots[lobe_list[i]] = []
 
+    #### filter only sujet with correct cond
+    sujet_list_selected = []
+    for sujet_i in sujet_list_FR_CV:
+        prms_i = get_params(sujet_i)
+        if cond in prms_i['conditions']:
+            sujet_list_selected.append(sujet_i)
+
     #### search for ROI & lobe that have been counted
-
-    if FR_CV_compute:
-        sujet_list_selected = sujet_list_FR_CV
-    else:
-        sujet_list_selected = sujet_list
-
     #sujet_i = sujet_list_selected[1]
     for sujet_i in sujet_list_selected:
 
@@ -129,11 +131,11 @@ def get_ROI_Lobes_list_and_Plots(FR_CV_compute=False):
 ################################
 
 
-#ROI_to_process = 'amygdala'
+#ROI_to_process = ROI_to_include[22]
 def get_TF_and_ITPC_for_ROI(ROI_to_process, cond):
 
     #### load anat
-    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(FR_CV_compute=True)
+    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(cond)
 
     #### identify stretch point
     stretch_point = stretch_point_TF
@@ -275,7 +277,7 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process, cond):
     #### load anat
     ROI_list_allband, Lobe_list_allband = get_all_ROI_and_Lobes_name()
     len_ROI, len_Lobes = len(list(ROI_list_allband.keys())), len(list(Lobe_list_allband.keys()))
-    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(FR_CV_compute=True)
+    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(cond)
 
     #### identify stretch point
     stretch_point = stretch_point_TF
@@ -421,11 +423,14 @@ def compilation_allplot_analysis(cond):
     #### verify computation
     os.chdir(os.path.join(path_precompute, 'allplot'))
     band = list(freq_band_list[0].keys())[0]
-    if os.path.exists(f'ROI_{cond}_{band}_allband.npy') and os.path.exists(f'Lobes_{cond}_{band}_allband.npy'):
+    if os.path.exists(f'ROI_TF_ITPC_{cond}_{band}_allband.npy') and os.path.exists(f'Lobes_TF_ITPC_{cond}_{band}_allband.npy'):
+        print(f'ALREADY COMPUTED {cond}')
         return
 
+    print(cond)
+
     #### load anat
-    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(FR_CV_compute=True)
+    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(cond)
         
     #### identify stretch point
     stretch_point = stretch_point_TF
@@ -493,10 +498,11 @@ def compilation_allplot_analysis(cond):
 
 if __name__ == '__main__':
 
-    cond = 'FR_CV'
+    #cond = 'FR_CV'
+    for cond in conditions_allsubjects:
 
-    # compilation_allplot_analysis(cond)
-    execute_function_in_slurm_bash('n15_precompute_allplot_TF_FR_CV', 'compilation_allplot_analysis', [cond])
+        # compilation_allplot_analysis(cond)
+        execute_function_in_slurm_bash('n13_precompute_allplot_TF', 'compilation_allplot_analysis', [cond])
     
 
 

@@ -40,7 +40,7 @@ def get_all_ROI_and_Lobes_name():
 ########################################
 
 
-def get_ROI_Lobes_list_and_Plots(FR_CV_compute=False):
+def get_ROI_Lobes_list_and_Plots(cond):
 
     #### generate anat list
     os.chdir(os.path.join(path_anatomy, 'nomenclature'))
@@ -63,16 +63,14 @@ def get_ROI_Lobes_list_and_Plots(FR_CV_compute=False):
         lobe_dict_count[lobe_list[i]] = 0
         lobe_dict_plots[lobe_list[i]] = []
 
-    #### initiate for cond
-    sujet_for_cond = []
+    #### filter only sujet with correct cond
+    sujet_list_selected = []
+    for sujet_i in sujet_list_FR_CV:
+        prms_i = get_params(sujet_i)
+        if cond in prms_i['conditions']:
+            sujet_list_selected.append(sujet_i)
 
     #### search for ROI & lobe that have been counted
-
-    if FR_CV_compute:
-        sujet_list_selected = sujet_list_FR_CV
-    else:
-        sujet_list_selected = sujet_list
-
     #sujet_i = sujet_list_selected[1]
     for sujet_i in sujet_list_selected:
 
@@ -180,7 +178,7 @@ def robust_zscore(data):
 
 
 #ROI_name, mat_type = 'amygdala', 'TF'
-def compute_for_one_ROI_allcond(ROI_name, mat_type):
+def compute_for_one_ROI_allcond(ROI_name, mat_type, cond):
 
     print(ROI_name)
 
@@ -189,7 +187,7 @@ def compute_for_one_ROI_allcond(ROI_name, mat_type):
     cond_to_compute = ['FR_CV']
 
     #### get index 
-    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(FR_CV_compute=True)
+    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(cond)
     ROI_dict_to_open = ROI_dict_plots[ROI_name]
     ROI_i = ROI_to_include.index(ROI_name)
 
@@ -366,7 +364,7 @@ def compute_for_one_ROI_allcond(ROI_name, mat_type):
 
 
 #Lobe_name, mat_type = 'Cingular', 'TF'
-def compute_for_one_Lobe_allcond(Lobe_name, mat_type):
+def compute_for_one_Lobe_allcond(Lobe_name, mat_type, cond):
 
     print(Lobe_name)
 
@@ -375,7 +373,7 @@ def compute_for_one_Lobe_allcond(Lobe_name, mat_type):
     cond_to_compute = ['FR_CV']
 
     #### get index 
-    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(FR_CV_compute=True)
+    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(cond)
     Lobe_dict_to_open = lobe_dict_plots[Lobe_name]
     Lobe_i = lobe_to_include.index(Lobe_name)
 
@@ -543,20 +541,24 @@ def compute_for_one_Lobe_allcond(Lobe_name, mat_type):
 
 def compilation_slurm(anat_type, mat_type):
 
-    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(FR_CV_compute=True)
+    for cond in conditions_allsubjects:
 
-    if anat_type == 'ROI':
+        print(f'{anat_type} {mat_type} {cond}')
 
-        #joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_for_one_ROI_allcond)(ROI_i, mat_type) for ROI_i in ROI_to_include)
-        #ROI_i = ROI_to_include[1]
-        for ROI_i in ROI_to_include:
-            compute_for_one_ROI_allcond(ROI_i, mat_type)
+        ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(cond)
 
-    if anat_type == 'Lobe':
+        if anat_type == 'ROI':
 
-        #joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_for_one_Lobe_allcond)(Lobe_i, mat_type) for Lobe_i in lobe_to_include)
-        for Lobe_i in lobe_to_include:
-            compute_for_one_Lobe_allcond(Lobe_i, mat_type)
+            #joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_for_one_ROI_allcond)(ROI_i, mat_type) for ROI_i in ROI_to_include)
+            #ROI_i = ROI_to_include[1]
+            for ROI_i in ROI_to_include:
+                compute_for_one_ROI_allcond(ROI_i, mat_type, cond)
+
+        if anat_type == 'Lobe':
+
+            #joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_for_one_Lobe_allcond)(Lobe_i, mat_type) for Lobe_i in lobe_to_include)
+            for Lobe_i in lobe_to_include:
+                compute_for_one_Lobe_allcond(Lobe_i, mat_type, cond)
 
 
 
