@@ -2,13 +2,12 @@
 
 
 import os
-from re import S
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal
 import pandas as pd
 import joblib
-import seaborn as sns
+import xarray as xr
 
 from n0_config_params import *
 from n0bis_config_analysis_functions import *
@@ -207,7 +206,7 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process, cond):
         n_trials = len([i for i in os.listdir() if i.find(f'{freq[0]}_{freq[1]}_{cond}') != -1])
 
         #### load TF and mean trial
-        #band, freq = 'theta', [2, 10]
+        #band, freq = 'l_gamma', [50, 80]
         for band, freq in dict_freq_band.items():
     
             #trial_i = 0
@@ -423,7 +422,7 @@ def compilation_allplot_analysis(cond):
     #### verify computation
     os.chdir(os.path.join(path_precompute, 'allplot'))
     band = list(freq_band_list[0].keys())[0]
-    if os.path.exists(f'ROI_TF_ITPC_{cond}_{band}_allband.npy') and os.path.exists(f'Lobes_TF_ITPC_{cond}_{band}_allband.npy'):
+    if os.path.exists(f'ROI_TF_ITPC_{cond}_allband.npy') and os.path.exists(f'Lobes_TF_ITPC_{cond}_allband.npy'):
         print(f'ALREADY COMPUTED {cond}')
         return
 
@@ -439,44 +438,83 @@ def compilation_allplot_analysis(cond):
     print('#### TF and ITPC for ROI ####')
     res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(get_TF_and_ITPC_for_ROI)(ROI_to_process, cond) for ROI_to_process in ROI_to_include)
 
+    #### generate all band to save
+    dict_freq_band = {}
+    #freq_band_i, freq_band_dict = 0, freq_band_list[0]
+    for freq_band_i, freq_band_dict in enumerate(freq_band_list):
+        if freq_band_i == 0:
+            for band_i in list(freq_band_dict.keys()):
+                dict_freq_band[band_i] = freq_band_list[freq_band_i][band_i]
+
+        else :
+            for band_i in list(freq_band_dict.keys()):
+                dict_freq_band[band_i] = freq_band_list[freq_band_i][band_i]
+
     #### extract & save
     os.chdir(os.path.join(path_precompute, 'allplot'))
+
+    band_to_export = []
+
     for freq_band_i, freq_band_dict in enumerate(freq_band_list):
         
         for band in list(freq_band_dict.keys()):
+    
+            band_to_export.append(band)
 
-            ROI_band = np.zeros((len(ROI_to_include), 2, nfrex_hf, stretch_point))
+    ROI_data_xr = np.zeros((len(ROI_to_include), len(band_to_export), 2, nfrex_hf, stretch_point))
 
-            #ROI_to_process_i = 5
-            for ROI_to_process_i, ROI_to_process in enumerate(ROI_to_include):
+    for band_i, band in enumerate(list(dict_freq_band.keys())):
 
-                ROI_band[ROI_to_process_i, 0, :, :] = res[ROI_to_process_i][0][band]
-                ROI_band[ROI_to_process_i, 1, :, :] = res[ROI_to_process_i][1][band]
+        for ROI_to_process_i, ROI_to_process in enumerate(ROI_to_include):
 
-                if debug:
-                    plt.pcolormesh(ROI_band[1,1,:,:])
-                    plt.show()
+            ROI_data_xr[ROI_to_process_i, band_i, 0, :, :] = res[ROI_to_process_i][0][band]
+            ROI_data_xr[ROI_to_process_i, band_i, 1, :, :] = res[ROI_to_process_i][1][band]
 
-            np.save(f'ROI_TF_ITPC_{cond}_{band}_allband.npy', ROI_band)
+    dict_xr = {'roi' : ROI_to_include, 'band' : band_to_export, 'TF_type' : ['ITPC', 'TF'], 'nfrex' : np.arange(0, nfrex_hf), 'times' : np.arange(0, stretch_point_TF)}
+    xr_export = xr.DataArray(ROI_data_xr, coords=dict_xr.values(), dims=dict_xr.keys())
+    xr_export.to_netcdf(f'ROI_TF_ITPC_{cond}_allband.nc')
 
+    print('done')
 
     #### compute TF & ITPC for Lobes
     print('#### TF and ITPC for Lobe ####')
     res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(get_TF_and_ITPC_for_Lobe)(Lobe_to_process, cond) for Lobe_to_process in lobe_to_include)
 
-    #### extract
-    os.chdir(os.path.join(path_precompute, 'allplot'))
+    #### generate all band to save
+    dict_freq_band = {}
+    #freq_band_i, freq_band_dict = 0, freq_band_list[0]
     for freq_band_i, freq_band_dict in enumerate(freq_band_list):
+        if freq_band_i == 0:
+            for band_i in list(freq_band_dict.keys()):
+                dict_freq_band[band_i] = freq_band_list[freq_band_i][band_i]
+
+        else :
+            for band_i in list(freq_band_dict.keys()):
+                dict_freq_band[band_i] = freq_band_list[freq_band_i][band_i]
+
+    #### extract & save
+    os.chdir(os.path.join(path_precompute, 'allplot'))
+
+    band_to_export = []
+
+    for freq_band_i, freq_band_dict in enumerate(freq_band_list):
+        
         for band in list(freq_band_dict.keys()):
+    
+            band_to_export.append(band)
 
-            Lobe_band = np.zeros((len(lobe_to_include), 2, nfrex_hf, stretch_point))
+    Lobe_data_xr = np.zeros((len(lobe_to_include), len(band_to_export), 2, nfrex_hf, stretch_point))
+        
+    for band_i, band in enumerate(list(dict_freq_band.keys())):
 
-            for Lobe_to_process_i, Lobe_to_process in enumerate(lobe_to_include):
+        for Lobe_to_process_i, Lobe_to_process in enumerate(lobe_to_include):
 
-                Lobe_band[Lobe_to_process_i, 0, :, :] = res[Lobe_to_process_i][0][band]
-                Lobe_band[Lobe_to_process_i, 1, :, :] = res[Lobe_to_process_i][1][band]
+            Lobe_data_xr[Lobe_to_process_i, band_i, 0, :, :] = res[Lobe_to_process_i][0][band]
+            Lobe_data_xr[Lobe_to_process_i, band_i, 1, :, :] = res[Lobe_to_process_i][1][band]
 
-            np.save(f'Lobes_TF_ITPC_{cond}_{band}_allband.npy', Lobe_band)
+    dict_xr = {'lobe' : lobe_to_include, 'band' : band_to_export, 'TF_type' : ['ITPC', 'TF'], 'nfrex' : np.arange(0, nfrex_hf), 'times' : np.arange(0, stretch_point_TF)}
+    xr_export = xr.DataArray(Lobe_data_xr, coords=dict_xr.values(), dims=dict_xr.keys())
+    xr_export.to_netcdf(f'Lobes_TF_ITPC_{cond}_allband.nc')
 
     print('done')
 
@@ -498,7 +536,7 @@ def compilation_allplot_analysis(cond):
 
 if __name__ == '__main__':
 
-    #cond = 'FR_CV'
+    #cond = 'RD_CV'
     for cond in conditions_allsubjects:
 
         # compilation_allplot_analysis(cond)

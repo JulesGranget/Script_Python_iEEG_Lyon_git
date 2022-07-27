@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import mne
 from matplotlib import cm
 import xarray as xr
+import joblib
 
 
 from n0_config_params import *
@@ -85,7 +86,11 @@ def process_fc_res(sujet):
 
                 for c, cond in enumerate(prms['conditions']):
 
-                    ax = axs[r, c]
+                    if n_cond == 1:
+                        ax = axs[r]    
+                    else:
+                        ax = axs[r, c]
+                    
                     ax.set_title(f'{band}_{cond}')
                     ax.matshow(allband_data[band][cond][mat_type_i,:,:], vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], cmap=cm.seismic)
 
@@ -164,7 +169,11 @@ def process_fc_res(sujet):
 
                 for c, cond in enumerate(prms['conditions']):
 
-                    ax = axs[r, c]
+                    if n_cond == 1:
+                        ax = axs[r]    
+                    else:
+                        ax = axs[r, c]
+
                     ax.set_title(f'{band}_{cond}')
                     ax.matshow(mat_dfc_clean[band][cond][mat_type_i,:,:], vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], cmap=cm.seismic)
 
@@ -209,8 +218,10 @@ def process_fc_res(sujet):
 
 if __name__ == '__main__':
 
-    for sujet in sujet_list_FR_CV:
+    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(process_fc_res)(sujet) for sujet in sujet_list_FR_CV)
 
-        print(sujet)
-        process_fc_res(sujet)
+    # for sujet in sujet_list_FR_CV:
+
+    #     print(sujet)
+    #     process_fc_res(sujet)
         

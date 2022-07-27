@@ -9,6 +9,7 @@ import networkx as nx
 import xarray as xr
 
 import pickle
+import joblib
 
 from n0_config_params import *
 from n0bis_config_analysis_functions import *
@@ -263,8 +264,8 @@ def export_TF_in_df(sujet, respfeatures_allcond, prms):
 
                     data = get_tf_itpc_stretch_allcond(sujet, 'TF')[band_prep][cond][band][chan_i, :, :]
                     Pxx = np.mean(data, axis=0)
-                    Pxx_inspi = np.trapz(Pxx[0:int(stretch_point_TF*ratio_stretch_TF)])
-                    Pxx_expi = np.trapz(Pxx[int(stretch_point_TF*ratio_stretch_TF):])
+                    Pxx_inspi = np.trapz(Pxx[stretch_point_I[0]:stretch_point_I[1]])
+                    Pxx_expi = np.trapz(Pxx[stretch_point_E[0]:stretch_point_E[1]])
                     Pxx_IE = np.trapz(Pxx[stretch_point_IE[0]:stretch_point_IE[1]])
                     Pxx_EI = np.trapz(Pxx[stretch_point_EI[0]:]) + np.trapz(Pxx[:stretch_point_EI[1]])
 
@@ -334,7 +335,7 @@ def from_dfc_to_mat_conn_trpz(mat, pairs, roi_in_data):
 
 
 
-def compute_graph_metric(sujet, prms):
+def compute_graph_metric_dfc(sujet, prms):
 
     os.chdir(os.path.join(path_precompute, sujet, 'DFC'))
 
@@ -459,6 +460,110 @@ def compute_graph_metric(sujet, prms):
 
 
 
+def compute_graph_metric_fc(sujet, prms):
+
+    os.chdir(os.path.join(path_precompute, sujet, 'FC'))
+
+    #### verif computation
+    if os.path.exists(os.path.join(path_results, sujet, 'df', f'{sujet}_df_FC.xlsx')):
+        print('FC : ALREADY COMPUTED')
+        return
+
+    #### initiate df
+    df_export = pd.DataFrame(columns=['sujet', 'cond', 'band', 'metric', 'CPL', 'GE', 'SWN'])
+
+    #### compute
+    #cond = 'RD_CV'
+    for cond in prms['conditions']:
+        #band_prep = 'lf'
+        for band_prep in band_prep_list:
+            #band, freq = 'theta', [4,8]
+            for band, freq in freq_band_dict_FC_function[band_prep].items():
+
+                #cf_metric = 'ispc'
+                for cf_metric in ['ispc', 'wpli']:
+
+                    roi_in_data = xr.open_dataarray(f'{sujet}_FC_wpli_ispc_{band}_{cond}_reducedpairs.nc')['x'].data
+                    xr_graph = xr.open_dataarray(f'{sujet}_FC_wpli_ispc_{band}_{cond}_reducedpairs.nc')
+                    cf_metric_i = np.where(xr_graph['mat_type'].data == cf_metric)[0]
+
+                    mat = xr_graph.loc[cf_metric, :, :].data
+                    mat_values = mat[np.triu_indices(mat.shape[0], k=1)]
+                    
+                    if debug:
+                        np.sum(mat_values > np.percentile(mat_values, 90))
+
+                        count, bin, fig = plt.hist(mat_values)
+                        plt.vlines(np.percentile(mat_values, 99), ymin=count.min(), ymax=count.max(), color='r')
+                        plt.vlines(np.percentile(mat_values, 95), ymin=count.min(), ymax=count.max(), color='r')
+                        plt.vlines(np.percentile(mat_values, 90), ymin=count.min(), ymax=count.max(), color='r')
+                        plt.show()
+
+                    #### apply thresh
+                    for chan_i in range(mat.shape[0]):
+                        mat[chan_i,:][np.where(mat[chan_i,:] < np.percentile(mat_values, 30))[0]] = 0
+
+                    #### verify that the graph is fully connected
+                    chan_i_to_remove = []
+                    for chan_i in range(mat.shape[0]):
+                        if np.sum(mat[chan_i,:]) == 0:
+                            chan_i_to_remove.append(chan_i)
+
+                    mat_i_mask = [i for i in range(mat.shape[0]) if i not in chan_i_to_remove]
+
+                    if len(chan_i_to_remove) != 0:
+                        for row in range(2):
+                            if row == 0:
+                                mat = mat[mat_i_mask,:]
+                            elif row == 1:
+                                mat = mat[:,mat_i_mask]
+
+                    if debug:
+                        plt.matshow(mat)
+                        plt.show()
+
+                    #### generate graph
+                    G = nx.from_numpy_array(mat)
+                    if debug:
+                        list(G.nodes)
+                        list(G.edges)
+                    
+                    nodes_names = {}
+                    for node_i, roi_in_data_i in enumerate(mat_i_mask):
+                        nodes_names[node_i] = roi_in_data[roi_in_data_i]
+                
+                    nx.relabel_nodes(G, nodes_names, copy=False)
+                    
+                    if debug:
+                        G.nodes.data()
+                        nx.draw(G, with_labels=True)
+                        plt.show()
+
+                        pos = nx.circular_layout(G)
+                        nx.draw(G, pos=pos, with_labels=True)
+                        plt.show()
+
+                    node_degree = {}
+                    for node_i, node_name in zip(mat_i_mask, roi_in_data[mat_i_mask]):
+                        node_degree[node_name] = G.degree[roi_in_data[node_i]]
+
+                    CPL = nx.average_shortest_path_length(G)
+                    GE = nx.global_efficiency(G)
+                    SWN = nx.omega(G, niter=5, nrand=10, seed=None)
+
+                    data_export_i =    {'sujet' : [sujet], 'cond' : [cond], 'band' : [band], 'metric' : [cf_metric], 
+                                    'CPL' : [CPL], 'GE' : [GE], 'SWN' : [SWN]}
+                    df_export_i = pd.DataFrame.from_dict(data_export_i)
+
+                    df_export = pd.concat([df_export, df_export_i])
+
+
+    #### save
+    os.chdir(os.path.join(path_results, sujet, 'df'))
+    df_export.to_excel(f'{sujet}_df_FC.xlsx')
+
+
+
 
 
 
@@ -475,16 +580,18 @@ def compute_graph_metric(sujet, prms):
 
 def compilation_export_df(sujet):
 
+    print(sujet)
+
     #### load params
     prms = get_params(sujet)
     respfeatures_allcond = load_respfeatures(sujet)
-        
     surrogates_allcond = load_surrogates(sujet, respfeatures_allcond, prms)
 
-    #### export
+    # #### export
     export_Cxy_MVL_in_df(sujet, respfeatures_allcond, surrogates_allcond, prms)
     export_TF_in_df(sujet, respfeatures_allcond, prms)
-    compute_graph_metric(sujet, prms)
+    compute_graph_metric_dfc(sujet, prms)
+    compute_graph_metric_fc(sujet, prms)
 
 
 
@@ -496,11 +603,11 @@ def compilation_export_df(sujet):
 
 if __name__ == '__main__':
 
-    for sujet in sujet_list_FR_CV:
-        
-        print(sujet)
-        
-        #### export df
-        compilation_export_df(sujet)
+    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compilation_export_df)(sujet) for sujet in sujet_list_FR_CV)
+
+    # for sujet in sujet_list_FR_CV:
+                
+    #     #### export df
+    #     compilation_export_df(sujet)
     
     

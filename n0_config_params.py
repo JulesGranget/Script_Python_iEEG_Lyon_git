@@ -21,13 +21,13 @@ import scipy.signal
 perso_repo_computation = False
 
 #### whole protocole
-# sujet = 'CHEe' OK
-# sujet = 'GOBc' OK
-# sujet = 'MAZm' OK
-# sujet = 'TREt' OK
+sujet = 'CHEe'
+# sujet = 'GOBc'
+# sujet = 'MAZm'
+# sujet = 'TREt'
 
 #### FR_CV only
-sujet = 'MUGa'
+# sujet = 'MUGa'
 # sujet = 'BANc'
 # sujet = 'KOFs'
 # sujet = 'LEMl'
@@ -322,6 +322,9 @@ remove_zero_pad = 5
 stretch_point_surrogates = 1000
 stretch_point_IE = [300, 500]
 stretch_point_EI = [900, 100]
+stretch_point_I = [100, 300]
+stretch_point_E = [600, 800]
+
 
 #### coh
 n_surrogates_coh = 1000
@@ -385,7 +388,7 @@ band_name_fc_dfc = ['beta', 'l_gamma', 'h_gamma']
 ######## HRV ANALYSIS ########
 ################################
 
-
+cond_HRV = ['FR_CV', 'RD_CV', 'RD_SV', 'RD_FV']
 
 srate_resample_hrv = 10
 nwind_hrv = int( 128*srate_resample_hrv )

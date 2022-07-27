@@ -590,7 +590,12 @@ def process_dfc_res_summary(sujet):
         plt.suptitle(f'{mat_type} summary THRESH : inspi - expi')
         for r, band in enumerate(band_name_fc_dfc):
             for c, cond in enumerate(prms['conditions']):
-                ax = axs[r, c]
+
+                if n_cols == 1:
+                        ax = axs[r]    
+                else:
+                    ax = axs[r, c]
+
                 if c == 0:
                     ax.set_ylabel(band)
                 if r == 0:

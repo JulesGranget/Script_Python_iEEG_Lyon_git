@@ -840,14 +840,16 @@ def compilation_compute_TF_ITPC(sujet):
 
 if __name__ == '__main__':
 
-    
-    #### Pxx Cxy CycleFreq
-    compilation_compute_Pxx_Cxy_Cyclefreq_MVL(sujet)
-    # execute_function_in_slurm_bash('n11_res_power_analysis', 'compilation_compute_Pxx_Cxy_Cyclefreq_MVL', [sujet])
-    # execute_function_in_slurm_bash_mem_choice('n11_res_power_analysis', 'compilation_compute_Pxx_Cxy_Cyclefreq_MVL', [sujet], 15)
+    #sujet = sujet_list_FR_CV[4]
+    for sujet in sujet_list_FR_CV:
+
+        print(sujet)
+
+        #### Pxx Cxy CycleFreq
+        compilation_compute_Pxx_Cxy_Cyclefreq_MVL(sujet)
+        # execute_function_in_slurm_bash_mem_choice('n11_res_power_analysis', 'compilation_compute_Pxx_Cxy_Cyclefreq_MVL', [sujet], 15)
 
 
-    #### TF & ITPC
-    compilation_compute_TF_ITPC(sujet)
-    # execute_function_in_slurm_bash('n11_res_power_analysis', 'compilation_compute_TF_ITPC', [sujet])
-    # execute_function_in_slurm_bash_mem_choice('n11_res_power_analysis', 'compilation_compute_TF_ITPC', [sujet], 15)
+        #### TF & ITPC
+        compilation_compute_TF_ITPC(sujet)
+        # execute_function_in_slurm_bash_mem_choice('n11_res_power_analysis', 'compilation_compute_TF_ITPC', [sujet], 15)
