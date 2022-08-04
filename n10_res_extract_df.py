@@ -128,9 +128,9 @@ def load_surrogates(sujet, respfeatures_allcond, prms):
 
 
 
-########################################
-######## EXPORT DATA IN DF ########
-########################################
+################################
+######## Cxy & MVL ########
+################################
 
 
 
@@ -214,6 +214,20 @@ def export_Cxy_MVL_in_df(sujet, respfeatures_allcond, surrogates_allcond, prms):
 
 
 
+
+
+
+
+
+
+
+################################
+######## TF & ITPC ########
+################################
+
+
+
+
 def export_TF_in_df(sujet, respfeatures_allcond, prms):
 
     #### verif computation
@@ -283,6 +297,71 @@ def export_TF_in_df(sujet, respfeatures_allcond, prms):
 
 
 
+def export_ITPC_in_df(sujet, respfeatures_allcond, prms):
+
+    #### verif computation
+    if os.path.exists(os.path.join(path_results, sujet, 'df', f'{sujet}_df_ITPC_IE.xlsx')):
+        print('ITPC : ALREADY COMPUTED')
+        return
+
+    #### load prms
+    prms = get_params(sujet)
+    respfeatures_allcond = load_respfeatures(sujet)
+    df_loca = get_loca_df(sujet)
+    
+    #### data count
+    data_count = {}
+
+    for cond in prms['conditions']:
+        data_count[cond] = len(respfeatures_allcond[cond])
+
+    #### identify chan params
+    if sujet[:3] != 'pat':
+        chan_list, chan_list_keep = modify_name(prms['chan_list_ieeg'])
+    else:
+        chan_list = prms['chan_list_ieeg']
+
+    #### prepare df
+    df_export = pd.DataFrame(columns=['sujet', 'cond', 'chan', 'ROI', 'Lobe', 'side', 'band', 'phase', 'Pxx'])
+
+    #### fill df
+    #chan_i, chan_name = 0, chan_list[0]
+    for chan_i, chan_name in enumerate(chan_list):
+
+        print_advancement(chan_i, len(chan_list), steps=[25, 50, 75])
+
+        ROI_i = df_loca['ROI'][df_loca['name'] == chan_name].values[0]
+        Lobe_i = df_loca['lobes'][df_loca['name'] == chan_name].values[0]
+
+        if chan_name.find('p') or chan_name.find("'"):
+            side_i = 'l'
+        else:
+            side_i = 'r' 
+
+        #band_prep = 'lf'
+        for band_prep in band_prep_list:
+            #cond = 'FR_CV'
+            for cond in prms['conditions']:
+                #band, freq = 'theta', [2, 10]
+                for band, freq in freq_band_dict[band_prep].items():
+
+                    data = get_tf_itpc_stretch_allcond(sujet, 'ITPC')[band_prep][cond][band][chan_i, :, :]
+                    Pxx = np.mean(data, axis=0)
+                    Pxx_inspi = np.trapz(Pxx[stretch_point_I[0]:stretch_point_I[1]])
+                    Pxx_expi = np.trapz(Pxx[stretch_point_E[0]:stretch_point_E[1]])
+                    Pxx_IE = np.trapz(Pxx[stretch_point_IE[0]:stretch_point_IE[1]])
+                    Pxx_EI = np.trapz(Pxx[stretch_point_EI[0]:]) + np.trapz(Pxx[:stretch_point_EI[1]])
+
+                    data_export_i =   {'sujet' : [sujet]*4, 'cond' : [cond]*4, 'chan' : [chan_name]*4, 'ROI' : [ROI_i]*4, 'Lobe' : [Lobe_i]*4, 'side' : [side_i]*4, 
+                                    'band' : [band]*4, 'phase' : ['inspi', 'expi', 'IE', 'EI'], 'Pxx' : [Pxx_inspi, Pxx_expi, Pxx_IE, Pxx_EI]}
+                    df_export_i = pd.DataFrame.from_dict(data_export_i)
+                    
+                    df_export = pd.concat([df_export, df_export_i])
+
+    #### save
+    os.chdir(os.path.join(path_results, sujet, 'df'))
+    df_export.to_excel(f'{sujet}_df_ITPC_IE.xlsx')
+
 
 
 ########################################
@@ -340,7 +419,7 @@ def compute_graph_metric_dfc(sujet, prms):
     os.chdir(os.path.join(path_precompute, sujet, 'DFC'))
 
     #### verif computation
-    if os.path.exists(os.path.join(path_results, sujet, 'df', f'{sujet}_df_DFC.xlsx')):
+    if os.path.exists(os.path.join(path_results, sujet, 'df', f'{sujet}_df_graph_DFC.xlsx')):
         print('DFC : ALREADY COMPUTED')
         return
 
@@ -365,7 +444,7 @@ def compute_graph_metric_dfc(sujet, prms):
                         cf_metric_i = np.where(xr_graph['mat_type'].data == cf_metric)[0]
 
                         #### separate inspi / expi
-                        dfc_data = {'inspi' : xr_graph[cf_metric_i, :, :int(stretch_point_TF*ratio_stretch_TF)].data.reshape(pairs.shape[0], -1), 'expi' : xr_graph[cf_metric_i, :, int(stretch_point_TF*ratio_stretch_TF):].data.reshape(pairs.shape[0], -1)}
+                        dfc_data = {'inspi' : xr_graph[cf_metric_i, :, stretch_point_I[0]:stretch_point_I[1]].data.reshape(pairs.shape[0], -1), 'expi' : xr_graph[cf_metric_i, :, stretch_point_E[0]:stretch_point_E[1]].data.reshape(pairs.shape[0], -1)}
                         
                         #### transform dfc into connectivity matrices
                         mat_cf = {'inspi' : from_dfc_to_mat_conn_trpz(dfc_data['inspi'], pairs, roi_in_data), 'expi' : from_dfc_to_mat_conn_trpz(dfc_data['expi'], pairs, roi_in_data)}
@@ -454,7 +533,7 @@ def compute_graph_metric_dfc(sujet, prms):
 
     #### save
     os.chdir(os.path.join(path_results, sujet, 'df'))
-    df_export.to_excel(f'{sujet}_df_DFC.xlsx')
+    df_export.to_excel(f'{sujet}_df_graph_DFC.xlsx')
 
 
 
@@ -465,7 +544,7 @@ def compute_graph_metric_fc(sujet, prms):
     os.chdir(os.path.join(path_precompute, sujet, 'FC'))
 
     #### verif computation
-    if os.path.exists(os.path.join(path_results, sujet, 'df', f'{sujet}_df_FC.xlsx')):
+    if os.path.exists(os.path.join(path_results, sujet, 'df', f'{sujet}_df_graph_FC.xlsx')):
         print('FC : ALREADY COMPUTED')
         return
 
@@ -560,7 +639,100 @@ def compute_graph_metric_fc(sujet, prms):
 
     #### save
     os.chdir(os.path.join(path_results, sujet, 'df'))
-    df_export.to_excel(f'{sujet}_df_FC.xlsx')
+    df_export.to_excel(f'{sujet}_df_graph_FC.xlsx')
+
+
+
+
+
+
+
+
+########################################
+######## EXTRACT DFC VALUES ########
+########################################
+
+
+def generate_ROI_pairs():
+
+    pairs_of_interest = np.array([])
+
+    for A in ROI_for_DFC_df:
+
+        for B in ROI_for_DFC_df:
+
+            if A == B:
+                continue
+
+            pair_i = f'{A}-{B}'
+
+            pairs_of_interest = np.append(pairs_of_interest, pair_i)
+
+    return pairs_of_interest
+
+
+
+
+
+
+
+def compute_dfc_values(sujet, prms):
+
+    os.chdir(os.path.join(path_precompute, sujet, 'DFC'))
+
+    #### verif computation
+    if os.path.exists(os.path.join(path_results, sujet, 'df', f'{sujet}_df_DFC.xlsx')):
+        print('DFC values : ALREADY COMPUTED')
+        return
+
+    #### initiate df
+    df_export = pd.DataFrame(columns=['sujet', 'cond', 'band', 'metric', 'phase', 'pair', 'value'])
+
+    #### get pairs of interest
+    pairs_of_interest = generate_ROI_pairs()
+
+    #### compute
+    #cond = 'FR_CV'
+    for cond in prms['conditions']:
+        #band_prep = 'hf'
+        for band_prep in band_prep_list:
+            #band, freq = 'l_gamma', [50,80]
+            for band, freq in freq_band_dict_FC_function[band_prep].items():
+
+                if band in ['beta', 'l_gamma', 'h_gamma']:
+                    #cf_metric_i, cf_metric = 0, 'ispc'
+                    for cf_metric_i, cf_metric in enumerate(['ispc', 'wpli']):
+
+                        #### extract data
+                        xr_dfc = xr.open_dataarray(f'{sujet}_DFC_wpli_ispc_{band}_{cond}_allpairs.nc')
+                        pairs = xr_dfc['pairs'].data
+
+                        #### identify pairs of interest
+                        #pair_i, pair_name = 0, pairs_of_interest[0]
+                        for pair_i, pair_name in enumerate(pairs_of_interest):
+
+                            pairs_of_interest_i_list = np.where((pairs == pair_name) | (pairs == f"{pair_name.split('-')[1]}-{pair_name.split('-')[0]}"))[0]
+                            
+                            if pairs_of_interest_i_list.shape[0] == 0:
+                                continue
+
+                            for pair_i in pairs_of_interest_i_list:
+
+                                value_list =    [np.trapz(xr_dfc[cf_metric_i, pair_i, :].data),
+                                                np.trapz(xr_dfc[cf_metric_i, pair_i, stretch_point_I[0]:stretch_point_I[1]].data),
+                                                np.trapz(xr_dfc[cf_metric_i, pair_i, stretch_point_E[0]:stretch_point_E[1]].data)
+                                                ]
+
+                                data_export_i =    {'sujet' : [sujet]*3, 'cond' : [cond]*3, 'band' : [band]*3, 'metric' : [cf_metric]*3, 
+                                        'phase' : ['whole', 'inspi', 'expi'], 'pair' : [pairs[pair_i]]*3, 'value' : value_list}
+
+                                df_export_i = pd.DataFrame.from_dict(data_export_i)
+
+                                df_export = pd.concat([df_export, df_export_i])
+
+    #### export
+    os.chdir(os.path.join(path_results, sujet, 'df'))
+    df_export.to_excel(f'{sujet}_df_DFC.xlsx')
 
 
 
@@ -590,8 +762,10 @@ def compilation_export_df(sujet):
     # #### export
     export_Cxy_MVL_in_df(sujet, respfeatures_allcond, surrogates_allcond, prms)
     export_TF_in_df(sujet, respfeatures_allcond, prms)
+    export_ITPC_in_df(sujet, respfeatures_allcond, prms)
     compute_graph_metric_dfc(sujet, prms)
     compute_graph_metric_fc(sujet, prms)
+    compute_dfc_values(sujet, prms)
 
 
 
@@ -603,11 +777,11 @@ def compilation_export_df(sujet):
 
 if __name__ == '__main__':
 
-    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compilation_export_df)(sujet) for sujet in sujet_list_FR_CV)
+    # joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compilation_export_df)(sujet) for sujet in sujet_list_FR_CV)
 
-    # for sujet in sujet_list_FR_CV:
+    for sujet in sujet_list_FR_CV:
                 
-    #     #### export df
-    #     compilation_export_df(sujet)
+        #### export df
+        compilation_export_df(sujet)
     
     

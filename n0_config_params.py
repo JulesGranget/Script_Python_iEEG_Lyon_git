@@ -372,6 +372,10 @@ coh_computation_interval = .02 #Hz around respi
 ######## FC ANALYSIS ########
 ################################
 
+#### ROI for DFC
+ROI_for_DFC_df =    ['orbitofrontal', 'cingulaire ant rostral', 'cingulaire ant caudal', 'cingulaire post',
+                    'insula ant', 'insula post', 'parahippocampique', 'amygdala', 'hippocampus']
+
 #### band to remove
 freq_band_fc_analysis = {'theta' : [4, 8], 'alpha' : [9,12], 'beta' : [15,40], 'l_gamma' : [50, 80], 'h_gamma' : [80, 120]}
 
