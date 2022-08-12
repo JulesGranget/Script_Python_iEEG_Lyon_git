@@ -291,49 +291,12 @@ def compute_and_save_baseline(sujet, band_prep):
 
     #### generate all wavelets to conv
     wavelets_to_conv = {}
-        
-    #### select wavelet parameters
-    if band_prep == 'lf' or band_prep == 'wb':
-        wavetime = np.arange(-2,2,1/srate)
-        nfrex = nfrex_lf
-        ncycle_list = np.linspace(ncycle_list_lf[0], ncycle_list_lf[1], nfrex) 
-
-    if band_prep == 'hf':
-        wavetime = np.arange(-.5,.5,1/srate)
-        nfrex = nfrex_hf
-        ncycle_list = np.linspace(ncycle_list_hf[0], ncycle_list_hf[1], nfrex)
-
-    if band_prep == 'wb':
-        wavetime = np.arange(-2,2,1/srate)
-        nfrex = nfrex_hf
-        ncycle_list = np.linspace(ncycle_list_wb[0], ncycle_list_wb[1], nfrex)
 
     #band, freq = 'theta', [2, 10]
     for band, freq in freq_band_dict[band_prep].items():
 
         #### compute wavelets
-        frex  = np.linspace(freq[0],freq[1],nfrex)
-        wavelets = np.zeros((nfrex,len(wavetime)) ,dtype=complex)
-
-        # create Morlet wavelet family
-        for fi in range(0,nfrex):
-            
-            s = ncycle_list[fi] / (2*np.pi*frex[fi])
-            gw = np.exp(-wavetime**2/ (2*s**2)) 
-            sw = np.exp(1j*(2*np.pi*frex[fi]*wavetime))
-            mw =  gw * sw
-
-            wavelets[fi,:] = mw
-            
-        # plot all the wavelets
-        if debug == True:
-            plt.pcolormesh(wavetime,frex,np.real(wavelets))
-            plt.xlabel('Time (s)')
-            plt.ylabel('Frequency (Hz)')
-            plt.title('Real part of wavelets')
-            plt.show()
-
-        wavelets_to_conv[band] = wavelets
+        wavelets_to_conv[band], nfrex = get_wavelets(sujet, band_prep, freq)
 
     # plot all the wavelets
     if debug == True:
@@ -351,7 +314,7 @@ def compute_and_save_baseline(sujet, band_prep):
     os.chdir(path_memmap)
     baseline_allchan = np.memmap(f'{sujet}_baseline_convolutions_{band_prep}.dat', dtype=np.float64, mode='w+', shape=(n_band_to_compute, data.shape[0], nfrex))
 
-        #### compute
+    #### compute
     #n_chan = 0
     def baseline_convolutions(n_chan):
 

@@ -101,7 +101,7 @@ def precompute_surrogates_cyclefreq(sujet, band_prep, cond, session_i):
     os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
     data_tmp = load_data_sujet(sujet, band_prep, cond, session_i)
 
-    if os.path.exists(sujet + '_' + cond + '_' + str(session_i+1) + '_cyclefreq_' +  band_prep + '.npy') == True :
+    if os.path.exists(f'{sujet}_{cond}_{str(session_i+1)}_cyclefreq_{band_prep}.npy') == True :
         print('ALREADY COMPUTED')
         return
 
@@ -151,7 +151,7 @@ def precompute_surrogates_cyclefreq(sujet, band_prep, cond, session_i):
         surrogates_n_chan[2, n_chan, :] = compute_surrogates_cyclefreq_results[n_chan][2]
     
     #### save
-    np.save(sujet + '_' + cond + '_' + str(session_i+1) + '_cyclefreq_' +  band_prep + '.npy', surrogates_n_chan)
+    np.save(f'{sujet}_{cond}_{str(session_i+1)}_cyclefreq_{band_prep}.npy', surrogates_n_chan)
 
     print('done')
 

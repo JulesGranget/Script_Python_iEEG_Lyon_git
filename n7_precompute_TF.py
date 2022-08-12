@@ -18,18 +18,6 @@ debug = False
 ################################
 
 
-
-#condition, resp_features, freq_band, stretch_point_TF = 'CV', list(resp_features_allcond.values())[0], freq_band, stretch_point_TF
-def compute_stretch_tf(tf, cond, session_i, respfeatures_allcond, stretch_point_TF):
-
-    tf_mean_allchan = np.zeros((np.size(tf,0), np.size(tf,1), stretch_point_TF))
-
-    for n_chan in range(np.size(tf,0)):
-
-        tf_mean_allchan[n_chan,:,:] = np.mean(stretch_data_tf(respfeatures_allcond[cond][session_i], stretch_point_TF, tf[n_chan,:,:], srate)[0], axis=0)
-
-    return tf_mean_allchan
-
 #tf = tf_allchan
 #condition, resp_features, freq_band, stretch_point_TF = conditions[0], list(resp_features_allcond.values())[0], freq_band, stretch_point_TF
 def compute_stretch_tf_dB(sujet, tf, cond, session_i, respfeatures_allcond, stretch_point_TF, band, band_prep, nfrex, srate):
@@ -39,9 +27,9 @@ def compute_stretch_tf_dB(sujet, tf, cond, session_i, respfeatures_allcond, stre
     baselines = np.load(f'{sujet}_{band}_baselines.npy')
 
     #### apply baseline
-    for n_chan in range(np.size(tf,0)):
+    for n_chan in range(tf.shape[0]):
         
-        for fi in range(np.size(tf,1)):
+        for fi in range(tf.shape[1]):
 
             activity = tf[n_chan,fi,:]
             baseline_fi = baselines[n_chan, fi]
@@ -59,12 +47,12 @@ def compute_stretch_tf_dB(sujet, tf, cond, session_i, respfeatures_allcond, stre
 
         return tf_mean
 
-    stretch_tf_db_nchan_res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(stretch_tf_db_n_chan)(n_chan) for n_chan in range(np.size(tf,0)))
+    stretch_tf_db_nchan_res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(stretch_tf_db_n_chan)(n_chan) for n_chan in range(tf.shape[0]))
 
     #### extarct
-    tf_mean_allchan = np.zeros((np.size(tf,0), np.size(tf,1), stretch_point_TF))
+    tf_mean_allchan = np.zeros((tf.shape[0], tf.shape[1], stretch_point_TF))
 
-    for n_chan in range(np.size(tf,0)):
+    for n_chan in range(tf.shape[0]):
         tf_mean_allchan[n_chan,:,:] = stretch_tf_db_nchan_res[n_chan]
 
     return tf_mean_allchan
@@ -121,11 +109,11 @@ def precompute_tf(sujet, cond, session_i, _freq_band_list, band_prep_list):
 
             def compute_tf_convolution_nchan(n_chan):
 
-                # print_advancement(n_chan, np.size(data,0), steps=[25, 50, 75])
+                # print_advancement(n_chan, data.shape[0], steps=[25, 50, 75])
 
                 x = data[n_chan,:]
 
-                tf = np.zeros((nfrex,np.size(x)))
+                tf = np.zeros((nfrex, x.shape[0]))
 
                 for fi in range(nfrex):
                     
@@ -135,7 +123,7 @@ def precompute_tf(sujet, cond, session_i, _freq_band_list, band_prep_list):
 
                 return
 
-            joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_tf_convolution_nchan)(n_chan) for n_chan in range(np.size(data,0)))
+            joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_tf_convolution_nchan)(n_chan) for n_chan in range(data.shape[0]))
 
             #### stretch
             print('STRETCH')
@@ -196,7 +184,7 @@ def precompute_tf_itpc(sujet, cond, session_i, _freq_band_list, band_prep_list):
                     
                 x = data[n_chan,:]
 
-                tf = np.zeros((nfrex,np.size(x)), dtype='complex')
+                tf = np.zeros((nfrex, x.shape[0]), dtype='complex')
 
                 for fi in range(nfrex):
                     
@@ -216,12 +204,12 @@ def precompute_tf_itpc(sujet, cond, session_i, _freq_band_list, band_prep_list):
 
                 return itpc 
 
-            compute_itpc_n_chan_res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_itpc_n_chan)(n_chan) for n_chan in range(np.size(data,0)))
+            compute_itpc_n_chan_res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_itpc_n_chan)(n_chan) for n_chan in range(data.shape[0]))
             
             #### extract
-            itpc_allchan = np.zeros((np.size(data,0),nfrex,stretch_point_TF))
+            itpc_allchan = np.zeros((data.shape[0],nfrex,stretch_point_TF))
 
-            for n_chan in range(np.size(data,0)):
+            for n_chan in range(data.shape[0]):
 
                 itpc_allchan[n_chan,:,:] = compute_itpc_n_chan_res[n_chan]
 
