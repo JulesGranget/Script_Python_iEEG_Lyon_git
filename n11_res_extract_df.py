@@ -237,7 +237,6 @@ def export_TF_in_df(sujet, respfeatures_allcond, prms):
 
     #### load prms
     prms = get_params(sujet)
-    respfeatures_allcond = load_respfeatures(sujet)
     df_loca = get_loca_df(sujet)
     
     #### data count

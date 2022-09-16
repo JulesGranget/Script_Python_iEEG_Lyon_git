@@ -329,7 +329,7 @@ def get_pli_ispc_fc_dfc_trial(sujet, cond, band_prep, band, freq, trial_i):
                 ##### compute ISPC and WPLI (and average over trials!)
                 ispc_dfc_i[slwin_values_i] = np.abs(np.mean(cdd))
                 # pli_dfc_i[slwin_values_i] = np.abs(np.mean(np.sign(np.imag(cdd))))
-                wpli_dfc_i[slwin_values_i] = np.mean( np.imag(cdd) ) / np.mean( np.abs(np.imag(cdd)) )
+                wpli_dfc_i[slwin_values_i] = np.abs( np.mean(np.imag(cdd)) ) / np.mean(np.abs(np.imag(cdd)))
 
             return ispc_dfc_i, wpli_dfc_i
 

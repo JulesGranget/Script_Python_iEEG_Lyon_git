@@ -847,9 +847,9 @@ if __name__ == '__main__':
 
         #### Pxx Cxy CycleFreq
         compilation_compute_Pxx_Cxy_Cyclefreq_MVL(sujet)
-        # execute_function_in_slurm_bash_mem_choice('n11_res_power_analysis', 'compilation_compute_Pxx_Cxy_Cyclefreq_MVL', [sujet], 15)
+        # execute_function_in_slurm_bash_mem_choice('n10_res_power_analysis', 'compilation_compute_Pxx_Cxy_Cyclefreq_MVL', [sujet], 15)
 
 
         #### TF & ITPC
         compilation_compute_TF_ITPC(sujet)
-        # execute_function_in_slurm_bash_mem_choice('n11_res_power_analysis', 'compilation_compute_TF_ITPC', [sujet], 15)
+        # execute_function_in_slurm_bash_mem_choice('n10_res_power_analysis', 'compilation_compute_TF_ITPC', [sujet], 15)
