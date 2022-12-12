@@ -20,26 +20,15 @@ import scipy.signal
 
 perso_repo_computation = False
 
+#### electrode recording type
+# monopol = True
+monopol = False
+
 #### whole protocole
-sujet = 'CHEe'
+# sujet = 'CHEe'
 # sujet = 'GOBc'
 # sujet = 'MAZm'
-# sujet = 'TREt'
-
-#### FR_CV only
-# sujet = 'MUGa'
-# sujet = 'BANc'
-# sujet = 'KOFs'
-# sujet = 'LEMl'
-
-# sujet = 'pat_02459_0912'
-# sujet = 'pat_02476_0929'
-# sujet = 'pat_02495_0949'
-
-# sujet = 'pat_03083_1527'
-# sujet = 'pat_03105_1551'
-# sujet = 'pat_03128_1591'
-# sujet = 'pat_03138_1601'
+sujet = 'TREt'
 
 #sujet = 'DEBUG'
 
@@ -49,10 +38,13 @@ sujet_list = ['CHEe', 'GOBc', 'MAZm', 'TREt']
 #### FR_CV
 sujet_list_FR_CV =  ['CHEe', 'GOBc', 'MAZm', 'TREt', 'MUGa', 'BANc', 'KOFs', 'LEMl', 
                     'pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949',
-                    'pat_03083_1527', 'pat_03105_1551', 'pat_03128_1591', 'pat_03138_1601'
+                    'pat_03083_1527', 'pat_03105_1551', 'pat_03128_1591', 'pat_03138_1601',
+                    'pat_03146_1608', 'pat_03174_1634'
                     ]
 
-sujet_list_paris_only_FR_CV = ['pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949']
+sujet_list_paris_only_FR_CV = ['pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949',
+                    'pat_03083_1527', 'pat_03105_1551', 'pat_03128_1591', 'pat_03138_1601',
+                    'pat_03146_1608', 'pat_03174_1634']
 
 conditions_allsubjects = ['RD_CV', 'RD_FV', 'RD_SV', 'RD_AV', 'FR_CV', 'FR_MV']
 
@@ -60,6 +52,7 @@ condition_diff = [['FV','SV']]
 
 band_prep_list = ['lf', 'hf']
 freq_band_list = [{'theta' : [2,10], 'alpha' : [8,14], 'beta' : [10,40], 'whole' : [2,50]}, {'l_gamma' : [50, 80], 'h_gamma' : [80, 120]}]
+freq_band_whole = {'theta' : [2,10], 'alpha' : [8,14], 'beta' : [10,40], 'whole' : [2,50], 'l_gamma' : [50, 80], 'h_gamma' : [80, 120]}
 
 freq_band_list_precompute = [{'theta_1' : [2,10], 'theta_2' : [4,8], 'alpha_1' : [8,12], 'alpha_2' : [8,14], 'beta_1' : [12,40], 'beta_2' : [10,40], 'whole_1' : [2,50]}, {'l_gamma_1' : [50, 80], 'h_gamma_1' : [80, 120]}]
 
@@ -207,6 +200,8 @@ aux_chan = {
 'pat_03105_1551' : {'nasal': 'PRES1', 'ventral' : 'BELT1', 'ECG' : 'ECG1'}, # OK
 'pat_03128_1591' : {'nasal': 'PRES1', 'ventral' : 'BELT1', 'ECG' : 'ECG1'}, # OK
 'pat_03138_1601' : {'nasal': 'PRES1', 'ventral' : 'BELT1', 'ECG' : 'ECG1'}, # OK
+'pat_03146_1608' : {'nasal': 'PRES1', 'ventral' : 'BELT1', 'ECG' : 'ECG1'},
+'pat_03174_1634' : {'nasal': 'PRES1', 'ventral' : 'BELT1', 'ECG' : 'ECG1'},
 
 'DEBUG' : {'nasal': 'p20+', 'ventral' : 'p19+', 'ECG' : 'ECG'}, # OK
 
@@ -278,6 +273,8 @@ sujet_respi_adjust = {
 'pat_03105_1551' : 'inverse',
 'pat_03128_1591' : 'normal',
 'pat_03138_1601' : 'normal',
+'pat_03146_1608' : 'normal',
+'pat_03174_1634' : 'normal'
 
 }
 
@@ -292,7 +289,8 @@ h_freq = 2
 
 #### sujet that need more filter for respi sig
 sujet_manual_detection = ['pat_03105_1551', 'pat_03128_1591']
-sujet_for_more_filter = ['pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949', 'pat_03138_1601']
+sujet_for_more_filter = ['pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949', 'pat_03138_1601',
+                        'pat_03146_1608', 'pat_03174_1634']
 
 
 
@@ -358,6 +356,8 @@ ncycle_list_hf = [20, 30]
 ncycle_list_wb = [7, 30]
 srate_dw = 10
 
+#### STATS
+n_surrogates_tf = 1000
 
 
 ################################

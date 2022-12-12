@@ -75,7 +75,7 @@ def compute_HRV_fig_df_for_sujet(sujet):
 
     #### get data
     ecg_allcond, ecg_stim_allcond = get_ecg_data(sujet)
-    prms = get_params(sujet)
+    prms = get_params(sujet, monopol)
 
     #### compute hrv NK
     df_hrv = pd.DataFrame()

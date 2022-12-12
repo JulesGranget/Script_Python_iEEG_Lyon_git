@@ -14,6 +14,7 @@ from sklearn.utils import resample
 
 from n0_config_params import *
 from n0bis_config_analysis_functions import *
+from n2bis_prep_adjust_values import *
 
 
 debug = False
@@ -22,6 +23,8 @@ debug = False
 ########################################
 ######## DATA EXTRACTION ######## 
 ########################################
+
+
 
 #path_data, sujet = 'D:\LPPR_CMO_PROJECT\Lyon\Data\iEEG', 'LYONNEURO_2019_CAPp'
 def extract_data_trc(sujet):
@@ -271,6 +274,264 @@ def extract_data_trc(sujet):
     del data_rmv_second
 
     return data, chan_list, data_aux, chan_list_aux, chan_list_all_rmw, trig, srate
+
+
+
+
+
+
+#path_data, sujet = 'D:\LPPR_CMO_PROJECT\Lyon\Data\iEEG', 'LYONNEURO_2019_CAPp'
+def extract_data_trc_bi(sujet):
+
+    os.chdir(os.path.join(path_data,sujet))
+
+    #### identify number of trc file
+    trc_file_names = glob.glob('*.TRC')
+
+    #### sort order TRC
+    trc_file_names_ordered = []
+    [trc_file_names_ordered.append(file_name) for file_name in trc_file_names if file_name.find('FR_CV') != -1]
+    [trc_file_names_ordered.append(file_name) for file_name in trc_file_names if file_name.find('PROTOCOLE') != -1]
+
+    #### extract file one by one
+    print('#### EXTRACT TRC ####')
+    data_whole = []
+    chan_list_whole = []
+    srate_whole = []
+    events_name_whole = []
+    events_time_whole = []
+    #file_i, file_name = 1, trc_file_names[1]
+    for file_i, file_name in enumerate(trc_file_names_ordered):
+
+        #### current file
+        print(file_name)
+
+        #### extract segment with neo
+        reader = neo.MicromedIO(filename=file_name)
+        seg = reader.read_segment()
+        print('len seg : ' + str(len(seg.analogsignals)))
+        
+        #### extract data
+        data_whole_file = []
+        chan_list_whole_file = []
+        srate_whole_file = []
+        events_name_file = []
+        events_time_file = []
+        #anasig = seg.analogsignals[2]
+        for seg_i, anasig in enumerate(seg.analogsignals):
+            
+            chan_list_whole_file.append(anasig.array_annotations['channel_names'].tolist()) # extract chan
+            data_whole_file.append(anasig[:, :].magnitude.transpose()) # extract data
+            srate_whole_file.append(int(anasig.sampling_rate.rescale('Hz').magnitude.tolist())) # extract srate
+
+        if srate_whole_file != [srate_whole_file[i] for i in range(len(srate_whole_file))] :
+            print('srate different in segments')
+            exit()
+        else :
+            srate_file = srate_whole_file[0]
+
+        #### concatenate data
+        for seg_i in range(len(data_whole_file)):
+            if seg_i == 0 :
+                data_file = data_whole_file[seg_i]
+                chan_list_file = chan_list_whole_file[seg_i]
+            else :
+                data_file = np.concatenate((data_file,data_whole_file[seg_i]), axis=0)
+                [chan_list_file.append(chan_list_whole_file[seg_i][i]) for i in range(np.size(chan_list_whole_file[seg_i]))]
+
+
+        #### event
+        if len(seg.events[0].magnitude) == 0 : # when its VS recorded
+            events_name_file = ['CV_start', 'CV_stop']
+            events_time_file = [0, len(data_file[0,:])]
+        else : # for other sessions
+            #event_i = 0
+            for event_i in range(len(seg.events[0])):
+                events_name_file.append(seg.events[0].labels[event_i])
+                events_time_file.append(int(seg.events[0].times[event_i].magnitude * srate_file))
+
+        #### fill containers
+        data_whole.append(data_file)
+        chan_list_whole.append(chan_list_file)
+        srate_whole.append(srate_file)
+        events_name_whole.append(events_name_file)
+        events_time_whole.append(events_time_file)
+
+    #### verif
+    #file_i = 1
+    #data = data_whole[file_i]
+    #chan_list = chan_list_whole[file_i]
+    #events_time = events_time_whole[file_i]
+    #srate = srate_whole[file_i]
+
+    #chan_name = 'p19+'
+    #chan_i = chan_list.index(chan_name)
+    #file_stop = (np.size(data,1)/srate)/60
+    #start = 0 *60*srate 
+    #stop = int( file_stop *60*srate )
+    #plt.plot(data[chan_i,start:stop])
+    #plt.vlines( np.array(events_time)[(np.array(events_time) > start) & (np.array(events_time) < stop)], ymin=np.min(data[chan_i,start:stop]), ymax=np.max(data[chan_i,start:stop]))
+    #plt.show()
+
+    #### concatenate 
+    print('#### CONCATENATE ####')
+    data = data_whole[0]
+    chan_list = chan_list_whole[0]
+    events_name = events_name_whole[0]
+    events_time = events_time_whole[0]
+    srate = srate_whole[0]
+
+    if len(trc_file_names) > 1 :
+        #trc_i = 0
+        for trc_i in range(len(trc_file_names)): 
+
+            if trc_i == 0 :
+                len_trc = np.size(data_whole[trc_i],1)
+                continue
+            else:
+                    
+                data = np.concatenate((data,data_whole[trc_i]), axis=1)
+
+                [events_name.append(events_name_whole[trc_i][i]) for i in range(len(events_name_whole[trc_i]))]
+                [events_time.append(events_time_whole[trc_i][i] + len_trc) for i in range(len(events_time_whole[trc_i]))]
+
+                if chan_list != chan_list_whole[trc_i]:
+                    print('not the same chan list')
+                    exit()
+
+                if srate != srate_whole[trc_i]:
+                    print('not the same srate')
+                    exit()
+
+                len_trc += np.size(data_whole[trc_i],1)
+    
+    #### no more use
+    del data_whole
+    del data_whole_file
+    del data_file
+
+    #### events in df
+    event_dict = {'name' : events_name, 'time' : events_time}
+    columns = ['name', 'time']
+    trig = pd.DataFrame(event_dict, columns=columns)
+    
+    #### events in df
+    event_dict = {'name' : events_name, 'time' : events_time}
+    columns = ['name', 'time']
+    trig = pd.DataFrame(event_dict, columns=columns)
+
+    #### select chan
+    print('#### REMOVE CHAN ####')
+    os.chdir(os.path.join(path_anatomy, sujet))
+
+    #### first removing
+    chan_list_first_clean_file = open(sujet + "_trcplot_in_csv.txt", "r")
+    chan_list_first_clean = chan_list_first_clean_file.read()
+    chan_list_first_clean = chan_list_first_clean.split("\n")[:-1]
+    chan_list_first_clean_file.close()
+
+        #### remove chan
+    if debug:
+        data_rmv_first = data.copy() 
+    else:
+        data_rmv_first = data
+    chan_list_rmv_first = chan_list.copy()
+    chan_list_nchan_rmv_first = []
+    for nchan in chan_list:
+        if nchan in chan_list_first_clean:
+            continue
+        else :
+            chan_list_nchan_rmv_first.append(nchan)
+            chan_i = chan_list_rmv_first.index(nchan)
+            data_rmv_first = np.delete(data_rmv_first, chan_i, 0)
+            chan_list_rmv_first.remove(nchan)
+
+    #### identify iEEG / respi / ECG
+    print('#### AUX IDENTIFICATION ####')
+    nasal_i = chan_list.index(aux_chan[sujet]['nasal'])
+    ecg_i = chan_list.index(aux_chan.get(sujet).get('ECG'))
+    
+    if aux_chan.get(sujet).get('ventral') == None:
+        _data_ventral = np.zeros((data[nasal_i, :].shape[0]))
+        data_aux = np.stack((data[nasal_i, :], _data_ventral, data[ecg_i, :]), axis = 0)
+    else:
+        ventral_i = chan_list.index(aux_chan.get(sujet).get('ventral'))
+        data_aux = np.stack((data[nasal_i, :], data[ventral_i, :], data[ecg_i, :]), axis = 0)
+
+    chan_list_aux = ['nasal', 'ventral', 'ECG']
+
+    if sujet_respi_adjust[sujet] == 'inverse':
+        data_aux[0, :] *= -1
+
+    data = data_rmv_first.copy()
+    chan_list = chan_list_rmv_first.copy()
+
+    #### identify pair available for bipol channels
+    os.chdir(os.path.join(path_anatomy, sujet))
+
+    chan_list = np.array(modify_name(chan_list)[0])
+    
+    plot_loca_df_bi = pd.read_excel(sujet + '_plot_loca_bi.xlsx')
+
+    plot_select_bi = plot_loca_df_bi['plot'][plot_loca_df_bi['select'] == 1]
+
+    pairs_bi_available_i = np.array([], dtype='int64')
+    pairs_bi_removed = np.array([])
+
+    for row_i, bi_plot_selected_i in enumerate(plot_loca_df_bi['plot']): 
+        plot_A, plot_B = bi_plot_selected_i.split('-')[0], bi_plot_selected_i.split('-')[-1]
+        if np.sum(chan_list == plot_A) == 0 or np.sum(chan_list == plot_B) == 0:
+            pairs_bi_removed = np.append(pairs_bi_removed, bi_plot_selected_i)
+            plot_loca_df_bi['select'][row_i] = 0
+            continue
+        else:
+            pairs_bi_available_i = np.append(pairs_bi_available_i, row_i)
+
+    print('#### PAIRS REMOVED : ####')
+    print(pairs_bi_removed)
+
+    #### save df updated with removed pairs
+    plot_loca_df_bi.to_excel(f'{sujet}_plot_loca_bi.xlsx')
+
+    #### generate data bi
+    data_ieeg_bi = np.zeros((pairs_bi_available_i.shape[0], data.shape[-1]))
+
+    for row_i, bi_plot_selected_i in enumerate(pairs_bi_available_i): 
+        plot_A, plot_B = plot_loca_df_bi['plot'][bi_plot_selected_i].split('-')[0], plot_loca_df_bi['plot'][bi_plot_selected_i].split('-')[-1]
+        plot_A_i, plot_B_i = np.where(chan_list == plot_A)[0][0], np.where(chan_list == plot_B)[0][0]
+        data_ieeg_bi[row_i, :] = data[plot_A_i, :] - data[plot_B_i, :]
+
+        #### verify
+        if debug:
+
+            plt.plot(data[plot_A_i, :] - data[plot_B_i, :])
+            plt.show()
+
+    #### 2nd removing
+    os.chdir(os.path.join(path_anatomy, sujet))
+
+    file_plot_select = pd.read_excel(sujet + '_plot_loca_bi.xlsx')
+
+    chan_list_ieeg_keep = file_plot_select['plot'][file_plot_select['select'] == 1].values.tolist()
+
+    remove_second = []
+
+    chan_list_bi = plot_loca_df_bi['plot'][pairs_bi_available_i].values
+
+    #nchan = chan_list_bi[0]
+    for nchan in chan_list_bi:
+
+        if nchan not in chan_list_ieeg_keep:
+            remove_second.append(nchan)
+            rmv_i = np.where(chan_list_bi == nchan)[0][0]
+            chan_list_bi = np.delete(chan_list_bi, rmv_i)
+            data_ieeg_bi = np.delete(data_ieeg_bi, rmv_i, 0)
+
+    print('#### SECOND REMOVE ####')
+    print(remove_second)    
+
+    return data_ieeg_bi, chan_list_bi.tolist(), data_aux, chan_list_aux, trig, srate
+
 
 
 
@@ -634,7 +895,7 @@ def ecg_detection(data_aux, chan_list_aux, srate):
 ################################
 
 #data, band_preproc, export_info = data_preproc_lf, 'lf', True
-def chop_save_trc(data, chan_list, data_aux, chan_list_aux, conditions_trig, trig, srate, ecg_events_time, band_preproc, export_info):
+def chop_save_trc(data, chan_list, data_aux, chan_list_aux, conditions_trig, trig, srate, ecg_events_time, monopol, band_preproc, export_info):
 
     print('#### SAVE ####')
     
@@ -695,7 +956,10 @@ def chop_save_trc(data, chan_list, data_aux, chan_list_aux, conditions_trig, tri
 
     #### save chan_list
     os.chdir(os.path.join(path_anatomy, sujet))
-    keep_plot_textfile = open(sujet + "_chanlist_ieeg.txt", "w")
+    if monopol:
+        keep_plot_textfile = open(sujet + "_chanlist_ieeg.txt", "w")
+    else:
+        keep_plot_textfile = open(sujet + "_chanlist_ieeg_bi.txt", "w")
     for element in chan_list_all[:-4]:
         keep_plot_textfile.write(element + "\n")
     keep_plot_textfile.close()
@@ -721,21 +985,28 @@ def chop_save_trc(data, chan_list, data_aux, chan_list_aux, conditions_trig, tri
 
     os.chdir(os.path.join(path_prep, sujet, 'sections'))
 
-    # condition, trig_cond = list(conditions_trig.items())[0]
+    #condition, trig_cond = list(conditions_trig.items())[0]
     for condition, trig_cond in conditions_trig.items():
 
         cond_i = np.where(trig.name.values == trig_cond[0])[0]
-
-        for trig_i in cond_i:
+        #export_i, trig_i = 0, cond_i[0]
+        for export_i, trig_i in enumerate(cond_i):
 
             count_session[condition] = count_session[condition] + 1 
 
             raw_chunk = raw_all.copy()
             raw_chunk.crop( tmin = (trig.iloc[trig_i,:].time)/srate , tmax= (trig.iloc[trig_i+1,:].time/srate)-0.2 )
-            raw_chunk.save(sujet + '_' + condition + '_' + str(trig_i+1) + '_' + band_preproc + '.fif')
-
+            if monopol:
+                raw_chunk.save(f'{sujet}_{condition}_{str(export_i+1)}_{band_preproc}.fif')
+            else:
+                raw_chunk.save(f'{sujet}_{condition}_{str(export_i+1)}_{band_preproc}_bi.fif')
+            
             del raw_chunk
 
+    if monopol:
+        raw_all.save(f'{sujet}_allcond_{band_preproc}.fif')
+    else:
+        raw_all.save(f'{sujet}_allcond_{band_preproc}_bi.fif')
 
     df = {'condition' : list(count_session.keys()), 'count' : list(count_session.values())}
     count_session = pd.DataFrame(df, columns=['condition', 'count'])
@@ -796,8 +1067,16 @@ if __name__== '__main__':
     ######## EXTRACT DATA ########
     ################################
 
-    data, chan_list, data_aux, chan_list_aux, chan_list_all_rmw, trig, srate = extract_data_trc(sujet)
+    if monopol:
+        data, chan_list, data_aux, chan_list_aux, chan_list_all_rmw, trig, srate = extract_data_trc(sujet)
+    else:
+        data, chan_list, data_aux, chan_list_aux, trig, srate = extract_data_trc_bi(sujet)
 
+
+
+    ################################
+    ######## ADJUST TRIG ######## 
+    ################################
 
     #### verif and adjust trig for some patients
     if debug == True:
@@ -818,76 +1097,35 @@ if __name__== '__main__':
         plt.show()
 
     #### adjust
-    if sujet == 'CHEe':
+    if sujet in ['CHEe', 'MAZm', 'MUGa', 'LEMl']:
         
-        trig_name = ['CV_start', 'CV_stop', '31',   '32',   '11',   '12',   '71',   '72',   '11',   '12',   '51',    '52',    '11',    '12',    '51',    '52',    '31',    '32']
-        trig_time = [0,          153600,    463472, 555599, 614615, 706758, 745894, 838034, 879833, 971959, 1009299, 1101429, 1141452, 1233580, 1285621, 1377760, 1551821, 1643948]
+        trig_load = {'name' : trigger_allsujet[sujet]['trig_name'], 'time' : trigger_allsujet[sujet]['trig_time']}
+        trig = pd.DataFrame(trig_load)
 
-        trig_load = {'name' : trig_name, 'time' : trig_time}
-        trig = pd.DataFrame(trig_load)    
+    if sujet in ['BANc', 'KOFs']:
+
+        trigger_allsujet[sujet]['trig_time'][-1] = data_aux[0,:].shape[0]
+
+        trig_load = {'name' : trigger_allsujet[sujet]['trig_name'], 'time' : trigger_allsujet[sujet]['trig_time']}
+        trig = pd.DataFrame(trig_load)
 
     if sujet == 'GOBc':
 
-        trig_name = ['MV_start', 'MV_stop']
-        trig_time = [2947600,    3219072]
-
-        trig_load = {'name' : trig_name, 'time' : trig_time}
+        trig_load = {'name' : trigger_allsujet[sujet]['trig_name'], 'time' : trigger_allsujet[sujet]['trig_time']}
         index_append = [len(trig.name), len(trig.name)+1]
         trig_append = pd.DataFrame(trig_load, index=index_append)
-        trig = trig.append(trig_append)
-    
-    if sujet == 'MAZm':
-        
-        trig_name = ['CV_start','CV_stop',  '31',   '32',   '11',   '12',   '31',   '32',   '11',   '12',   '51',   '52',   '11',   '12',   '51',   '52',   '61',    '62',    '61',    '62',    'MV_start', 'MV_stop']
-        trig_time = [0,         164608,     164609, 240951, 275808, 367946, 396690, 488808, 529429, 621558, 646959, 739078, 763014, 855141, 877518, 969651, 1102256, 1194377, 1218039, 1310170, 1391000,    1558000]
-
-        trig_load = {'name' : trig_name, 'time' : trig_time}
-        trig = pd.DataFrame(trig_load)
+        trig = trig.append(trig_append)        
 
     if sujet == 'TREt':
 
-        trig_name = ['61',    '62',    'MV_start', 'MV_stop']
-        trig_time = [1492770, 1584894, 1679260,    1751039]
+        trigger_allsujet[sujet]['trig_time'][-1] = data_aux[0,:].shape[0]
         
         trig = trig.drop(labels=range(51,59), axis=0, inplace=False)
 
-        trig_load = {'name' : trig_name, 'time' : trig_time}
-        index_append = [i for i in range(len(trig.name), (len(trig.name)+len(trig_name)))]
+        trig_load = {'name' : trigger_allsujet[sujet]['trig_name'], 'time' : trigger_allsujet[sujet]['trig_time']}
+        index_append = [i for i in range(len(trig.name), (len(trig.name)+len(trigger_allsujet[sujet]['trig_name'])))]
         trig_append = pd.DataFrame(trig_load, index=index_append)
-        trig = trig.append(trig_append)
-
-    if sujet == 'MUGa':
-        
-        trig_name = ['CV_start', 'CV_stop']
-        trig_time = [17400,       98700]
-
-        trig_load = {'name' : trig_name, 'time' : trig_time}
-        trig = pd.DataFrame(trig_load)    
-
-    if sujet == 'BANc':
-
-        trig_name = ['CV_start', 'CV_stop']
-        trig_time = [0,       data_aux[0,:].shape[0]]
-
-        trig_load = {'name' : trig_name, 'time' : trig_time}
-        trig = pd.DataFrame(trig_load)  
-
-    if sujet == 'KOFs':
-
-        trig_name = ['CV_start', 'CV_stop']
-        trig_time = [0,       data_aux[0,:].shape[0]]
-
-        trig_load = {'name' : trig_name, 'time' : trig_time}
-        trig = pd.DataFrame(trig_load)  
-
-    if sujet == 'LEMl':
-
-        trig_name = ['CV_start', 'CV_stop']
-        trig_time = [0,       data_aux[0,:].shape[0]]
-
-        trig_load = {'name' : trig_name, 'time' : trig_time}
-        trig = pd.DataFrame(trig_load)  
-
+        trig = trig.append(trig_append) 
 
     # verif trig
     if debug == True:
@@ -906,6 +1144,7 @@ if __name__== '__main__':
         plt.plot(hzPxx, Pxx)
         plt.xlim(0,2)
         plt.show()
+
 
 
 
@@ -943,78 +1182,28 @@ if __name__== '__main__':
         plt.legend()
         plt.show()
 
+
+
+
+
+    ################################
+    ######## ADJUST ECG ######## 
+    ################################
+
+
     #### adjust trig for some patients
-    if sujet == 'CHEe':
+    if sujet in ['CHEe', 'GOBc', 'MAZm', 'MUGa', 'TREt', 'BANc', 'KOFs', 'LEMl']:
+
         #### add
-        ecg_events_corrected = [339111, 347393, 358767, 360242, 363559, 460709, 554965, 870178, 871428, 873406, 1142520, 1298203, 1297285, 1297760]
+        ecg_events_corrected = ecg_adjust_allsujet[sujet]['ecg_events_corrected']
         ecg_events_time += ecg_events_corrected
         ecg_events_time.sort()
         #### remove
-        ecg_events_to_remove = []
+        ecg_events_to_remove = ecg_adjust_allsujet[sujet]['ecg_events_to_remove']
         [ecg_events_time.remove(i) for i in ecg_events_to_remove]    
 
-    if sujet == 'GOBc':
-        #### add
-        ecg_events_corrected = [574640, 902240, 903060, 1205660, 1206290, 1632024, 1784291, 1895429, 2963796, 2973557, 2991529, 2998127, 914419, 1206975, 1.70231e6, 1721770, 1730034, 1730871, 1731349, 1732781, 1.78158e6, 1.78227e6, 1.78493e6, 2199475, 2321365, 2322851, 2473316, 2797246, 2800339, 2.88987e6, 2.89661e6, 2968938]
-        ecg_events_time += ecg_events_corrected
-        ecg_events_time.sort()
-        #### remove
-        ecg_events_to_remove = []
-        [ecg_events_time.remove(i) for i in ecg_events_to_remove]  
 
-    if sujet == 'MAZm':
-        #### add
-        ecg_events_corrected = [8.6539e5, 1.28444e6, 1.35341e6, 1285153, 1286958, 1287326, 1287692, 1288073, 1376352, 799279, 999758, 1011149, 1162670]
-        ecg_events_time += ecg_events_corrected
-        ecg_events_time.sort()   
-        #### remove
-        ecg_events_to_remove = [1353229]
-        [ecg_events_time.remove(i) for i in ecg_events_to_remove]  
 
-    if sujet == 'MUGa':
-        #### add
-        ecg_events_corrected = []
-        ecg_events_time += ecg_events_corrected
-        ecg_events_time.sort()       
-        #### remove
-        ecg_events_to_remove = []
-        [ecg_events_time.remove(i) for i in ecg_events_to_remove]   
-
-    if sujet == 'TREt':
-        #### add
-        ecg_events_corrected = [21506, 142918, 289897, 1308016, 1.36292e6, 1.36483e6, 1.36523e6, 1.36563e6, 1.36647e6, 1.36690e6, 1.36730e6, 1.36968e6, 1.37006e6, 1.60849e6, 1626322, 1629380, 1630109, 1636351, 1641558, 1642374, 1645133]
-        ecg_events_time += ecg_events_corrected
-        ecg_events_time.sort()
-        #### remove
-        ecg_events_to_remove = []
-        [ecg_events_time.remove(i) for i in ecg_events_to_remove]  
-
-    if sujet == 'BANc':
-        #### add
-        ecg_events_corrected = [10209]
-        ecg_events_time += ecg_events_corrected
-        ecg_events_time.sort()
-        #### remove
-        ecg_events_to_remove = []
-        [ecg_events_time.remove(i) for i in ecg_events_to_remove]  
-
-    if sujet == 'KOFs':
-        #### add
-        ecg_events_corrected = []
-        ecg_events_time += ecg_events_corrected
-        ecg_events_time.sort()
-        #### remove
-        ecg_events_to_remove = []
-        [ecg_events_time.remove(i) for i in ecg_events_to_remove]  
-
-    if sujet == 'LEMl':
-        #### add
-        ecg_events_corrected = [92428]
-        ecg_events_time += ecg_events_corrected
-        ecg_events_time.sort()
-        #### remove
-        ecg_events_to_remove = []
-        [ecg_events_time.remove(i) for i in ecg_events_to_remove]  
 
 
 
@@ -1023,12 +1212,12 @@ if __name__== '__main__':
     ################################################
 
     data_preproc_lf  = preprocessing_ieeg(data, chan_list, srate, prep_step_lf)
-    chop_save_trc(data_preproc_lf, chan_list, data_aux, chan_list_aux, conditions_trig, trig, srate, ecg_events_time, band_preproc='lf', export_info=True)
+    chop_save_trc(data_preproc_lf, chan_list, data_aux, chan_list_aux, conditions_trig, trig, srate, ecg_events_time, monopol, band_preproc='lf', export_info=True)
 
     del data_preproc_lf
 
     data_preproc_hf = preprocessing_ieeg(data, chan_list, srate, prep_step_hf)
-    chop_save_trc(data_preproc_hf, chan_list, data_aux, chan_list_aux, conditions_trig, trig, srate, ecg_events_time, band_preproc='hf', export_info=False)
+    chop_save_trc(data_preproc_hf, chan_list, data_aux, chan_list_aux, conditions_trig, trig, srate, ecg_events_time, monopol, band_preproc='hf', export_info=False)
 
     #### verif
     if debug == True:

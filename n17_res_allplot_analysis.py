@@ -362,8 +362,8 @@ def get_Coh_Respi_1plot(plot_i_to_process):
 
         respi_chan_i = chan_list.index('nasal')
         plot_tmp_i = chan_list.index(plot_tmp)
-        respi = load_data_sujet(sujet_tmp, band_prep, cond, session_i)[respi_chan_i,:]
-        data_tmp = load_data_sujet(sujet_tmp, band_prep, cond, session_i)
+        respi = load_data_sujet(sujet_tmp, band_prep, cond, session_i, monopol)[respi_chan_i,:]
+        data_tmp = load_data_sujet(sujet_tmp, band_prep, cond, session_i, monopol)
 
         x = data_tmp[plot_tmp_i,:]
         y = respi
@@ -501,7 +501,7 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process, cond):
         plot_tmp_i = chan_list_ieeg.index(plot_tmp)
 
         #### add length recorded
-        len_recorded.append(load_data_sujet(sujet_tmp, 'lf', cond, 0)[plot_tmp_i,:].shape[0]/srate/60)
+        len_recorded.append(load_data_sujet(sujet_tmp, 'lf', cond, 0, monopol)[plot_tmp_i,:].shape[0]/srate/60)
 
         #### count session number
         os.chdir(os.path.join(path_prep, sujet_tmp, 'sections'))
@@ -689,7 +689,7 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process, cond):
         plot_tmp_i = chan_list_ieeg.index(plot_tmp)
 
         #### add length recorded
-        len_recorded.append(load_data_sujet(sujet_tmp, 'lf', cond, 0)[plot_tmp_i,:].shape[0]/srate/60)
+        len_recorded.append(load_data_sujet(sujet_tmp, 'lf', cond, 0, monopol)[plot_tmp_i,:].shape[0]/srate/60)
 
         #### count session number
         os.chdir(os.path.join(path_prep, sujet_tmp, 'sections'))

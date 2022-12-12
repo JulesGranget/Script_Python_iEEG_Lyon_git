@@ -26,20 +26,25 @@ debug = False
 
 
 
-def precompute_surrogates_coh(sujet, band_prep, cond, session_i):
+def precompute_surrogates_coh(sujet, band_prep, cond, session_i, monopol):
     
     os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
     
     print(cond)
 
-    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet)
+    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet, monopol)
     nwind, nfft, noverlap, hannw = get_params_spectral_analysis(srate)
 
-    data_tmp = load_data_sujet(sujet, band_prep, cond, session_i)
+    data_tmp = load_data_sujet(sujet, band_prep, cond, session_i, monopol)
 
-    if os.path.exists(sujet + '_' + cond + '_' + str(session_i+1) + '_Coh.npy') == True :
-        print('ALREADY COMPUTED')
-        return
+    if monopol:
+        if os.path.exists(sujet + '_' + cond + '_' + str(session_i+1) + '_Coh.npy') == True :
+            print('ALREADY COMPUTED')
+            return
+    else:
+        if os.path.exists(sujet + '_' + cond + '_' + str(session_i+1) + '_Coh_bi.npy') == True :
+            print('ALREADY COMPUTED')
+            return
 
     if cond == 'FR_MV':
         respi_i = chan_list.index('ventral')
@@ -83,27 +88,35 @@ def precompute_surrogates_coh(sujet, band_prep, cond, session_i):
 
         surrogates_n_chan[n_chan,:] = compute_surrogates_coh_results[n_chan]
 
-    np.save(sujet + '_' + cond + '_' + str(session_i+1) + '_Coh.npy', surrogates_n_chan)
+    if monopol:
+        np.save(sujet + '_' + cond + '_' + str(session_i+1) + '_Coh.npy', surrogates_n_chan)
+    else:
+        np.save(sujet + '_' + cond + '_' + str(session_i+1) + '_Coh_bi.npy', surrogates_n_chan)
 
     print('done')
 
 
 
-def precompute_surrogates_cyclefreq(sujet, band_prep, cond, session_i):
+def precompute_surrogates_cyclefreq(sujet, band_prep, cond, session_i, monopol):
     
     print(cond)
 
     #### load params
     respfeatures_allcond = load_respfeatures(sujet)
-    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet)
+    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet, monopol)
 
     #### load data
     os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
-    data_tmp = load_data_sujet(sujet, band_prep, cond, session_i)
+    data_tmp = load_data_sujet(sujet, band_prep, cond, session_i, monopol)
 
-    if os.path.exists(f'{sujet}_{cond}_{str(session_i+1)}_cyclefreq_{band_prep}.npy') == True :
-        print('ALREADY COMPUTED')
-        return
+    if monopol:
+        if os.path.exists(f'{sujet}_{cond}_{str(session_i+1)}_cyclefreq_{band_prep}.npy') == True :
+            print('ALREADY COMPUTED')
+            return
+    else:
+        if os.path.exists(f'{sujet}_{cond}_{str(session_i+1)}_cyclefreq_{band_prep}_bi.npy') == True :
+            print('ALREADY COMPUTED')
+            return
 
     #### compute surrogates
     surrogates_n_chan = np.zeros((3, data_tmp.shape[0], stretch_point_surrogates))
@@ -151,7 +164,10 @@ def precompute_surrogates_cyclefreq(sujet, band_prep, cond, session_i):
         surrogates_n_chan[2, n_chan, :] = compute_surrogates_cyclefreq_results[n_chan][2]
     
     #### save
-    np.save(f'{sujet}_{cond}_{str(session_i+1)}_cyclefreq_{band_prep}.npy', surrogates_n_chan)
+    if monopol:
+        np.save(f'{sujet}_{cond}_{str(session_i+1)}_cyclefreq_{band_prep}.npy', surrogates_n_chan)
+    else:
+        np.save(f'{sujet}_{cond}_{str(session_i+1)}_cyclefreq_{band_prep}_bi.npy', surrogates_n_chan)
 
     print('done')
 
@@ -189,18 +205,18 @@ def shuffle_windows(x):
 
 
 
-def precompute_MI(sujet, band_prep, cond, session_i):
+def precompute_MI(sujet, band_prep, cond, session_i, monopol):
 
     print(cond)
 
     #### load params
     respfeatures_allcond = load_respfeatures(sujet)
     respfeatures_i = respfeatures_allcond[cond][session_i]
-    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet)
+    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet, monopol)
 
     #### load data
     os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
-    data_tmp = load_data_sujet(sujet, band_prep, cond, session_i)
+    data_tmp = load_data_sujet(sujet, band_prep, cond, session_i, monopol)
 
     if os.path.exists(f'{sujet}_{cond}_{str(session_i+1)}_MI_{band_prep}.npy') == True :
         print('ALREADY COMPUTED')
@@ -292,22 +308,27 @@ def precompute_MI(sujet, band_prep, cond, session_i):
 
 
 
-def precompute_MVL(sujet, band_prep, cond, session_i):
+def precompute_MVL(sujet, band_prep, cond, session_i, monopol):
 
     print(cond)
 
     #### load params
     respfeatures_allcond = load_respfeatures(sujet)
     respfeatures_i = respfeatures_allcond[cond][session_i]
-    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet)
+    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet, monopol)
 
     #### load data
     os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
-    data_tmp = load_data_sujet(sujet, band_prep, cond, session_i)
+    data_tmp = load_data_sujet(sujet, band_prep, cond, session_i, monopol)
 
-    if os.path.exists(f'{sujet}_{cond}_{str(session_i+1)}_MVL_{band_prep}.npy') == True :
-        print('ALREADY COMPUTED')
-        return
+    if monopol:
+        if os.path.exists(f'{sujet}_{cond}_{str(session_i+1)}_MVL_{band_prep}.npy') == True :
+            print('ALREADY COMPUTED')
+            return
+    else:
+        if os.path.exists(f'{sujet}_{cond}_{str(session_i+1)}_MVL_{band_prep}_bi.npy') == True :
+            print('ALREADY COMPUTED')
+            return
 
     #### compute surrogates
     #n_chan = 95
@@ -364,7 +385,10 @@ def precompute_MVL(sujet, band_prep, cond, session_i):
         plt.show()
     
     #### save
-    np.save(f'{sujet}_{cond}_{str(session_i+1)}_MVL_{band_prep}.npy', MVL_surrogates)
+    if monopol:
+        np.save(f'{sujet}_{cond}_{str(session_i+1)}_MVL_{band_prep}.npy', MVL_surrogates)
+    else:
+        np.save(f'{sujet}_{cond}_{str(session_i+1)}_MVL_{band_prep}_bi.npy', MVL_surrogates)
 
     print('done')
 
@@ -379,51 +403,55 @@ def precompute_MVL(sujet, band_prep, cond, session_i):
 
 if __name__ == '__main__':
 
+    #sujet = sujet_list[-1]
+    for sujet in sujet_list:    
 
-    #### load data
-    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet)
-    respfeatures_allcond = load_respfeatures(sujet)
+        for monopol in [True, False]:
 
-    #### compute and save
-    print('######## COMPUTE SURROGATES ########')
+            #### load data
+            conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet, monopol)
+            respfeatures_allcond = load_respfeatures(sujet)
 
-    #band_prep = band_prep_list[0]
-    for band_prep in band_prep_list:
+            #### compute and save
+            print('######## COMPUTE SURROGATES ########')
 
-        print(f'COMPUTE FOR {band_prep}')
+            #band_prep = band_prep_list[0]
+            for band_prep in band_prep_list:
 
-        #cond = 'RD_CV'
-        for cond in conditions:
+                print(f'COMPUTE FOR {band_prep}')
 
-            if len(respfeatures_allcond[cond]) == 1:
+                #cond = 'RD_CV'
+                for cond in conditions:
 
-                # precompute_surrogates_cyclefreq(sujet, band_prep, cond, 0)
-                execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_surrogates_cyclefreq', [sujet, band_prep, cond, 0])
+                    if len(respfeatures_allcond[cond]) == 1:
 
-                # precompute_MI(sujet, band_prep, cond, 0)
-                # execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_MI', [sujet, band_prep, cond, 0])
-                # precompute_MVL(sujet, band_prep, cond, 0)
-                execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_MVL', [sujet, band_prep, cond, 0])               
+                        # precompute_surrogates_cyclefreq(sujet, band_prep, cond, 0, monopol)
+                        execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_surrogates_cyclefreq', [sujet, band_prep, cond, 0, monopol])
 
-                if band_prep == 'lf':
-                    # precompute_surrogates_coh(sujet, band_prep, cond, 0)
-                    execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_surrogates_coh', [sujet, band_prep, cond, 0])
+                        # precompute_MI(sujet, band_prep, cond, 0, monopol)
+                        # execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_MI', [sujet, band_prep, cond, 0, monopol])
+                        # precompute_MVL(sujet, band_prep, cond, 0, monopol)
+                        execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_MVL', [sujet, band_prep, cond, 0, monopol])               
 
-            elif len(respfeatures_allcond[cond]) > 1:
+                        if band_prep == 'lf':
+                            # precompute_surrogates_coh(sujet, band_prep, cond, 0, monopol)
+                            execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_surrogates_coh', [sujet, band_prep, cond, 0, monopol])
 
-                for session_i in range(len(respfeatures_allcond[cond])):
+                    elif len(respfeatures_allcond[cond]) > 1:
 
-                    # precompute_surrogates_cyclefreq(sujet, band_prep, cond, session_i)
-                    execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_surrogates_cyclefreq', [sujet, band_prep, cond, session_i])
+                        for session_i in range(len(respfeatures_allcond[cond])):
 
-                    # precompute_MI(sujet, band_prep, cond, session_i)
-                    # execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_MI', [sujet, band_prep, cond, session_i])
-                    # precompute_MVL(sujet, band_prep, cond, 0)
-                    execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_MVL', [sujet, band_prep, cond, session_i])
+                            # precompute_surrogates_cyclefreq(sujet, band_prep, cond, session_i, monopol)
+                            execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_surrogates_cyclefreq', [sujet, band_prep, cond, session_i, monopol])
 
-                    if band_prep == 'lf':
-                        # precompute_surrogates_coh(sujet, band_prep, cond, session_i)
-                        execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_surrogates_coh', [sujet, band_prep, cond, session_i])
+                            # precompute_MI(sujet, band_prep, cond, session_i, monopol)
+                            # execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_MI', [sujet, band_prep, cond, session_i, monopol])
+                            # precompute_MVL(sujet, band_prep, cond, 0, monopol)
+                            execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_MVL', [sujet, band_prep, cond, session_i, monopol])
+
+                            if band_prep == 'lf':
+                                # precompute_surrogates_coh(sujet, band_prep, cond, session_i, monopol)
+                                execute_function_in_slurm_bash('n6_precompute_surrogates', 'precompute_surrogates_coh', [sujet, band_prep, cond, session_i, monopol])
 
 
 

@@ -203,7 +203,180 @@ def generate_plot_loca(chan_list_trc):
         
 
 
+
+################################
+######## BIPOLARIZATION ########
+################################
+
+
+def bipolarize_anatomy_name(plot_name_sel):
+
+    #### bipolarize anatomy localization
+    correspondance_bipol = []
+
+    for plot_i, plot_name in enumerate(plot_name_sel):
+
+        if plot_i == len(plot_name_sel)-1:
+
+            continue
+
+        correspondance_bipol.append(f'{plot_name_sel[plot_i]}-{plot_name_sel[plot_i+1]}')
+
+    return correspondance_bipol
+
+
+
+
+
+
+def bipolarize_anatomy_localization(anat_selection):
+
+    #### bipolarize anatomy localization
+    correspondance_ROI_bipol = []
+    #plot_i, plot_name = 0, correspondance_ROI[0]
+    for plot_i, plot_name in enumerate(anat_selection):
+
+        if plot_i == len(anat_selection)-1:
+            
+            continue
+
+        if anat_selection[plot_i+1] == plot_name:
+            
+            correspondance_ROI_bipol.append(plot_name)
+            continue
+
+        if anat_selection[plot_i] not in ['WM', 'unknown', 'Unknown', 'ventricule'] and anat_selection[plot_i+1] in ['WM', 'unknown', 'Unknown', 'ventricule']:
+            
+            correspondance_ROI_bipol.append(plot_name)
+            continue
+
+        if anat_selection[plot_i] in ['WM', 'unknown', 'Unknown', 'ventricule'] and anat_selection[plot_i+1] in ['WM', 'unknown', 'Unknown', 'ventricule']:
+            
+            correspondance_ROI_bipol.append(plot_name)
+            continue
+
+        if anat_selection[plot_i] in ['WM', 'unknown', 'Unknown', 'ventricule'] and anat_selection[plot_i+1] not in ['WM', 'unknown', 'Unknown', 'ventricule']:
+
+            correspondance_ROI_bipol.append(anat_selection[plot_i+1])
+            continue
+
+        if anat_selection[plot_i] not in ['WM', 'unknown', 'Unknown', 'ventricule'] and anat_selection[plot_i+1] not in ['WM', 'unknown', 'Unknown', 'ventricule']:
+
+            correspondance_ROI_bipol.append(anat_selection[plot_i])
+            continue
+
+    return correspondance_ROI_bipol
+
+        
+
+
+
+
+def generate_plot_loca_bipolaire():
+
+    #### open loca file
+    os.chdir(os.path.join(path_anatomy, sujet))
+
+    df = pd.read_excel(f'{sujet}_plot_loca.xlsx')
+    df = df.drop(['Unnamed: 0'], axis=1)
+
+    df = df.sort_values('plot')
+    df.index = range(df.index.shape[0])
+
+    #### separate electrodes
+    plot_name_bip = []
+    plot_ROI_bip = []
+    plot_Lobes_bip = []
+
+    verif_count = 0
+    verif_count_name_bip = 0
+    verif_count_anat_ROI_bip = 0
+    verif_count_anat_Lobes_bip = 0
+
+    #### discriminate electrodes    
+    plot_list_unique = np.unique(np.array([plot_i.split('0')[0] for plot_i in df['plot'].values]))
+    plot_list_unique = np.unique(np.array([plot_i.split('1')[0] for plot_i in plot_list_unique]))
+
+    #plot_unique_i = plot_list_unique[1]
+    for plot_unique_i in plot_list_unique:
+        
+        plot_selection_i = np.array([plot_i for plot_i, plot_name in enumerate(df['plot'].values) if plot_name.find(plot_unique_i) != -1 and plot_name.find('p') == plot_unique_i.find('p')])
+        
+        verif_count += plot_selection_i.shape[0]-1
+        
+        plot_name_sel = df['plot'][plot_selection_i].values
+        plot_name_sel_bipol = bipolarize_anatomy_name(plot_name_sel)
+
+        anat_selection_ROI = df['correspondance_ROI'][plot_selection_i].values
+        anat_selection_Lobes = df['correspondance_lobes'][plot_selection_i].values
+
+        anat_selection_ROI_bi = bipolarize_anatomy_localization(anat_selection_ROI)
+        anat_selection_Lobes_bi = bipolarize_anatomy_localization(anat_selection_Lobes)
+
+        verif_count_name_bip += len(plot_name_sel_bipol)
+        verif_count_anat_ROI_bip += len(anat_selection_ROI_bi)
+        verif_count_anat_Lobes_bip += len(anat_selection_Lobes_bi)
+
+        plot_name_bip.extend(plot_name_sel_bipol)
+        plot_ROI_bip.extend(anat_selection_ROI_bi)
+        plot_Lobes_bip.extend(anat_selection_Lobes_bi)
+
+    #### verif bipol
+    if verif_count != verif_count_anat_ROI_bip or verif_count != verif_count_anat_Lobes_bip or verif_count != verif_count_name_bip:
+        raise ValueError('!! WARNING !! bipolarization issue')
+
+    #### update df for bipol
+    df = df.iloc[:verif_count, :]
+    df = df.drop('MNI', axis=1)
+    df = df.drop('freesurfer_destrieux', axis=1)
+    df['plot'] = plot_name_bip
+    df['correspondance_ROI'] = plot_ROI_bip
+    df['correspondance_lobes'] = plot_Lobes_bip
+
+    #### export
+    os.chdir(os.path.join(path_anatomy, sujet))
+    
+    df.to_excel(sujet + '_plot_loca_bi.xlsx')
+
+    return
+        
+
+
+        
+
+
+
+
+################################
+######## EXECUTE ########
+################################
+
+
 if __name__== '__main__':
+
+
+    #### whole protocole
+    sujet = 'CHEe'
+    # sujet = 'GOBc'
+    # sujet = 'MAZm'
+    # sujet = 'TREt'
+
+    #### FR_CV only
+    # sujet = 'MUGa'
+    # sujet = 'BANc'
+    # sujet = 'KOFs'
+    # sujet = 'LEMl'
+
+    # sujet = 'pat_02459_0912'
+    # sujet = 'pat_02476_0929'
+    # sujet = 'pat_02495_0949'
+
+    # sujet = 'pat_03083_1527'
+    # sujet = 'pat_03105_1551'
+    # sujet = 'pat_03128_1591'
+    # sujet = 'pat_03138_1601'
+    # sujet = 'pat_03146_1608'
+    # sujet = 'pat_03174_1634'
 
     construct_token = generate_folder_structure(sujet)
 
@@ -215,13 +388,15 @@ if __name__== '__main__':
     else:
 
         os.chdir(os.path.join(path_anatomy, sujet))
-        if os.path.exists(sujet + '_plot_loca.xlsx'):
+        if os.path.exists(sujet + '_plot_loca.xlsx') and os.path.exists(sujet + '_plot_loca_bi.xlsx'):
             print('#### ALREADY COMPUTED ####')
             exit()
 
         #### execute
         chan_list_trc = extract_chanlist()
         generate_plot_loca(chan_list_trc)
+        
+        generate_plot_loca_bipolaire()
 
 
 

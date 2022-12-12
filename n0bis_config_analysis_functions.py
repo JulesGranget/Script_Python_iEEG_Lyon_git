@@ -74,7 +74,6 @@ def generate_folder_structure(sujet):
     construct_token = create_folder('TF', construct_token)
     construct_token = create_folder('PSD_Coh', construct_token)
     construct_token = create_folder('baselines', construct_token)
-    construct_token = create_folder('DFC', construct_token)
     construct_token = create_folder('FC', construct_token)
 
         #### anatomy
@@ -91,7 +90,6 @@ def generate_folder_structure(sujet):
     construct_token = create_folder('PSD_Coh', construct_token)
     construct_token = create_folder('ITPC', construct_token)
     construct_token = create_folder('FC', construct_token)
-    construct_token = create_folder('DFC', construct_token)
     construct_token = create_folder('HRV', construct_token)
     construct_token = create_folder('df', construct_token)
 
@@ -110,10 +108,11 @@ def generate_folder_structure(sujet):
     construct_token = create_folder('summary', construct_token)
     construct_token = create_folder('allcond', construct_token)
 
-            #### DFC
-    os.chdir(os.path.join(path_general, 'Analyses', 'results', sujet, 'DFC'))
+            #### FC
+    os.chdir(os.path.join(path_general, 'Analyses', 'results', sujet, 'FC'))
     construct_token = create_folder('summary', construct_token)
     construct_token = create_folder('allcond', construct_token)
+    construct_token = create_folder('verif', construct_token)
 
         #### allplot
     os.chdir(os.path.join(path_general, 'Analyses', 'results', 'allplot'))
@@ -125,18 +124,12 @@ def generate_folder_structure(sujet):
     construct_token = create_folder('TF', construct_token)
     construct_token = create_folder('ITPC', construct_token)
     construct_token = create_folder('FC', construct_token)
-    construct_token = create_folder('DFC', construct_token)
     construct_token = create_folder('PSD_Coh', construct_token)
 
-            #### DFC
-    os.chdir(os.path.join(path_general, 'Analyses', 'results', 'allplot', 'allcond', 'DFC'))
-    construct_token = create_folder('summary', construct_token)
-    construct_token = create_folder('allcond', construct_token) 
-
+            #### FR_CV
     os.chdir(os.path.join(path_general, 'Analyses', 'results', 'allplot', 'FR_CV'))
     construct_token = create_folder('TF', construct_token)
     construct_token = create_folder('ITPC', construct_token)
-    construct_token = create_folder('DFC', construct_token)
     construct_token = create_folder('PSD_Coh', construct_token)
     construct_token = create_folder('stats', construct_token)
 
@@ -163,11 +156,6 @@ def generate_folder_structure(sujet):
     os.chdir(os.path.join(path_general, 'Analyses', 'results', 'allplot', 'allcond', 'ITPC'))
     construct_token = create_folder('ROI', construct_token)
     construct_token = create_folder('Lobes', construct_token)
-
-            #### DFC
-    os.chdir(os.path.join(path_general, 'Analyses', 'results', 'allplot', 'FR_CV', 'DFC'))
-    construct_token = create_folder('ROI', construct_token)
-    construct_token = create_folder('Lobes', construct_token)  
 
             #### FC          
     os.chdir(os.path.join(path_general, 'Analyses', 'results', 'allplot', 'allcond', 'FC'))
@@ -457,10 +445,10 @@ def execute_function_in_slurm_bash_mem_choice(name_script, name_function, params
 ################################
 
 
-def get_wavelets(sujet, band_prep, freq):
+def get_wavelets(sujet, band_prep, freq, monopol):
 
     #### get params
-    prms = get_params(sujet)
+    prms = get_params(sujet, monopol)
 
     #### select wavelet parameters
     if band_prep == 'wb':
@@ -507,9 +495,9 @@ def get_wavelets(sujet, band_prep, freq):
 ############################
 
 
-def get_params(sujet):
+def get_params(sujet, monopol):
 
-    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet)
+    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet, monopol)
     respi_ratio_allcond = get_all_respi_ratio(sujet)
     nwind, nfft, noverlap, hannw = get_params_spectral_analysis(srate)
 
@@ -520,7 +508,7 @@ def get_params(sujet):
 
     
 
-def extract_chanlist_srate_conditions(sujet):
+def extract_chanlist_srate_conditions(sujet, monopol):
 
     path_source = os.getcwd()
     
@@ -539,11 +527,14 @@ def extract_chanlist_srate_conditions(sujet):
 
     #### extract data
     band_prep = band_prep_list[0]
-    cond = conditions[0]
+    if monopol:
+        file_to_search = f'{sujet}_FR_CV_1_{band_prep}.fif'
+    else:
+        file_to_search = f'{sujet}_FR_CV_1_{band_prep}_bi.fif'
 
     load_i = []
     for session_i, session_name in enumerate(os.listdir()):
-        if ( session_name.find(cond) != -1 ) & ( session_name.find(band_prep) != -1 ):
+        if ( session_name.find(file_to_search) != -1 ) :
             load_i.append(session_i)
         else:
             continue
@@ -605,7 +596,7 @@ def extract_chanlist_srate_conditions_for_sujet(sujet_tmp, conditions_allsubject
 
 
 
-def load_data_sujet(sujet, band_prep, cond, session_i):
+def load_data_sujet(sujet, band_prep, cond, session_i, monopol):
 
     path_source = os.getcwd()
     
@@ -613,15 +604,16 @@ def load_data_sujet(sujet, band_prep, cond, session_i):
 
     load_i = []
     for i, session_name in enumerate(os.listdir()):
-        if ( session_name.find(cond) != -1 ) & ( session_name.find(band_prep) != -1 ):
-            load_i.append(i)
+        if monopol:
+            if ( session_name.find(cond) != -1 ) & ( session_name.find(band_prep) != -1 ) & ( session_name.find('bi') == -1 ):
+                load_i.append(i)
         else:
-            continue
+            if ( session_name.find(cond) != -1 ) & ( session_name.find(band_prep) != -1 ) & ( session_name.find('bi') != -1 ):
+                load_i.append(i)
 
-    load_list = [os.listdir()[i] for i in load_i]
-    load_name = load_list[session_i]
+    load_list = [os.listdir()[i] for i in load_i if os.listdir()[i].find(str(session_i+1)) != -1]
 
-    raw = mne.io.read_raw_fif(load_name, preload=True, verbose='critical')
+    raw = mne.io.read_raw_fif(load_list[0], preload=True, verbose='critical')
 
     data = raw.get_data()
 
@@ -636,6 +628,8 @@ def load_data_sujet(sujet, band_prep, cond, session_i):
     del raw
 
     return data
+
+
 
 def get_srate(sujet):
 
@@ -659,7 +653,7 @@ def get_srate(sujet):
 
 
 
-def organize_raw(sujet, raw):
+def organize_raw(sujet, raw, monopol):
 
     #### extract chan_list
     chan_list_clean = []
@@ -892,20 +886,26 @@ def stretch_data_tf(resp_features, nb_point_by_cycle, data, srate):
 
 
 
-def get_loca_df(sujet):
+def get_loca_df(sujet, monopol):
 
     path_source = os.getcwd()
 
     os.chdir(os.path.join(path_anatomy, sujet))
 
-    file_plot_select = pd.read_excel(sujet + '_plot_loca.xlsx')
+    if monopol:
+        file_plot_select = pd.read_excel(sujet + '_plot_loca.xlsx')
+    else:
+        file_plot_select = pd.read_excel(sujet + '_plot_loca_bi.xlsx')
 
     chan_list_ieeg_trc = file_plot_select['plot'][file_plot_select['select'] == 1].values.tolist()
 
     if sujet[:3] == 'pat':
         chan_list_ieeg_csv = chan_list_ieeg_trc.copy()
     else:
-        chan_list_ieeg_csv, trash = modify_name(chan_list_ieeg_trc)
+        if monopol:
+            chan_list_ieeg_csv, trash = modify_name(chan_list_ieeg_trc)
+        else:
+            chan_list_ieeg_csv = chan_list_ieeg_trc
         chan_list_ieeg_csv.sort()
 
     ROI_ieeg = []
@@ -962,7 +962,7 @@ def get_mni_loca(sujet):
 ######## CHANGE NAME CSV TRC ########
 ########################################
 
-
+#chan_list = prms['chan_list_ieeg']
 def modify_name(chan_list):
     
     chan_list_modified = []
@@ -1167,6 +1167,13 @@ def print_advancement(i, i_final, steps=[25, 50, 75]):
 ################################
 
 
+
+
+################################
+######## MISCALLENOUS ########
+################################
+
+
 def zscore(x):
 
     x_zscore = (x - x.mean()) / x.std()
@@ -1185,6 +1192,30 @@ def zscore_mat(x):
         _zscore_mat[i,:] = zscore(x[i,:])
 
     return _zscore_mat
+
+
+
+def rscore(x):
+
+    mad = np.median( np.abs(x-np.median(x)) ) * 1.4826 # median_absolute_deviation
+
+    rzscore_x = (x-np.median(x)) / mad
+
+    return rzscore_x
+    
+
+
+
+def rscore_mat(x):
+
+    _zscore_mat = np.zeros(( x.shape[0], x.shape[1] ))
+    
+    for i in range(x.shape[0]):
+
+        _zscore_mat[i,:] = rscore(x[i,:])
+
+    return _zscore_mat
+
 
 
 

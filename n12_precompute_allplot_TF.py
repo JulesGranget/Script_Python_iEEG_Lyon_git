@@ -51,7 +51,7 @@ def get_all_ROI_and_Lobes_name():
 
 
 
-def get_ROI_Lobes_list_and_Plots(cond):
+def get_ROI_Lobes_list_and_Plots(cond, monopol):
 
     #### generate anat list
     os.chdir(os.path.join(path_anatomy, 'nomenclature'))
@@ -76,8 +76,8 @@ def get_ROI_Lobes_list_and_Plots(cond):
 
     #### filter only sujet with correct cond
     sujet_list_selected = []
-    for sujet_i in sujet_list_FR_CV:
-        prms_i = get_params(sujet_i)
+    for sujet_i in sujet_list:
+        prms_i = get_params(sujet_i, monopol)
         if cond in prms_i['conditions']:
             sujet_list_selected.append(sujet_i)
 
@@ -86,7 +86,11 @@ def get_ROI_Lobes_list_and_Plots(cond):
     for sujet_i in sujet_list_selected:
 
         os.chdir(os.path.join(path_anatomy, sujet_i))
-        plot_loca_df = pd.read_excel(sujet_i + '_plot_loca.xlsx')
+
+        if monopol:
+            plot_loca_df = pd.read_excel(f'{sujet_i}_plot_loca.xlsx')
+        else:
+            plot_loca_df = pd.read_excel(f'{sujet_i}_plot_loca_bi.xlsx')
 
         chan_list_ieeg = plot_loca_df['plot'][plot_loca_df['select'] == 1].values
 
@@ -130,11 +134,14 @@ def get_ROI_Lobes_list_and_Plots(cond):
 ################################
 
 
-#ROI_to_process = ROI_to_include[22]
-def get_TF_and_ITPC_for_ROI(ROI_to_process, cond):
+#ROI_to_process = ROI_to_include[0]
+def get_TF_and_ITPC_for_ROI(ROI_to_process, cond, monopol):
+
+    #### load srate
+    srate = get_params(sujet_list[0], monopol)['srate']
 
     #### load anat
-    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(cond)
+    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(cond, monopol)
 
     #### identify stretch point
     stretch_point = stretch_point_TF
@@ -187,8 +194,9 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process, cond):
         plot_tmp_mod = plot_to_process_i[1]
 
         #### load subject params
-        conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions_for_sujet(sujet_tmp, conditions_allsubjects)
-        if sujet_tmp[:3] != 'pat':
+        conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet_tmp, monopol)
+
+        if sujet_tmp[:3] != 'pat' and monopol:
             chan_list_ieeg, chan_list_keep = modify_name(chan_list_ieeg)
 
         #### identify plot name
@@ -197,13 +205,19 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process, cond):
         plot_tmp_i = chan_list_ieeg.index(plot_tmp)
 
         #### add length recorded
-        len_recorded.append(load_data_sujet(sujet_tmp, 'lf', cond, 0)[plot_tmp_i,:].shape[0]/srate/60)
+        band_prep = 'lf'
+        len_recorded.append(load_data_sujet(sujet_tmp, band_prep, cond, 0, monopol)[plot_tmp_i,:].shape[0]/srate/60)
 
         os.chdir(os.path.join(path_precompute, sujet_tmp, 'TF'))
 
         #### identify trial number
         band, freq = list(dict_freq_band.items())[0]
-        n_trials = len([i for i in os.listdir() if i.find(f'{freq[0]}_{freq[1]}_{cond}') != -1])
+
+        if monopol:
+            n_trials = len([i for i in os.listdir() if i.find(f'{freq[0]}_{freq[1]}_{cond}') != -1 and i.find('STATS') == -1 and i.find('bi') == -1])
+        else:
+            n_trials = len([i for i in os.listdir() if i.find(f'{freq[0]}_{freq[1]}_{cond}') != -1 and i.find('STATS') == -1 and i.find('bi') != -1])
+
 
         #### load TF and mean trial
         #band, freq = 'l_gamma', [50, 80]
@@ -214,17 +228,22 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process, cond):
                 
                 if trial_i == 0:
 
-                    TF_load = np.load(f'{sujet_tmp}_tf_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}.npy')
+                    if monopol:
+                        TF_load = np.load(f'{sujet_tmp}_tf_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}.npy')[plot_tmp_i, :, :]
+                    else:
+                        TF_load = np.load(f'{sujet_tmp}_tf_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}_bi.npy')[plot_tmp_i, :, :]
 
                 else:
 
-                    TF_load += np.load(f'{sujet_tmp}_tf_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}.npy')
+                    if monopol:
+                        TF_load += np.load(f'{sujet_tmp}_tf_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}.npy')[plot_tmp_i, :, :]
+                    else:
+                        TF_load += np.load(f'{sujet_tmp}_tf_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}_bi.npy')[plot_tmp_i, :, :]
             
             #### average trials TF
             TF_load /= n_trials
-            TF_load_zscore = zscore_mat(TF_load[plot_tmp_i,:,:])
 
-            dict_TF_for_ROI_to_process[band] = (dict_TF_for_ROI_to_process[band] + TF_load_zscore)
+            dict_TF_for_ROI_to_process[band] = (dict_TF_for_ROI_to_process[band] + TF_load)
 
             #### verif
             if debug:
@@ -239,17 +258,22 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process, cond):
                 
                 if trial_i == 0:
 
-                    ITPC_load = np.load(f'{sujet_tmp}_itpc_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}.npy')
+                    if monopol:
+                        ITPC_load = np.load(f'{sujet_tmp}_itpc_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}.npy')[plot_tmp_i, :, :]
+                    else:
+                        ITPC_load = np.load(f'{sujet_tmp}_itpc_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}_bi.npy')[plot_tmp_i, :, :]
 
                 else:
 
-                    ITPC_load += np.load(f'{sujet_tmp}_itpc_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}.npy')
+                    if monopol:
+                        ITPC_load += np.load(f'{sujet_tmp}_itpc_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}.npy')[plot_tmp_i, :, :]
+                    else:
+                        ITPC_load += np.load(f'{sujet_tmp}_itpc_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}_bi.npy')[plot_tmp_i, :, :]
             
             #### average trials ITPC
             ITPC_load /= n_trials
-            ITPC_load_zscore = zscore_mat(ITPC_load[plot_tmp_i,:,:])
 
-            dict_ITPC_for_ROI_to_process[band] = (dict_ITPC_for_ROI_to_process[band] + ITPC_load_zscore)
+            dict_ITPC_for_ROI_to_process[band] = (dict_ITPC_for_ROI_to_process[band] + ITPC_load)
 
     #### mean
     for band, freq in dict_freq_band.items():
@@ -271,13 +295,16 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process, cond):
 
 
 # Lobe_to_process = 'Occipital'
-def get_TF_and_ITPC_for_Lobe(Lobe_to_process, cond):
+def get_TF_and_ITPC_for_Lobe(Lobe_to_process, cond, monopol):
+
+    #### load srate
+    srate = get_params(sujet_list[0], monopol)['srate']
 
     #### load anat
     ROI_list_allband, Lobe_list_allband = get_all_ROI_and_Lobes_name()
     len_ROI, len_Lobes = len(list(ROI_list_allband.keys())), len(list(Lobe_list_allband.keys()))
-    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(cond)
-
+    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(cond, monopol)
+    
     #### identify stretch point
     stretch_point = stretch_point_TF
 
@@ -327,11 +354,11 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process, cond):
         plot_tmp_mod = plot_to_process_i[1]
 
         #### load subject params
-        conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions_for_sujet(sujet_tmp, conditions_allsubjects)
+        conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet_tmp, monopol)
         chan_list_modified, chan_list_keep = modify_name(chan_list_ieeg)
 
         #### identify plot name in trc
-        if sujet_tmp[:3] != 'pat':
+        if sujet_tmp[:3] != 'pat' and monopol:
             list_mod, list_trc = modify_name(chan_list_ieeg)
             plot_tmp = list_trc[list_mod.index(plot_tmp_mod)]
         else:
@@ -340,13 +367,19 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process, cond):
         plot_tmp_i = chan_list_ieeg.index(plot_tmp)
 
         #### add length recorded
-        len_recorded.append(load_data_sujet(sujet_tmp, 'lf', cond, 0)[plot_tmp_i,:].shape[0]/srate/60)
+        band_prep = 'lf'
+        len_recorded.append(load_data_sujet(sujet_tmp, band_prep, cond, 0, monopol)[plot_tmp_i,:].shape[0]/srate/60)
 
         os.chdir(os.path.join(path_precompute, sujet_tmp, 'TF'))
 
         #### identify trial number
         band, freq = list(dict_freq_band.items())[0]
-        n_trials = len([i for i in os.listdir() if i.find(f'{freq[0]}_{freq[1]}_{cond}') != -1])
+
+        if monopol:
+            n_trials = len([i for i in os.listdir() if i.find(f'{freq[0]}_{freq[1]}_{cond}') != -1 and i.find('STATS') == -1 and i.find('bi') == -1])
+        else:
+            n_trials = len([i for i in os.listdir() if i.find(f'{freq[0]}_{freq[1]}_{cond}') != -1 and i.find('STATS') == -1 and i.find('bi') != -1])
+
 
         #### load TF and mean trial
         for band, freq in dict_freq_band.items():
@@ -355,17 +388,23 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process, cond):
                 
                 if trial_i == 0:
 
-                   TF_load = np.load(f'{sujet_tmp}_tf_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}.npy')
+                    if monopol:
+                        TF_load = np.load(f'{sujet_tmp}_tf_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}.npy')[plot_tmp_i, :, :]
+                    else:
+                        TF_load = np.load(f'{sujet_tmp}_tf_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}_bi.npy')[plot_tmp_i, :, :]
 
                 else:
 
-                    TF_load += np.load(f'{sujet_tmp}_tf_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}.npy')
+                    if monopol:
+                        TF_load += np.load(f'{sujet_tmp}_tf_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}.npy')[plot_tmp_i, :, :]
+                    else:
+                        TF_load += np.load(f'{sujet_tmp}_tf_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}_bi.npy')[plot_tmp_i, :, :]
+
             
             #### average trials TF and normalize
             TF_load /= n_trials
-            TF_load_zscore = zscore_mat(TF_load[plot_tmp_i,:,:])
 
-            dict_TF_for_Lobe_to_process[band] = (dict_TF_for_Lobe_to_process[band] + TF_load_zscore)
+            dict_TF_for_Lobe_to_process[band] = (dict_TF_for_Lobe_to_process[band] + TF_load)
 
         #### load ITPC and mean trial
         os.chdir(os.path.join(path_precompute, sujet_tmp, 'ITPC'))
@@ -375,17 +414,22 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process, cond):
                 
                 if trial_i == 0:
 
-                   ITPC_load = np.load(f'{sujet_tmp}_itpc_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}.npy')
+                    if monopol:
+                        ITPC_load = np.load(f'{sujet_tmp}_itpc_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}.npy')[plot_tmp_i, :, :]
+                    else:
+                        ITPC_load = np.load(f'{sujet_tmp}_itpc_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}_bi.npy')[plot_tmp_i, :, :]
 
                 else:
 
-                    ITPC_load += np.load(f'{sujet_tmp}_itpc_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}.npy')
+                    if monopol:
+                        ITPC_load += np.load(f'{sujet_tmp}_itpc_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}.npy')[plot_tmp_i, :, :]
+                    else:
+                        ITPC_load += np.load(f'{sujet_tmp}_itpc_{str(freq[0])}_{str(freq[1])}_{cond}_{trial_i+1}_bi.npy')[plot_tmp_i, :, :]
             
             #### average trials ITPC
             ITPC_load /= n_trials
-            ITPC_load_zscore = zscore_mat(ITPC_load[plot_tmp_i,:,:])
 
-            dict_ITPC_for_Lobe_to_process[band] = (dict_ITPC_for_Lobe_to_process[band] + ITPC_load_zscore)
+            dict_ITPC_for_Lobe_to_process[band] = (dict_ITPC_for_Lobe_to_process[band] + ITPC_load)
 
     #### mean
     for band, freq in dict_freq_band.items():
@@ -417,26 +461,40 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process, cond):
 
 
 
-def compilation_allplot_analysis(cond):
+def compilation_allplot_analysis(cond, monopol):
+
+    #### verify if all srate are the same
+    srates_verif = np.array([get_params(sujet, monopol)['srate'] for sujet in sujet_list])
+    if np.unique(srates_verif).shape[0] != 1:
+        raise ValueError('srate are different for every subjects')
+    else:
+        srate = np.unique(srates_verif)[0]
 
     #### verify computation
     os.chdir(os.path.join(path_precompute, 'allplot'))
     band = list(freq_band_list[0].keys())[0]
-    if os.path.exists(f'ROI_TF_ITPC_{cond}_allband.npy') and os.path.exists(f'Lobes_TF_ITPC_{cond}_allband.npy'):
-        print(f'ALREADY COMPUTED {cond}')
-        return
+
+    if monopol:
+        if os.path.exists(f'ROI_TF_ITPC_{cond}_allband.nc') and os.path.exists(f'Lobes_TF_ITPC_{cond}_allband.nc'):
+            print(f'ALREADY COMPUTED {cond}')
+            return
+    else:
+        if os.path.exists(f'ROI_TF_ITPC_{cond}_allband_bi.nc') and os.path.exists(f'Lobes_TF_ITPC_{cond}_allband_bi.nc'):
+            print(f'ALREADY COMPUTED {cond}')
+            return
+
 
     print(cond)
 
     #### load anat
-    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(cond)
+    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(cond, monopol)
         
     #### identify stretch point
     stretch_point = stretch_point_TF
     
     #### compute TF & ITPC for ROI
     print('#### TF and ITPC for ROI ####')
-    res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(get_TF_and_ITPC_for_ROI)(ROI_to_process, cond) for ROI_to_process in ROI_to_include)
+    res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(get_TF_and_ITPC_for_ROI)(ROI_to_process, cond, monopol) for ROI_to_process in ROI_to_include)
 
     #### generate all band to save
     dict_freq_band = {}
@@ -472,13 +530,17 @@ def compilation_allplot_analysis(cond):
 
     dict_xr = {'roi' : ROI_to_include, 'band' : band_to_export, 'TF_type' : ['ITPC', 'TF'], 'nfrex' : np.arange(0, nfrex_hf), 'times' : np.arange(0, stretch_point_TF)}
     xr_export = xr.DataArray(ROI_data_xr, coords=dict_xr.values(), dims=dict_xr.keys())
-    xr_export.to_netcdf(f'ROI_TF_ITPC_{cond}_allband.nc')
+
+    if monopol:
+        xr_export.to_netcdf(f'ROI_TF_ITPC_{cond}_allband.nc')
+    else:
+        xr_export.to_netcdf(f'ROI_TF_ITPC_{cond}_allband_bi.nc')
 
     print('done')
 
     #### compute TF & ITPC for Lobes
     print('#### TF and ITPC for Lobe ####')
-    res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(get_TF_and_ITPC_for_Lobe)(Lobe_to_process, cond) for Lobe_to_process in lobe_to_include)
+    res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(get_TF_and_ITPC_for_Lobe)(Lobe_to_process, cond, monopol) for Lobe_to_process in lobe_to_include)
 
     #### generate all band to save
     dict_freq_band = {}
@@ -514,7 +576,11 @@ def compilation_allplot_analysis(cond):
 
     dict_xr = {'lobe' : lobe_to_include, 'band' : band_to_export, 'TF_type' : ['ITPC', 'TF'], 'nfrex' : np.arange(0, nfrex_hf), 'times' : np.arange(0, stretch_point_TF)}
     xr_export = xr.DataArray(Lobe_data_xr, coords=dict_xr.values(), dims=dict_xr.keys())
-    xr_export.to_netcdf(f'Lobes_TF_ITPC_{cond}_allband.nc')
+    
+    if monopol:
+        xr_export.to_netcdf(f'Lobes_TF_ITPC_{cond}_allband.nc')
+    else:
+        xr_export.to_netcdf(f'Lobes_TF_ITPC_{cond}_allband_bi.nc')
 
     print('done')
 
@@ -536,11 +602,14 @@ def compilation_allplot_analysis(cond):
 
 if __name__ == '__main__':
 
-    #cond = 'RD_CV'
-    for cond in conditions_allsubjects:
+    #monopol = True
+    for monopol in [True, False]:
 
-        # compilation_allplot_analysis(cond)
-        execute_function_in_slurm_bash('n13_precompute_allplot_TF', 'compilation_allplot_analysis', [cond])
+        #cond = 'RD_CV'
+        for cond in ['FR_CV', 'RD_CV', 'RD_SV', 'RD_FV']:
+
+            # compilation_allplot_analysis(cond, electrode_recording_type)
+            execute_function_in_slurm_bash('n12_precompute_allplot_TF', 'compilation_allplot_analysis', [cond, monopol])
     
 
 

@@ -586,7 +586,7 @@ def correct_resp_features(respi_sig, df_detection, cond, srate):
 #respi_allcond = respi_allcond_bybycle
 def edit_df_for_sretch_cycles_deleted(sujet, respi_allcond, raw_allcond):
 
-    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet)
+    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet, monopol)
 
     for cond in conditions:
         
