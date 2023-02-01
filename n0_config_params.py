@@ -36,7 +36,7 @@ sujet = 'TREt'
 sujet_list = ['CHEe', 'GOBc', 'MAZm', 'TREt']
 
 #### FR_CV
-sujet_list_FR_CV =  ['CHEe', 'GOBc', 'MAZm', 'TREt', 'MUGa', 'BANc', 'KOFs', 'LEMl', 
+sujet_list_FR_CV =  ['CHEe', 'GOBc', 'MAZm', 'TREt', 'BANc', 'KOFs', 'LEMl', 
                     'pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949',
                     'pat_03083_1527', 'pat_03105_1551', 'pat_03128_1591', 'pat_03138_1601',
                     'pat_03146_1608', 'pat_03174_1634'
@@ -164,7 +164,21 @@ electrodes_to_remove = {
 'GOBc' : ['Bp'], # because the neurosurgeon didnt indicates the electrode's real size
 'MAZm' : [],
 'MUGa' : [],
-'TREt' : []
+'TREt' : [],
+'BANc' : [], 
+'KOFs' : [], 
+'LEMl' : [], 
+
+'pat_02459_0912' : [], 
+'pat_02476_0929' : [], 
+'pat_02495_0949' : [],
+
+'pat_03083_1527' : [], 
+'pat_03105_1551' : [], 
+'pat_03128_1591' : [], 
+'pat_03138_1601' : [],
+'pat_03146_1608' : [], 
+'pat_03174_1634' : []
 
 }
 
@@ -196,6 +210,10 @@ aux_chan = {
 'KOFs' : {'nasal': 'p7+', 'ventral' : None, 'ECG' : 'ECG'}, # OK
 'LEMl' : {'nasal': 'p17+', 'ventral' : None, 'ECG' : 'ECG1'}, # OK
 
+'pat_02459_0912' : {'nasal': 'PRES1', 'ventral' : 'BELT1', 'ECG' : 'ECG1'}, # OK
+'pat_02476_0929' : {'nasal': 'PRES1', 'ventral' : 'BELT1', 'ECG' : 'ECG1'}, # OK
+'pat_02495_0949' : {'nasal': 'PRES1', 'ventral' : 'BELT1', 'ECG' : 'ECG1'}, # OK
+
 'pat_03083_1527' : {'nasal': 'PRES1', 'ventral' : 'BELT1', 'ECG' : 'ECG1'}, # OK
 'pat_03105_1551' : {'nasal': 'PRES1', 'ventral' : 'BELT1', 'ECG' : 'ECG1'}, # OK
 'pat_03128_1591' : {'nasal': 'PRES1', 'ventral' : 'BELT1', 'ECG' : 'ECG1'}, # OK
@@ -214,7 +232,7 @@ prep_step_lf = {
 'line_noise_removing' : {'execute': True},
 'high_pass' : {'execute': False, 'params' : {'l_freq' : None, 'h_freq': None}},
 'low_pass' : {'execute': True, 'params' : {'l_freq' : 0, 'h_freq': 45}},
-'average_reref' : {'execute': False},
+'average_reref' : {'execute': True},
 }
 
 prep_step_hf = {
@@ -222,7 +240,7 @@ prep_step_hf = {
 'line_noise_removing' : {'execute': True},
 'high_pass' : {'execute': True, 'params' : {'l_freq' : 55, 'h_freq': None}},
 'low_pass' : {'execute': False, 'params' : {'l_freq' : 0, 'h_freq': 45}},
-'average_reref' : {'execute': False},
+'average_reref' : {'execute': True},
 }
 
 
@@ -346,7 +364,7 @@ MI_n_bin = 18
 #### stretch
 stretch_point_TF = 1000
 stretch_TF_auto = False
-ratio_stretch_TF = 0.40
+ratio_stretch_TF = 0.50
 
 #### TF & ITPC
 nfrex_hf = 50

@@ -25,6 +25,8 @@ debug = False
 
 
 
+
+
 ########################################
 ######## DATA EXTRACTION ######## 
 ########################################
@@ -541,6 +543,11 @@ def extract_data_trc_bi(sujet):
 
 
 
+
+
+
+
+
 def import_raw_data(sujet):
 
     os.chdir(os.path.join(path_data, sujet))
@@ -578,8 +585,6 @@ def organize_raw(sujet, raw):
     #### extract data
     data = raw.get_data()
 
-    del raw
-
     #### identify aux chan
     nasal_i = chan_list_clean.index(aux_chan[sujet]['nasal'])
     ventral_i = chan_list_clean.index(aux_chan[sujet]['ventral'])
@@ -595,8 +600,6 @@ def organize_raw(sujet, raw):
 
     #### remove from data
     data_ieeg = data.copy()
-
-    del data
 
     #### remove other aux
     for aux_name in aux_chan[sujet].keys():
@@ -642,7 +645,7 @@ def organize_raw(sujet, raw):
 
         chan_list_ieeg_rmv.remove(chan_list_ieeg[remove_i])
 
-    if data_ieeg.shape[0] - len(chan_i_to_remove) != data_ieeg_rmv.shape[0]:
+    if data_ieeg.shape[0] - len(chan_to_reject) != data_ieeg_rmv.shape[0]:
         raise ValueError('problem on chan selection from plot_loca')
 
     if data_ieeg.shape[1] != data_ieeg_rmv.shape[1]:
@@ -651,24 +654,10 @@ def organize_raw(sujet, raw):
     data_ieeg = data_ieeg_rmv.copy()
     chan_list_ieeg = chan_list_ieeg_rmv.copy()
 
-    del data_ieeg_rmv
-
     return data_ieeg, chan_list_ieeg, data_aux, chan_list_aux, srate
 
 
 
-
-#plot = plot_A
-def adjust_plot_name(plot):
-
-    if len(plot.split('_')[-1]) == 1:
-        plot_adjusted = f"{plot.split('_')[0]}_0{plot.split('_')[-1]}"
-
-        return plot_adjusted
-
-    else:
-
-        return plot
 
 
 def organize_raw_bi(sujet, raw):
@@ -678,8 +667,6 @@ def organize_raw_bi(sujet, raw):
     chan_list = raw.info['ch_names']
     srate = int(raw.info['sfreq'])
     [chan_list_clean.append(nchan[23:]) for nchan in chan_list]
-
-    chan_list_aux = [aux_i for aux_i in list(aux_chan[sujet]) if aux_i != 'EMG']
 
     #### extract data
     data = raw.get_data()
@@ -700,7 +687,15 @@ def organize_raw_bi(sujet, raw):
     #### remove from data
     data_ieeg = data.copy()
 
-    del data
+    #### remove other aux
+    for aux_name in aux_chan[sujet].keys():
+
+        aux_i = chan_list_clean.index(aux_chan[sujet][aux_name])
+        data_ieeg = np.delete(data_ieeg, aux_i, axis=0)
+        chan_list_clean.remove(aux_chan[sujet][aux_name])
+
+    chan_list_aux = [aux_i for aux_i in list(aux_chan[sujet]) if aux_i != 'EMG']
+    chan_list_ieeg = chan_list_clean
 
     #### bipol channels
     os.chdir(os.path.join(path_anatomy, sujet))
@@ -718,7 +713,6 @@ def organize_raw_bi(sujet, raw):
 
     for row_i in plot_loca_df_bi.index: 
         plot_A, plot_B = plot_loca_df_bi['plot'][row_i].split('-')[0], plot_loca_df_bi['plot'][row_i].split('-')[-1]
-        plot_A, plot_B = adjust_plot_name(plot_A), adjust_plot_name(plot_B)
         plot_A_i, plot_B_i = np.where(plot_loca_df['plot'] == plot_A)[0][0], np.where(plot_loca_df['plot'] == plot_B)[0][0]
         data_ieeg_bi[row_i, :] = data_ieeg[plot_A_i, :] - data_ieeg[plot_B_i, :]
 
@@ -727,7 +721,7 @@ def organize_raw_bi(sujet, raw):
 
             plt.plot(data_ieeg[plot_A_i, :] - data_ieeg[plot_B_i, :])
             plt.show()
-    
+
     #### filter channel from plot_loca
     chan_list_ieeg = plot_loca_df_bi['plot'].values.tolist()
     chan_to_reject = plot_loca_df_bi['plot'][plot_loca_df_bi['select'] == 0].values
@@ -744,7 +738,7 @@ def organize_raw_bi(sujet, raw):
 
         chan_list_ieeg_rmv.remove(chan_list_ieeg[remove_i])
 
-    if data_ieeg_bi.shape[0] - len(chan_i_to_remove) != data_ieeg_rmv.shape[0]:
+    if data_ieeg_bi.shape[0] - len(chan_to_reject) != data_ieeg_rmv.shape[0]:
         raise ValueError('problem on chan selection from plot_loca')
 
     if data_ieeg_bi.shape[1] != data_ieeg_rmv.shape[1]:
@@ -754,6 +748,12 @@ def organize_raw_bi(sujet, raw):
     chan_list_ieeg = chan_list_ieeg_rmv.copy()
 
     return data_ieeg_bi, chan_list_ieeg, data_aux, chan_list_aux, srate
+
+
+
+
+
+
 
 
 
@@ -1085,7 +1085,7 @@ def preprocessing_ieeg(data, chan_list, srate, prep_step):
 ######## ECG DETECTION ########
 ################################
 
-def ecg_detection(sujet, data_aux, chan_list_aux, srate):
+def ecg_detection(data_aux, chan_list_aux, srate):
 
     print('#### ECG DETECTION ####')
     
@@ -1115,18 +1115,12 @@ def ecg_detection(sujet, data_aux, chan_list_aux, srate):
 
 
 
-
-
-
-
-
-
 ################################
 ######## CHOP & SAVE ########
 ################################
 
 #data, band_preproc, export_info = data_preproc_lf, 'lf', True
-def chop_save_trc(sujet, data, chan_list, data_aux, chan_list_aux, conditions_trig, trig, srate, ecg_events_time, monopol, band_preproc, export_info):
+def chop_save_trc(data, chan_list, data_aux, chan_list_aux, conditions_trig, trig, srate, ecg_events_time, monopol, band_preproc, export_info):
 
     print('#### SAVE ####')
     
@@ -1219,7 +1213,7 @@ def chop_save_trc(sujet, data, chan_list, data_aux, chan_list_aux, conditions_tr
     #condition, trig_cond = list(conditions_trig.items())[0]
     for condition, trig_cond in conditions_trig.items():
 
-        if sujet[:3] == 'pat'and condition != 'FR_CV':
+        if condition != 'FR_CV':
             continue
 
         cond_i = np.where(trig.name.values == trig_cond[0])[0]
@@ -1295,27 +1289,27 @@ def chop_save_trc(sujet, data, chan_list, data_aux, chan_list_aux, conditions_tr
 
 if __name__== '__main__':
 
-    #monopol = False
+    #monopol = True
     for monopol in [True, False]:
 
-        #sujet = sujet_list_FR_CV[0]
+        #sujet = sujet_list_FR_CV[7]
         for sujet in sujet_list_FR_CV:
 
-            print(f'######## {sujet}, monopol : {monopol} ########')
-            
-            #### verify computing
+            if sujet in sujet_list:
+                continue
 
+            print(f'#### {sujet}, monopol:{monopol} ####')
+
+            #### verif computation
             os.chdir(os.path.join(path_prep, sujet, 'sections'))
-    
             if monopol:
-                if os.path.exists(os.path.join(path_prep, sujet, 'sections', f'{sujet}_allcond_lf.fif')):
+                if os.path.exists(f'{sujet}_FR_CV_1_lf.fif'):
                     print('ALREADY COMPUTED')
                     continue
             else:
-                if os.path.exists(os.path.join(path_prep, sujet, 'sections', f'{sujet}_allcond_lf_bi.fif')):
+                if os.path.exists(f'{sujet}_FR_CV_1_lf_bi.fif'):
                     print('ALREADY COMPUTED')
                     continue
-
 
             ################################
             ######## EXTRACT DATA ########
@@ -1330,13 +1324,12 @@ if __name__== '__main__':
             else:
                 raw = import_raw_data(sujet)
                 if monopol:
-                    data, chan_list, data_aux, chan_list_aux, srate = organize_raw(sujet, raw)
+                    data_ieeg, chan_list_ieeg, data_aux, chan_list_aux, srate = organize_raw(sujet, raw)
                 else:
-                    data, chan_list, data_aux, chan_list_aux, srate = organize_raw_bi(sujet, raw)
+                    data_ieeg, chan_list_ieeg, data_aux, chan_list_aux, srate = organize_raw_bi(sujet, raw)
 
-                del raw
-
-
+            
+            
 
             ################################
             ######## ADJUST TRIG ######## 
@@ -1358,13 +1351,25 @@ if __name__== '__main__':
 
                 plt.plot(time, x)
                 plt.vlines(trig.time.values[trig_keep], ymin=np.min(x), ymax=np.max(x), colors='k')
-                plt.vlines(trigger_allsujet[sujet]['trig_time'], ymin=np.min(x), ymax=np.max(x), colors='k')
                 plt.show()
 
-            #### adjust                
-            trig_load = {'name' : trigger_allsujet[sujet]['trig_name'], 'time' : trigger_allsujet[sujet]['trig_time']}
-            trig = pd.DataFrame(trig_load)
-   
+                plt.plot(time, x)
+                plt.vlines([2947600,    3219072], ymin=np.min(x), ymax=np.max(x), colors='k')
+                plt.show()
+
+            #### adjust
+            if sujet in ['CHEe', 'MAZm', 'MUGa', 'LEMl', 'GOBc', 'TREt']:
+                
+                trig_load = {'name' : trigger_allsujet[sujet]['trig_name'], 'time' : trigger_allsujet[sujet]['trig_time']}
+                trig = pd.DataFrame(trig_load)
+
+            if sujet in ['BANc', 'KOFs']:
+
+                trigger_allsujet[sujet]['trig_time'][-1] = data_aux[0,:].shape[0]
+
+                trig_load = {'name' : trigger_allsujet[sujet]['trig_name'], 'time' : trigger_allsujet[sujet]['trig_time']}
+                trig = pd.DataFrame(trig_load)  
+
             # verif trig
             if debug == True:
                 x = data_aux[0, 1551821:1643948]
@@ -1390,7 +1395,7 @@ if __name__== '__main__':
             ######## AUX PROCESSING ########
             ################################
 
-            data_aux, chan_list_aux, ecg_events_time = ecg_detection(sujet, data_aux, chan_list_aux, srate)
+            data_aux, chan_list_aux, ecg_events_time = ecg_detection(data_aux, chan_list_aux, srate)
 
             if debug == True:
                 #### verif ECG
@@ -1429,13 +1434,16 @@ if __name__== '__main__':
             ################################
 
 
-            #### add
-            ecg_events_corrected = ecg_adjust_allsujet[sujet]['ecg_events_corrected']
-            ecg_events_time += ecg_events_corrected
-            ecg_events_time.sort()
-            #### remove
-            ecg_events_to_remove = ecg_adjust_allsujet[sujet]['ecg_events_to_remove']
-            [ecg_events_time.remove(i) for i in ecg_events_to_remove]    
+            #### adjust trig for some patients
+            if sujet in ['CHEe', 'GOBc', 'MAZm', 'MUGa', 'TREt', 'BANc', 'KOFs', 'LEMl']:
+
+                #### add
+                ecg_events_corrected = ecg_adjust_allsujet[sujet]['ecg_events_corrected']
+                ecg_events_time += ecg_events_corrected
+                ecg_events_time.sort()
+                #### remove
+                ecg_events_to_remove = ecg_adjust_allsujet[sujet]['ecg_events_to_remove']
+                [ecg_events_time.remove(i) for i in ecg_events_to_remove]    
 
 
 
@@ -1447,26 +1455,14 @@ if __name__== '__main__':
             ################################################
 
             data_preproc_lf  = preprocessing_ieeg(data, chan_list, srate, prep_step_lf)
-            chop_save_trc(sujet, data_preproc_lf, chan_list, data_aux, chan_list_aux, conditions_trig, trig, srate, ecg_events_time, monopol, band_preproc='lf', export_info=True)
+            chop_save_trc(data_preproc_lf, chan_list, data_aux, chan_list_aux, conditions_trig, trig, srate, ecg_events_time, monopol, band_preproc='lf', export_info=True)
 
             del data_preproc_lf
 
             data_preproc_hf = preprocessing_ieeg(data, chan_list, srate, prep_step_hf)
-            chop_save_trc(sujet, data_preproc_hf, chan_list, data_aux, chan_list_aux, conditions_trig, trig, srate, ecg_events_time, monopol, band_preproc='hf', export_info=False)
+            chop_save_trc(data_preproc_hf, chan_list, data_aux, chan_list_aux, conditions_trig, trig, srate, ecg_events_time, monopol, band_preproc='hf', export_info=False)
 
             #### verif
             if debug == True:
                 compare_pre_post(data, data_preproc_lf, 0)
-
-
-
-
-
-
-
-
-
-
-
-
 

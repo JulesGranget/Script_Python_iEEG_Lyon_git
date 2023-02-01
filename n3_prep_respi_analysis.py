@@ -13,6 +13,7 @@ from bycycle.plts import plot_cyclepoints_array
 
 from n0_config_params import *
 from n0bis_config_analysis_functions import *
+from n3bis_prep_respi_values import *
 
 debug = False
 
@@ -34,11 +35,12 @@ def load_respi_allcond_data(sujet):
 
     raw_allcond = {}
 
+    #cond = conditions[0]
     for cond in conditions:
 
         load_i = []
         for session_i, session_name in enumerate(os.listdir()):
-            if session_name.find(cond) > 0 and session_name.find('lf') != -1 :
+            if session_name.find(cond) > 0 and session_name.find('lf') != -1 and session_name.find('bi') != -1:
                 load_i.append(session_i)
             else:
                 continue
@@ -323,7 +325,7 @@ def analyse_resp_debug(resp_sig, sr, t_start, condition, params):
 
 
 
-#sig = raw_allcond[cond][0].get_data()[-4, :]
+#sig = respi_sig
 def detection_bycycle(sig, srate):
 
     if debug:
@@ -403,11 +405,24 @@ def detection_bycycle(sig, srate):
 
     #### detect
     if sujet in sujet_for_more_filter or sujet in sujet_manual_detection:
+
         rises, decays = cycle_indexes.T[1,:-1], cycle_indexes.T[0,:]
 
         # peaks, _ = scipy.signal.find_peaks(sig_low, distance=3*srate, prominence=sig_low.mean()+sig_low.std()/15)
         # troughs, _ = scipy.signal.find_peaks(sig_low*-1, distance=3*srate, prominence=sig_low.mean()+sig_low.std()/15)
     else:
+
+        # nwind = int(10*srate)
+        # nfft = nwind
+        # noverlap = np.round(nwind/2)
+        # hannw = scipy.signal.windows.hann(nwind)
+
+        # hzPxx, Pxx = scipy.signal.welch(sig_low,fs=srate,window=hannw,nperseg=nwind,noverlap=noverlap,nfft=nfft)
+
+        # freq_respi_s = 1/hzPxx[np.argmax(Pxx)]
+
+        # peaks, troughs = find_extrema(sig_low, srate, f_theta, filter_kwargs={'n_seconds' : freq_respi_s/2})
+
         peaks, troughs = find_extrema(sig_low, srate, f_theta)
         rises, decays = find_zerox(sig_low, peaks, troughs)
 
@@ -419,6 +434,22 @@ def detection_bycycle(sig, srate):
         plt.plot(times[peaks], sig_low[peaks], ls='None', marker='o', color='g', label='peaks')
         plt.plot(times[troughs], sig_low[troughs], ls='None', marker='o', color='k', label='troughs')
         plt.legend()
+        plt.show()
+
+        jitter = 3.5 #sec
+        RD_freq = 0.15
+        RD_cycles = np.arange(int(0+jitter*srate), sig_low.shape[-1], int(1/RD_freq*srate)) 
+        cycles_mat = np.zeros((RD_cycles.shape[0]-1, int(1/RD_freq*srate)))
+        
+        for cycle_i in range(RD_cycles.shape[0]):
+            if cycle_i != RD_cycles.shape[0]-1:
+                cycles_mat[cycle_i, :] = sig_low[RD_cycles[cycle_i]:RD_cycles[cycle_i+1]]
+
+        plt.plot(cycles_mat.mean(0))
+        plt.show()
+
+        plt.plot(sig_low)
+        plt.vlines(RD_cycles, ymax=sig_low.max(), ymin=sig_low.min(), color='r')
         plt.show()
 
     #### adjust detection
@@ -507,6 +538,9 @@ def correct_resp_features(respi_sig, df_detection, cond, srate):
 
     cycle_indexes = np.concatenate((df_detection['expi_index'][df_detection['select'] == 1].values.reshape(-1,1), 
                                     df_detection['inspi_index'][df_detection['select'] == 1].values.reshape(-1,1)), axis=1)
+    cycle_indexes_delete = np.concatenate((df_detection['expi_index'][df_detection['select'] == 0].values.reshape(-1,1), 
+                                    df_detection['inspi_index'][df_detection['select'] == 0].values.reshape(-1,1)), axis=1)
+
     cycle_freq = df_detection['cycle_freq'][df_detection['select'] == 1].values
     cycle_amplitudes = df_detection['total_amplitude'][df_detection['select'] == 1].values
 
@@ -519,6 +553,8 @@ def correct_resp_features(respi_sig, df_detection, cond, srate):
     ax.plot(times, respi_sig)
     ax.plot(times[cycle_indexes[:, 1]], respi_sig[cycle_indexes[:, 1]], ls='None', marker='o', color='r', label='inspi')
     ax.plot(times[cycle_indexes[:, 0]], respi_sig[cycle_indexes[:, 0]], ls='None', marker='o', color='g', label='expi')
+    ax.plot(times[cycle_indexes_delete[:, 1]], respi_sig[cycle_indexes_delete[:, 1]], ls='None', marker='x', color='r', label='inspi_del')
+    ax.plot(times[cycle_indexes_delete[:, 0]], respi_sig[cycle_indexes_delete[:, 0]], ls='None', marker='x', color='g', label='expi_del')
     ax.set_ylabel('resp')
     ax.legend()
     
@@ -578,13 +614,125 @@ def correct_resp_features(respi_sig, df_detection, cond, srate):
 
 
 
+#df_detection = respfeatures_plot
+def test_cycles_cleaned(sujet, raw_allcond, df_detection, cycle_to_delete, session_i, cond, monopol):
+
+    #### extract prms
+    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet, monopol)
+    respi_i = chan_list.index('nasal')
+    respi_sig = raw_allcond[cond][session_i].get_data()[respi_i, :]
+
+    #### indicate cycles to delete
+    df_detection['select'][cycle_to_delete] = 0
+
+    #### plot
+    cycle_indexes = np.concatenate((df_detection['expi_index'][df_detection['select'] == 1].values.reshape(-1,1), 
+                                    df_detection['inspi_index'][df_detection['select'] == 1].values.reshape(-1,1)), axis=1)
+    cycle_indexes_deleted = np.concatenate((df_detection['expi_index'][df_detection['select'] == 0].values.reshape(-1,1), 
+                                    df_detection['inspi_index'][df_detection['select'] == 0].values.reshape(-1,1)), axis=1)
+
+    cycle_freq = df_detection['cycle_freq'][df_detection['select'] == 1].values
+    cycle_amplitudes = df_detection['total_amplitude'][df_detection['select'] == 1].values
+
+    fig0, axs = plt.subplots(nrows=3, sharex=True)
+    plt.suptitle(cond)
+    times = np.arange(respi_sig.size)/srate
+    
+        # respi signal with inspi expi markers
+    ax = axs[0]
+    ax.plot(times, respi_sig)
+    ax.plot(times[cycle_indexes[:, 1]], respi_sig[cycle_indexes[:, 1]], ls='None', marker='o', color='r', label='inspi')
+    ax.plot(times[cycle_indexes[:, 0]], respi_sig[cycle_indexes[:, 0]], ls='None', marker='o', color='g', label='expi')
+    ax.plot(times[cycle_indexes_deleted[:, 1]], respi_sig[cycle_indexes_deleted[:, 1]], ls='None', marker='x', color='r', label='inspi_del')
+    ax.plot(times[cycle_indexes_deleted[:, 0]], respi_sig[cycle_indexes_deleted[:, 0]], ls='None', marker='x', color='g', label='expi_del')
+    ax.set_ylabel('resp')
+    ax.legend()
+    
+
+        # instantaneous frequency
+    ax = axs[1]
+    ax.plot(times[cycle_indexes[:, 0]], cycle_freq)
+    ax.set_ylim(0, max(cycle_freq)*1.1)
+    ax.axhline(np.median(cycle_freq), color='m', linestyle='--', label='median={:.3f}'.format(np.median(cycle_freq)))
+    ax.legend()
+    ax.set_ylabel('freq')
+
+        # instantaneous amplitude
+    ax = axs[2]
+    ax.plot(times[cycle_indexes[:, 0]], cycle_amplitudes)
+    ax.axhline(np.median(cycle_amplitudes), color='m', linestyle='--', label='median={:.3f}'.format(np.median(cycle_amplitudes)))
+    ax.set_ylabel('amplitude')
+    ax.legend()
+
+    plt.show()
+
+
+#df_detection = respfeatures_plot
+def plot_cycles_cleaned(sujet, raw_allcond, df_detection, session_i, cond, monopol):
+
+    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet, monopol)
+
+    respi_i = chan_list.index('nasal')
+
+    respi_sig = raw_allcond[cond][session_i].get_data()[respi_i, :]
+
+    cycle_indexes = np.concatenate((df_detection['expi_index'][df_detection['select'] == 1].values.reshape(-1,1), 
+                                    df_detection['inspi_index'][df_detection['select'] == 1].values.reshape(-1,1)), axis=1)
+    cycle_indexes_deleted = np.concatenate((df_detection['expi_index'][df_detection['select'] == 0].values.reshape(-1,1), 
+                                    df_detection['inspi_index'][df_detection['select'] == 0].values.reshape(-1,1)), axis=1)
+
+    cycle_freq = df_detection['cycle_freq'][df_detection['select'] == 1].values
+    cycle_amplitudes = df_detection['total_amplitude'][df_detection['select'] == 1].values
+
+    fig0, axs = plt.subplots(nrows=3, sharex=True)
+    plt.suptitle(cond)
+    times = np.arange(respi_sig.size)/srate
+    
+        # respi signal with inspi expi markers
+    ax = axs[0]
+    ax.plot(times, respi_sig)
+    ax.plot(times[cycle_indexes[:, 1]], respi_sig[cycle_indexes[:, 1]], ls='None', marker='o', color='r', label='inspi')
+    ax.plot(times[cycle_indexes[:, 0]], respi_sig[cycle_indexes[:, 0]], ls='None', marker='o', color='g', label='expi')
+    ax.plot(times[cycle_indexes_deleted[:, 1]], respi_sig[cycle_indexes_deleted[:, 1]], ls='None', marker='x', color='r', label='inspi_del')
+    ax.plot(times[cycle_indexes_deleted[:, 0]], respi_sig[cycle_indexes_deleted[:, 0]], ls='None', marker='x', color='g', label='expi_del')
+    ax.set_ylabel('resp')
+    ax.legend()
+    
+
+        # instantaneous frequency
+    ax = axs[1]
+    ax.plot(times[cycle_indexes[:, 0]], cycle_freq)
+    ax.set_ylim(0, max(cycle_freq)*1.1)
+    ax.axhline(np.median(cycle_freq), color='m', linestyle='--', label='median={:.3f}'.format(np.median(cycle_freq)))
+    ax.legend()
+    ax.set_ylabel('freq')
+
+        # instantaneous amplitude
+    ax = axs[2]
+    ax.plot(times[cycle_indexes[:, 0]], cycle_amplitudes)
+    ax.axhline(np.median(cycle_amplitudes), color='m', linestyle='--', label='median={:.3f}'.format(np.median(cycle_amplitudes)))
+    ax.set_ylabel('amplitude')
+    ax.legend()
+
+    plt.show()
+
+    
+
+
+
+
+
+
+
+
+
 ########################################
 ######## EDIT CYCLES SELECTED ########
 ########################################
 
 
 #respi_allcond = respi_allcond_bybycle
-def edit_df_for_sretch_cycles_deleted(sujet, respi_allcond, raw_allcond):
+def edit_df_for_sretch_cycles_deleted(sujet, respi_allcond, raw_allcond, monopol):
 
     conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet, monopol)
 
@@ -606,6 +754,29 @@ def edit_df_for_sretch_cycles_deleted(sujet, respi_allcond, raw_allcond):
 
             i_to_update = respi_allcond[cond][session_i][0].index.values[~np.isin(respi_allcond[cond][session_i][0].index.values, cycles)]
             respi_allcond[cond][session_i][0]['select'][i_to_update] = np.array([0]*i_to_update.shape[0])
+
+    return respi_allcond
+
+
+
+
+
+#respi_allcond = respi_allcond_bybycle
+def edit_df_for_manual_cycles_deleted(sujet, respi_allcond, raw_allcond, monopol):
+
+    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet, monopol)
+
+    for cond in conditions:
+        
+        for session_i in range(len(raw_allcond[cond])):
+
+            i_to_update = np.array(cycle_to_delete_allsujet[sujet][cond][session_i])
+            respi_allcond[cond][session_i][0]['select'][i_to_update] = np.array([0]*i_to_update.shape[0])
+
+    return respi_allcond
+
+
+
 
 
 
@@ -663,6 +834,21 @@ def save_all_respfeatures(respi_allcond, respi_allcond_bybycle, conditions, expo
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 if __name__ == '__main__':
 
     ############################
@@ -671,10 +857,10 @@ if __name__ == '__main__':
 
     
     #### whole protocole
-    # sujet = 'CHEe'
+    sujet = 'CHEe'
     # sujet = 'GOBc' 
     # sujet = 'MAZm' 
-    sujet = 'TREt' 
+    # sujet = 'TREt' 
 
     #### FR_CV only
     # sujet = 'KOFs'
@@ -702,22 +888,26 @@ if __name__ == '__main__':
     
     if debug == True :
 
-        # info to debug
+        #### info to debug
         cond_len = {}
         for cond in conditions:
             cond_len[cond] = len(respi_allcond[cond])
         
         cond_len
+        
         cond = 'RD_CV' 
         cond = 'RD_FV' 
         cond = 'RD_SV'
-
         cond = 'FR_CV'
 
         cond = 'RD_AV'
         cond = 'FR_MV'
         
         session_i = 0
+        session_i = 1
+        session_i = 2
+
+        sujet, cond, session_i
 
         respi_allcond[cond][session_i][1].show()
         respi_allcond[cond][session_i][2].show()
@@ -760,6 +950,7 @@ if __name__ == '__main__':
         #### replace
         respi_allcond[cond][session_i] = [resp_features, fig0, fig1]
 
+    
 
 
 
@@ -767,7 +958,44 @@ if __name__ == '__main__':
     ######## EDIT CYCLES SELECTED ########
     ########################################
 
-    edit_df_for_sretch_cycles_deleted(sujet, respi_allcond_bybycle, raw_allcond)
+    respi_allcond_bybycle = edit_df_for_sretch_cycles_deleted(sujet, respi_allcond_bybycle, raw_allcond, monopol)
+
+    if debug == True :
+
+        # info to debug
+        cond_len = {}
+        for cond in conditions:
+            cond_len[cond] = len(respi_allcond[cond])
+        
+        cond_len
+        
+        cond = 'RD_CV' 
+        cond = 'RD_FV' 
+        cond = 'RD_SV'
+        cond = 'FR_CV'
+
+        cond = 'RD_AV'
+        cond = 'FR_MV'
+        
+        session_i = 0
+        session_i = 1
+        session_i = 2
+
+        sujet, cond, session_i
+
+        respfeatures_plot = respi_allcond[cond][session_i][0]
+
+        respfeatures_plot = respi_allcond_bybycle[cond][session_i][0]
+
+        plot_cycles_cleaned(sujet, raw_allcond, respfeatures_plot, session_i, cond, monopol)
+
+        #### select cycle to delete
+
+        cycle_to_delete = np.array([1,2,52,53])
+
+        test_cycles_cleaned(sujet, raw_allcond, respfeatures_plot, cycle_to_delete, session_i, cond, monopol)
+
+    respi_allcond_bybycle = edit_df_for_manual_cycles_deleted(sujet, respi_allcond_bybycle, raw_allcond, monopol)
 
     export_sniff_count(sujet, respi_allcond_bybycle)
 

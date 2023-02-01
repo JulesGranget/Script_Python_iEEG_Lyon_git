@@ -13,7 +13,7 @@ from n0bis_config_analysis_functions import *
 debug = False
 
 #trc_filename = 'LYONNEURO_2021_GOBc_RESPI.TRC'
-def extract_chanlist():
+def extract_chanlist(sujet):
 
     print('#### EXTRACT ####')
 
@@ -85,7 +85,7 @@ def extract_chanlist():
 
 
 
-def generate_plot_loca(chan_list_trc):
+def generate_plot_loca(sujet, chan_list_trc):
 
     #### get the patient date
     os.chdir(os.path.join(path_data, sujet))
@@ -271,8 +271,8 @@ def bipolarize_anatomy_localization(anat_selection):
 
 
 
-
-def generate_plot_loca_bipolaire():
+#sujet = sujet_list_FR_CV[8]
+def generate_plot_loca_bipolaire(sujet):
 
     #### open loca file
     os.chdir(os.path.join(path_anatomy, sujet))
@@ -293,9 +293,12 @@ def generate_plot_loca_bipolaire():
     verif_count_anat_ROI_bip = 0
     verif_count_anat_Lobes_bip = 0
 
-    #### discriminate electrodes    
-    plot_list_unique = np.unique(np.array([plot_i.split('0')[0] for plot_i in df['plot'].values]))
-    plot_list_unique = np.unique(np.array([plot_i.split('1')[0] for plot_i in plot_list_unique]))
+    #### discriminate electrodes  
+    if sujet.find('pat') == -1:
+        plot_list_unique = np.unique(np.array([plot_i.split('0')[0] for plot_i in df['plot'].values]))
+        plot_list_unique = np.unique(np.array([plot_i.split('1')[0] for plot_i in plot_list_unique]))
+    else:
+        plot_list_unique = np.unique(np.array([plot_i.split('_')[0] for plot_i in df['plot'].values]))
 
     #plot_unique_i = plot_list_unique[1]
     for plot_unique_i in plot_list_unique:
@@ -354,49 +357,32 @@ def generate_plot_loca_bipolaire():
 
 if __name__== '__main__':
 
+    #sujet = sujet_list_FR_CV[5]
+    for sujet in sujet_list_FR_CV:
 
-    #### whole protocole
-    sujet = 'CHEe'
-    # sujet = 'GOBc'
-    # sujet = 'MAZm'
-    # sujet = 'TREt'
+        print(f'#### {sujet}')
 
-    #### FR_CV only
-    # sujet = 'MUGa'
-    # sujet = 'BANc'
-    # sujet = 'KOFs'
-    # sujet = 'LEMl'
+        construct_token = generate_folder_structure(sujet)
 
-    # sujet = 'pat_02459_0912'
-    # sujet = 'pat_02476_0929'
-    # sujet = 'pat_02495_0949'
+        if construct_token != 0 :
+            
+            print('Folder structure has been generated')
+            print('Lauch the script again for electrode selection')
 
-    # sujet = 'pat_03083_1527'
-    # sujet = 'pat_03105_1551'
-    # sujet = 'pat_03128_1591'
-    # sujet = 'pat_03138_1601'
-    # sujet = 'pat_03146_1608'
-    # sujet = 'pat_03174_1634'
+        else:
 
-    construct_token = generate_folder_structure(sujet)
+            #### execute
+            os.chdir(os.path.join(path_anatomy, sujet))
+            if os.path.exists(sujet + '_plot_loca.xlsx'):
+                print('#### MONOPOL LREADY COMPUTED ####')
+            else:
+                chan_list_trc = extract_chanlist(sujet)
+                generate_plot_loca(sujet, chan_list_trc)
 
-    if construct_token != 0 :
-        
-        print('Folder structure has been generated')
-        print('Lauch the script again for electrode selection')
-
-    else:
-
-        os.chdir(os.path.join(path_anatomy, sujet))
-        if os.path.exists(sujet + '_plot_loca.xlsx') and os.path.exists(sujet + '_plot_loca_bi.xlsx'):
-            print('#### ALREADY COMPUTED ####')
-            exit()
-
-        #### execute
-        chan_list_trc = extract_chanlist()
-        generate_plot_loca(chan_list_trc)
-        
-        generate_plot_loca_bipolaire()
+            if os.path.exists(sujet + '_plot_loca_bi.xlsx'):
+                print('#### BIPOL LREADY COMPUTED ####')
+            else:
+                generate_plot_loca_bipolaire(sujet)
 
 
 
