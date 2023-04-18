@@ -1,9 +1,12 @@
 
+
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal
+import mne
 import pandas as pd
+import respirationtools
 import joblib
 
 from n0_config_params import *
@@ -18,48 +21,41 @@ debug = False
 ################################
 
 
-#tf = tf_allchan
-#condition, resp_features, freq_band, stretch_point_TF = conditions[0], list(resp_features_allcond.values())[0], freq_band, stretch_point_TF
-def compute_stretch_tf_dB(sujet, tf, cond, session_i, respfeatures_allcond, stretch_point_TF, band, band_prep, nfrex, srate, monopol):
 
-    #### load baseline
-    os.chdir(os.path.join(path_precompute, sujet, 'baselines'))
-    if monopol:
-        baselines = np.load(f'{sujet}_{band}_baselines.npy')
-    else:
-        baselines = np.load(f'{sujet}_{band}_baselines_bi.npy')
 
-    #### apply baseline
-    for n_chan in range(tf.shape[0]):
-        
-        for fi in range(tf.shape[1]):
+#tf, respfeatures_i = tf_allchan.copy(), respfeatures_allcond[cond][session_i]
+def compute_stretch_tf(sujet, tf, cond, respfeatures_i, stretch_point_TF, srate, monopol):
 
-            activity = tf[n_chan,fi,:]
-            baseline_fi = baselines[n_chan, fi]
+    #### norm
+    tf = norm_tf(sujet, tf, monopol, norm_method)
 
-            #### verify baseline
-            #plt.plot(activity)
-            #plt.hlines(baseline_fi, xmin=0 , xmax=activity.shape[0], color='r')
-            #plt.show()
-
-            tf[n_chan,fi,:] = 10*np.log10(activity/baseline_fi)
-
+    #n_chan = 0
     def stretch_tf_db_n_chan(n_chan):
 
-        tf_mean = np.mean(stretch_data_tf(respfeatures_allcond[cond][session_i], stretch_point_TF, tf[n_chan,:,:], srate)[0], axis=0)
+        tf_mean = stretch_data_tf(respfeatures_i, stretch_point_TF, tf[n_chan,:,:], srate)[0]
 
         return tf_mean
 
     stretch_tf_db_nchan_res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(stretch_tf_db_n_chan)(n_chan) for n_chan in range(tf.shape[0]))
 
     #### extarct
-    tf_mean_allchan = np.zeros((tf.shape[0], tf.shape[1], stretch_point_TF))
+    n_cycle_stretch = stretch_data_tf(respfeatures_i, stretch_point_TF, tf[0,:,:], srate)[0].shape[0]
+    tf_mean_allchan = np.zeros((tf.shape[0], n_cycle_stretch, tf.shape[1], stretch_point_TF))
 
     for n_chan in range(tf.shape[0]):
-        tf_mean_allchan[n_chan,:,:] = stretch_tf_db_nchan_res[n_chan]
+        tf_mean_allchan[n_chan,:,:,:] = stretch_tf_db_nchan_res[n_chan]
 
     return tf_mean_allchan
 
+
+
+
+
+def compute_stretch_tf_itpc(tf, cond, respfeatures_allcond, stretch_point_TF, srate):
+    
+    tf_stretch, ratio = stretch_data(respfeatures_allcond[cond][0], stretch_point_TF, tf, srate)
+
+    return tf_stretch
 
 
 
@@ -71,181 +67,221 @@ def compute_stretch_tf_dB(sujet, tf, cond, session_i, respfeatures_allcond, stre
 ######## PRECOMPUTE TF ########
 ################################
 
-# _freq_band_list = freq_band_list_precompute
-def precompute_tf(sujet, cond, session_i, _freq_band_list, band_prep_list, monopol):
 
-    print(f'{sujet} {cond} {session_i+1}')
-    print('TF PRECOMPUTE')
+def precompute_tf_allconv(sujet, cond, monopol):
 
-    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet, monopol)
+    #### verify il already computed
+    os.chdir(os.path.join(path_precompute, sujet, 'TF'))
+
+    if monopol:
+        if os.path.exists(f'{sujet}_tf_conv_{cond}.npy'):
+            print('ALREADY COMPUTED', flush=True)
+            return
+    else:
+        if os.path.exists(f'{sujet}_tf_conv_{cond}_bi.npy'):
+            print('ALREADY COMPUTED', flush=True)
+            return
+
+    print(f'TF PRECOMPUTE {sujet} {cond}', flush=True)
+
+    #### get params
+    band_prep = 'wb'
+
     respfeatures_allcond = load_respfeatures(sujet)
+    chan_list, chan_list_ieeg = get_chanlist(sujet, monopol)
 
-    #### select prep to load
-    #band_prep_i, band_prep = 0, 'lf'
-    for band_prep_i, band_prep in enumerate(band_prep_list):
+    #### MA
+    n_cycle_stretch = 0
+    for session_i in range(session_count[cond]):
+        data = load_data_sujet(sujet, band_prep, cond, session_i, monopol)
+        _n_cycle_stretch = stretch_data_tf(respfeatures_allcond[cond][session_i], stretch_point_TF, np.ones((nfrex, data.shape[1])), srate)[0].shape[0]
+        n_cycle_stretch += _n_cycle_stretch
 
-        #### select data without aux chan
-        data = load_data_sujet(sujet, band_prep, cond, session_i, monopol)[:len(chan_list_ieeg),:]
+    os.chdir(path_memmap)
+    tf_allsession = np.memmap(f'{sujet}_tf_conv_{cond}_{monopol}.dat', dtype=np.float32, mode='w+', shape=(len(chan_list_ieeg), n_cycle_stretch, nfrex, stretch_point_TF))
 
-        freq_band = _freq_band_list[band_prep_i] 
+    #### select wavelet parameters
+    wavelets = get_wavelets()
 
-        #band, freq = list(freq_band.items())[1]
-        for band, freq in freq_band.items():
+    #### compute
+    cycle_stretch_pre = 0
 
-            #### supress indice
-            band = band[:-2]
+    #session_i = 0
+    for session_i in range(session_count[cond]):
 
-            os.chdir(os.path.join(path_precompute, sujet, 'TF'))
-
-            if monopol:
-                if os.path.exists(f'{sujet}_tf_{str(freq[0])}_{str(freq[1])}_{cond}_{str(session_i+1)}.npy') :
-                    print('ALREADY COMPUTED')
-                    continue
-            else:
-                if os.path.exists(f'{sujet}_tf_{str(freq[0])}_{str(freq[1])}_{cond}_{str(session_i+1)}_bi.npy') :
-                    print('ALREADY COMPUTED')
-                    continue
+        #### load data
+        data = load_data_sujet(sujet, band_prep, cond, session_i, monopol)
             
-            print(band, ' : ', freq)
-            print('COMPUTE')
+        print(f'COMPUTE ses{session_i+1}', flush=True)
 
-            #### select wavelet parameters
-            wavelets, nfrex = get_wavelets(sujet, band_prep, freq, monopol)
+        #### conv
+        os.chdir(path_memmap)
+        data_r = np.memmap(f'{sujet}_tf_{cond}_data_read_{monopol}.dat', dtype=np.float32, mode='w+', shape=(data.shape))
+        data_r[:] = data
+        del data
+        tf_allchan = np.memmap(f'{sujet}_tf_{cond}_precompute_convolutions_{monopol}.dat', dtype=np.float32, mode='w+', shape=(len(chan_list_ieeg), nfrex, data_r.shape[1]))
 
-            os.chdir(path_memmap)
-            if monopol:
-                tf_allchan = np.memmap(f'{sujet}_{cond}_{session_i}_{band}_{str(freq[0])}_{str(freq[1])}_precompute_convolutions.dat', dtype=np.float64, mode='w+', shape=(data.shape[0], nfrex, data.shape[1]))
-            else:
-                tf_allchan = np.memmap(f'{sujet}_{cond}_{session_i}_{band}_{str(freq[0])}_{str(freq[1])}_precompute_convolutions_bi.dat', dtype=np.float64, mode='w+', shape=(data.shape[0], nfrex, data.shape[1]))
+        #n_chan = len(chan_list_ieeg)
+        def compute_tf_convolution_nchan(n_chan):
 
-            def compute_tf_convolution_nchan(n_chan):
+            print_advancement(n_chan, data_r.shape[0], steps=[25, 50, 75])
 
-                # print_advancement(n_chan, data.shape[0], steps=[25, 50, 75])
+            for fi in range(nfrex):
+                
+                tf_allchan[n_chan,fi,:] = abs(scipy.signal.fftconvolve(data_r[n_chan,:], wavelets[fi,:], 'same'))**2 
 
-                x = data[n_chan,:]
+        joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_tf_convolution_nchan)(n_chan) for n_chan, _ in enumerate(chan_list_ieeg))
 
-                tf = np.zeros((nfrex, x.shape[0]))
+        #### stretch or chunk
+        n_cycle_stretch = stretch_data_tf(respfeatures_allcond[cond][session_i], stretch_point_TF, tf_allchan[0,:,:], srate)[0].shape[0]
 
-                for fi in range(nfrex):
-                    
-                    tf[fi,:] = abs(scipy.signal.fftconvolve(x, wavelets[fi,:], 'same'))**2 
+        print(f'STRETCH ses{session_i+1}', flush=True)
+        cycle_pre = cycle_stretch_pre
+        cycle_post = cycle_stretch_pre + n_cycle_stretch
+        tf_allsession[:,cycle_pre:cycle_post,:,:] = compute_stretch_tf(sujet, tf_allchan, cond, respfeatures_allcond[cond][session_i], stretch_point_TF, srate, monopol)
 
-                tf_allchan[n_chan,:,:] = tf
+        cycle_stretch_pre += n_cycle_stretch
 
-                return
+        os.chdir(path_memmap)
+        os.remove(f'{sujet}_tf_{cond}_precompute_convolutions_{monopol}.dat')
+        os.remove(f'{sujet}_tf_{cond}_data_read_{monopol}.dat')
 
-            joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_tf_convolution_nchan)(n_chan) for n_chan in range(data.shape[0]))
+    #### save
+    os.chdir(os.path.join(path_precompute, sujet, 'TF'))
+    if monopol:
+        np.save(f'{sujet}_tf_conv_{cond}.npy', tf_allsession)
+    else:
+        np.save(f'{sujet}_tf_conv_{cond}_bi.npy', tf_allsession)    
 
-            #### stretch
-            print('STRETCH')
-            tf_allband_stretched = compute_stretch_tf_dB(sujet, tf_allchan, cond, session_i, respfeatures_allcond, stretch_point_TF, band, band_prep, nfrex, srate, monopol)
-            
-            #### save
-            print('SAVE')
-            os.chdir(os.path.join(path_precompute, sujet, 'TF'))
-            if monopol:
-                np.save(f'{sujet}_tf_{str(freq[0])}_{str(freq[1])}_{cond}_{str(session_i+1)}.npy', tf_allband_stretched)
-            else:
-                np.save(f'{sujet}_tf_{str(freq[0])}_{str(freq[1])}_{cond}_{str(session_i+1)}_bi.npy', tf_allband_stretched)
-                        
-            os.chdir(path_memmap)
-            if monopol:
-                os.remove(f'{sujet}_{cond}_{session_i}_{band}_{str(freq[0])}_{str(freq[1])}_precompute_convolutions.dat')
-            else:
-                os.remove(f'{sujet}_{cond}_{session_i}_{band}_{str(freq[0])}_{str(freq[1])}_precompute_convolutions_bi.dat')
+    os.chdir(path_memmap)
+    os.remove(f'{sujet}_tf_conv_{cond}_{monopol}.dat')
 
-    print('done')
-    
+    print('done', flush=True)
 
 
-########################################
+
+
+
+
+
+################################
 ######## PRECOMPUTE ITPC ########
-########################################
+################################
 
 
 
-def precompute_itpc(sujet, cond, session_i, _freq_band_list, band_prep_list, monopol):
+# def precompute_itpc(sujet, cond, band_prep_list, electrode_recording_type):
 
-    print(f'{sujet} {cond} {session_i+1}')
-    print('ITPC PRECOMPUTE')
+#     print('ITPC PRECOMPUTE', flush=True)
 
-    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet, monopol)
-    respfeatures_allcond = load_respfeatures(sujet)
+#     respfeatures_allcond = load_respfeatures(sujet)
+#     chan_list, chan_list_ieeg = get_chanlist(sujet, monopol)
     
-    #### select prep to load
-    #band_prep_i, band_prep = 0, 'lf'
-    for band_prep_i, band_prep in enumerate(band_prep_list):
+#     #### select prep to load
+#     for band_prep_i, band_prep in enumerate(band_prep_list):
 
-        #### select data without aux chan
-        data = load_data_sujet(sujet, band_prep, cond, session_i, monopol)[:len(chan_list_ieeg),:]
+#         #### select data without aux chan
+#         data = load_data(sujet, cond, electrode_recording_type)
 
-        freq_band = _freq_band_list[band_prep_i]
+#         #### remove aux chan
+#         data = data[:len(chan_list_ieeg),:]
 
-        #band, freq = list(freq_band.items())[0]
-        for band, freq in freq_band.items():
+#         freq_band = freq_band_list_precompute[band_prep_i]
 
-            os.chdir(os.path.join(path_precompute, sujet, 'ITPC'))
+#         #band, freq = list(freq_band.items())[0]
+#         for band, freq in freq_band.items():
 
-            if monopol:
-                if os.path.exists(f'{sujet}_itpc_{str(freq[0])}_{str(freq[1])}_{cond}_{str(session_i+1)}.npy') :
-                    print('ALREADY COMPUTED')
-                    continue
-            else:
-                if os.path.exists(f'{sujet}_itpc_{str(freq[0])}_{str(freq[1])}_{cond}_{str(session_i+1)}_bi.npy') :
-                    print('ALREADY COMPUTED')
-                    continue
+#             os.chdir(os.path.join(path_precompute, sujet, 'ITPC'))
+
+#             if electrode_recording_type == 'monopolaire':
+#                 if os.path.exists(f'{sujet}_itpc_{str(freq[0])}_{str(freq[1])}_{cond}.npy') :
+#                     print('ALREADY COMPUTED', flush=True)
+#                     continue
+#             if electrode_recording_type == 'bipolaire':
+#                 if os.path.exists(f'{sujet}_itpc_{str(freq[0])}_{str(freq[1])}_{cond}_bi.npy') :
+#                     print('ALREADY COMPUTED', flush=True)
+#                     continue
             
-            print(band, ' : ', freq)
+#             print(band, ' : ', freq, flush=True)
 
-            #### select wavelet parameters
-            wavelets, nfrex = get_wavelets(sujet, band_prep, freq, monopol)
+#             #### select wavelet parameters
+#             wavelets = get_wavelets()
 
-            #### compute itpc
-            print('COMPUTE, STRETCH & ITPC')
-            def compute_itpc_n_chan(n_chan):
+#             #### compute itpc
+#             print('COMPUTE, STRETCH & ITPC', flush=True, flush=True)
+#             #n_chan = 0
+#             def compute_itpc_n_chan(n_chan):
+
+#                 print_advancement(n_chan, data.shape[0], steps=[25, 50, 75])
+
+#                 x = data[n_chan,:]
+
+#                 tf = np.zeros((nfrex, x.shape[0]), dtype='complex')
+
+#                 for fi in range(nfrex):
                     
-                x = data[n_chan,:]
+#                     tf[fi,:] = scipy.signal.fftconvolve(x, wavelets[fi,:], 'same')
 
-                tf = np.zeros((nfrex, x.shape[0]), dtype='complex')
+#                 #### stretch
+#                 if cond == 'FR_CV':
+#                     tf_stretch = stretch_data_tf(respfeatures_allcond[cond][0], stretch_point_TF, tf, srate)[0]
 
-                for fi in range(nfrex):
-                    
-                    tf[fi,:] = scipy.signal.fftconvolve(x, wavelets[fi,:], 'same')
+#                 elif cond == 'AC':
+#                     ac_starts = get_ac_starts(sujet)
+#                     tf_stretch = chunk_stretch_tf_itpc_ac(sujet, tf, cond, ac_starts, srate)
 
-                #### stretch
-                tf_stretch = stretch_data_tf(respfeatures_allcond[cond][session_i], stretch_point_TF, tf, srate)[0]
+#                 elif cond == 'SNIFF':
+#                     sniff_starts = get_sniff_starts(sujet)
+#                     tf_stretch = chunk_stretch_tf_itpc_sniff(sujet, tf, cond, sniff_starts, srate)
 
-                #### ITPC
-                tf_angle = np.angle(tf_stretch)
-                tf_cangle = np.exp(1j*tf_angle) 
-                itpc = np.abs(np.mean(tf_cangle,0))
+#                 #### ITPC
+#                 tf_angle = np.angle(tf_stretch)
+#                 tf_cangle = np.exp(1j*tf_angle) 
+#                 itpc = np.abs(np.mean(tf_cangle,0))
 
-                if debug == True:
-                    plt.pcolormesh(itpc)
-                    plt.show()
+#                 if debug == True:
+#                     time = range(stretch_point_TF)
+#                     frex = range(nfrex)
+#                     plt.pcolormesh(time,frex,itpc,vmin=np.min(itpc),vmax=np.max(itpc))
+#                     plt.show()
 
-                return itpc 
+#                 return itpc 
 
-            compute_itpc_n_chan_res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_itpc_n_chan)(n_chan) for n_chan in range(data.shape[0]))
+#             compute_itpc_n_chan_res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_itpc_n_chan)(n_chan) for n_chan in range(data.shape[0]))
             
-            #### extract
-            itpc_allchan = np.zeros((data.shape[0],nfrex,stretch_point_TF))
+#             if cond == 'FR_CV':
+#                 itpc_allchan = np.zeros((data.shape[0],nfrex,stretch_point_TF))
 
-            for n_chan in range(data.shape[0]):
+#             elif cond == 'AC':
+#                 stretch_point_TF_ac = int(np.abs(t_start_AC)*srate +  t_stop_AC*srate)
+#                 itpc_allchan = np.zeros((data.shape[0], nfrex, stretch_point_TF_ac))
 
-                itpc_allchan[n_chan,:,:] = compute_itpc_n_chan_res[n_chan]
+#             elif cond == 'SNIFF':
+#                 stretch_point_TF_sniff = int(np.abs(t_start_SNIFF)*srate +  t_stop_SNIFF*srate)
+#                 itpc_allchan = np.zeros((data.shape[0], nfrex, stretch_point_TF_sniff))
 
-            #### save
-            print('SAVE')
-            os.chdir(os.path.join(path_precompute, sujet, 'ITPC'))
-            if monopol:
-                np.save(f'{sujet}_itpc_{str(freq[0])}_{str(freq[1])}_{cond}_{str(session_i+1)}.npy', itpc_allchan)
-            else:
-                np.save(f'{sujet}_itpc_{str(freq[0])}_{str(freq[1])}_{cond}_{str(session_i+1)}_bi.npy', itpc_allchan)
+#             for n_chan in range(data.shape[0]):
 
-            del itpc_allchan
+#                 itpc_allchan[n_chan,:,:] = compute_itpc_n_chan_res[n_chan]
 
-    print('done')
+#             #### save
+#             print('SAVE', flush=True)
+#             os.chdir(os.path.join(path_precompute, sujet, 'ITPC'))
+#             if electrode_recording_type == 'monopolaire':
+#                 np.save(f'{sujet}_itpc_{str(freq[0])}_{str(freq[1])}_{cond}.npy', itpc_allchan)
+#             if electrode_recording_type == 'bipolaire':
+#                 np.save(f'{sujet}_itpc_{str(freq[0])}_{str(freq[1])}_{cond}_bi.npy', itpc_allchan)
+            
+
+#             del itpc_allchan
+
+
+
+
+
+
+
+
 
 
 
@@ -259,39 +295,34 @@ def precompute_itpc(sujet, cond, session_i, _freq_band_list, band_prep_list, mon
 
 if __name__ == '__main__':
 
-    #sujet = sujet_list[0]
-    for sujet in sujet_list:    
+    #sujet = sujet_list[1]
+    for sujet in sujet_list_FR_CV:    
+
+        if sujet in sujet_list:
+
+            conditions = ['FR_CV', 'RD_CV', 'RD_FV', 'RD_SV']
+
+        else:
+
+            conditions = ['FR_CV']
 
         #monopol = True
         for monopol in [True, False]:
 
-            #### load data
-            conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet, monopol)
-            respfeatures_allcond = load_respfeatures(sujet)
+            #### load dataprecompute_tf_allconv(sujet, cond, monopol)
 
             #### compute all
-            print('######## PRECOMPUTE TF & ITPC ########')
+            print('######## PRECOMPUTE TF & ITPC ########', flush=True)
 
             #### compute and save tf
-            #cond = 'FR_CV'
-            #session_i = 0
+            #cond = 'RD_FV'
             for cond in conditions:
 
-                if len(respfeatures_allcond[cond]) == 1:
-            
-                    # precompute_tf(sujet, cond, 0, freq_band_list_precompute, band_prep_list, monopol)
-                    execute_function_in_slurm_bash_mem_choice('n7_precompute_TF', 'precompute_tf', [sujet, cond, 0, freq_band_list_precompute, band_prep_list, monopol], '15G')
-                    # precompute_itpc(sujet, cond, 0, freq_band_list, band_prep_list, monopol)
-                    execute_function_in_slurm_bash_mem_choice('n7_precompute_TF', 'precompute_itpc', [sujet, cond, 0, freq_band_list, band_prep_list, monopol], '15G')
+                # precompute_tf_allconv(sujet, cond, monopol)
+                execute_function_in_slurm_bash_mem_choice('n7_precompute_TF', 'precompute_tf_allconv', [sujet, cond, monopol], '40G')
                 
-                elif len(respfeatures_allcond[cond]) > 1:
-
-                    for session_i in range(len(respfeatures_allcond[cond])):
-
-                        # precompute_tf(sujet, cond, session_i, freq_band_list_precompute, band_prep_list, monopol)
-                        execute_function_in_slurm_bash_mem_choice('n7_precompute_TF', 'precompute_tf', [sujet, cond, session_i, freq_band_list_precompute, band_prep_list, monopol], '15G')
-                        # precompute_itpc(sujet, cond, session_i, freq_band_list, band_prep_list, monopol)
-                        execute_function_in_slurm_bash_mem_choice('n7_precompute_TF', 'precompute_itpc', [sujet, cond, session_i, freq_band_list, band_prep_list, monopol], '15G')
+                # precompute_itpc(sujet, cond, session_i, freq_band_list, band_prep_list, monopol)
+                # execute_function_in_slurm_bash_mem_choice('n7_precompute_TF', 'precompute_itpc', [sujet, cond, session_i, freq_band_list, band_prep_list, monopol], '15G')
 
 
 

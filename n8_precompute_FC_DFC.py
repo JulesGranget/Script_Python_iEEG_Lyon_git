@@ -36,7 +36,7 @@ def get_pli_ispc_fc_dfc_trial(sujet, cond, band_prep, band, freq, trial_i, monop
     #### get params
     prms = get_params(sujet, monopol)
 
-    wavelets, nfrex = get_wavelets(sujet, band_prep, freq, monopol)
+    wavelets = get_wavelets()
 
     respfeatures_allcond = load_respfeatures(sujet)
 
@@ -249,7 +249,7 @@ def get_wpli_ispc_fc_dfc(sujet, cond, band_prep, band, freq, monopol):
     mat_fc = []
 
     #### for dfc computation
-    wavelets, nfrex = get_wavelets(sujet, band_prep, freq, monopol)
+    wavelets = get_wavelets()
 
     #trial_i = 1
     for trial_i in range(n_trials):

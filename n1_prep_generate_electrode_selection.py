@@ -300,11 +300,14 @@ def generate_plot_loca_bipolaire(sujet):
     else:
         plot_list_unique = np.unique(np.array([plot_i.split('_')[0] for plot_i in df['plot'].values]))
 
-    #plot_unique_i = plot_list_unique[1]
+    #plot_unique_i = plot_list_unique[6]
     for plot_unique_i in plot_list_unique:
-        
-        plot_selection_i = np.array([plot_i for plot_i, plot_name in enumerate(df['plot'].values) if plot_name.find(plot_unique_i) != -1 and plot_name.find('p') == plot_unique_i.find('p')])
-        
+
+        if sujet.find('pat') == -1:
+            plot_selection_i = np.array([plot_i for plot_i, plot_name in enumerate(df['plot'].values) if plot_name.find(plot_unique_i) != -1 and plot_name.find('p') == plot_unique_i.find('p')])
+        else:
+            plot_selection_i = np.array([plot_i for plot_i, plot_name in enumerate(df['plot'].values) if plot_name.split('_')[0] == plot_unique_i and plot_name.find('p') == plot_unique_i.find('p')])
+
         verif_count += plot_selection_i.shape[0]-1
         
         plot_name_sel = df['plot'][plot_selection_i].values
@@ -357,7 +360,7 @@ def generate_plot_loca_bipolaire(sujet):
 
 if __name__== '__main__':
 
-    #sujet = sujet_list_FR_CV[5]
+    #sujet = sujet_list_FR_CV[8]
     for sujet in sujet_list_FR_CV:
 
         print(f'#### {sujet}')

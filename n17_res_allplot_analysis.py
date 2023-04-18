@@ -330,7 +330,7 @@ def get_Coh_Respi_1plot(plot_i_to_process):
     plot_tmp_mod = df_all_plot_noselect['plot'][plot_i_to_process]
 
     #### load subject params
-    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions_for_sujet(sujet_tmp, conditions_allsubjects)
+    chan_list, chan_list_ieeg = get_chanlist(sujet, monopol)
     band_prep = 'lf'
 
     #### load Cxy params
@@ -489,7 +489,7 @@ def get_TF_and_ITPC_for_ROI(ROI_to_process, cond):
         plot_tmp_mod = plot_to_process_i[1]
 
         #### load subject params
-        conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions_for_sujet(sujet_tmp, conditions_allsubjects)
+        chan_list, chan_list_ieeg = get_chanlist(sujet, monopol)
 
         #### identify plot name in trc
         if sujet_tmp[:3] != 'pat':
@@ -677,7 +677,7 @@ def get_TF_and_ITPC_for_Lobe(Lobe_to_process, cond):
         plot_tmp_mod = plot_to_process_i[1]
 
         #### load subject params
-        conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions_for_sujet(sujet_tmp, conditions_allsubjects)
+        chan_list, chan_list_ieeg = get_chanlist(sujet, monopol)
 
         #### identify plot name in trc
         if sujet_tmp[:3] != 'pat':

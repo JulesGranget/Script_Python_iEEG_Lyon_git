@@ -10,6 +10,8 @@ import respirationtools
 import sys
 import stat
 import subprocess
+import physio
+import xarray as xr
 
 
 from bycycle.cyclepoints import find_extrema
@@ -445,42 +447,36 @@ def execute_function_in_slurm_bash_mem_choice(name_script, name_function, params
 ################################
 
 
-def get_wavelets(sujet, band_prep, freq, monopol):
-
-    #### get params
-    prms = get_params(sujet, monopol)
-
-    #### select wavelet parameters
-    if band_prep == 'wb':
-        wavetime = np.arange(-2,2,1/prms['srate'])
-        nfrex = nfrex_lf
-        ncycle_list = np.linspace(ncycle_list_wb[0], ncycle_list_wb[1], nfrex) 
-
-    if band_prep == 'lf':
-        wavetime = np.arange(-2,2,1/prms['srate'])
-        nfrex = nfrex_lf
-        ncycle_list = np.linspace(ncycle_list_lf[0], ncycle_list_lf[1], nfrex) 
-
-    if band_prep == 'hf':
-        wavetime = np.arange(-.5,.5,1/prms['srate'])
-        nfrex = nfrex_hf
-        ncycle_list = np.linspace(ncycle_list_hf[0], ncycle_list_hf[1], nfrex)
+def get_wavelets():
 
     #### compute wavelets
-    frex  = np.linspace(freq[0],freq[1],nfrex)
-    wavelets = np.zeros((nfrex,len(wavetime)) ,dtype=complex)
+    wavelets = np.zeros((nfrex, len(wavetime)), dtype=complex)
 
     # create Morlet wavelet family
-    for fi in range(0,nfrex):
+    for fi in range(nfrex):
         
-        s = ncycle_list[fi] / (2*np.pi*frex[fi])
+        s = cycles[fi] / (2*np.pi*frex[fi])
         gw = np.exp(-wavetime**2/ (2*s**2)) 
         sw = np.exp(1j*(2*np.pi*frex[fi]*wavetime))
         mw =  gw * sw
 
         wavelets[fi,:] = mw
 
-    return wavelets, nfrex
+    if debug:
+
+        plt.plot(np.sum(np.abs(wavelets),axis=1))
+        plt.show()
+
+        plt.pcolormesh(np.real(wavelets))
+        plt.show()
+
+        plt.plot(np.real(wavelets)[0,:])
+        plt.show()
+
+    return wavelets
+
+
+
 
 
 
@@ -497,7 +493,7 @@ def get_wavelets(sujet, band_prep, freq, monopol):
 
 def get_params(sujet, monopol):
 
-    conditions, chan_list, chan_list_ieeg, srate = extract_chanlist_srate_conditions(sujet, monopol)
+    chan_list, chan_list_ieeg = get_chanlist(sujet, monopol)
     respi_ratio_allcond = get_all_respi_ratio(sujet)
     nwind, nfft, noverlap, hannw = get_params_spectral_analysis(srate)
 
@@ -508,91 +504,34 @@ def get_params(sujet, monopol):
 
     
 
-def extract_chanlist_srate_conditions(sujet, monopol):
+def get_chanlist(sujet, monopol):
 
     path_source = os.getcwd()
     
     #### select conditions to keep
     os.chdir(os.path.join(path_prep, sujet, 'sections'))
-    dirlist_subject = os.listdir()
-
-    conditions = []
-    for cond in conditions_allsubjects:
-
-        for file in dirlist_subject:
-
-            if file.find(cond) != -1 : 
-                conditions.append(cond)
-                break
-
-    #### extract data
-    band_prep = band_prep_list[0]
-    if monopol:
-        file_to_search = f'{sujet}_FR_CV_1_{band_prep}.fif'
-    else:
-        file_to_search = f'{sujet}_FR_CV_1_{band_prep}_bi.fif'
-
-    load_i = []
-    for session_i, session_name in enumerate(os.listdir()):
-        if ( session_name.find(file_to_search) != -1 ) :
-            load_i.append(session_i)
-        else:
-            continue
-
-    load_name = [os.listdir()[i] for i in load_i][0]
-
-    raw = mne.io.read_raw_fif(load_name, preload=True, verbose='critical')
-
-    srate = int(raw.info['sfreq'])
-    chan_list = raw.info['ch_names']
-    chan_list_ieeg = chan_list[:-4] # on enlève : nasal, ventral, ECG, ECG_cR
-
-    #### go back to path source
-    os.chdir(path_source)
-
-    return conditions, chan_list, chan_list_ieeg, srate
-
-
-def extract_chanlist_srate_conditions_for_sujet(sujet_tmp, conditions_allsubjects):
-
-    path_source = os.getcwd()
     
-    #### select conditions to keep
-    os.chdir(os.path.join(path_prep, sujet_tmp, 'sections'))
-    dirlist_subject = os.listdir()
-
-    conditions = []
-    for cond in conditions_allsubjects:
-
-        for file in dirlist_subject:
-
-            if file.find(cond) != -1 : 
-                conditions.append(cond)
-                break
-
-    #### extract data
-    band_prep = band_prep_list[0]
-    cond = conditions[0]
-
-    load_i = []
-    for session_i, session_name in enumerate(os.listdir()):
-        if ( session_name.find(cond) != -1 ) & ( session_name.find(band_prep) != -1 ):
-            load_i.append(session_i)
-        else:
-            continue
-
-    load_name = [os.listdir()[i] for i in load_i][0]
-
-    raw = mne.io.read_raw_fif(load_name, preload=True, verbose='critical')
-
-    srate = int(raw.info['sfreq'])
+    if monopol:
+        raw = mne.io.read_raw_fif(f'{sujet}_FR_CV_1_wb.fif', verbose='critical')
+    else:
+        raw = mne.io.read_raw_fif(f'{sujet}_FR_CV_1_wb_bi.fif', verbose='critical')
+    
     chan_list = raw.info['ch_names']
     chan_list_ieeg = chan_list[:-4] # on enlève : nasal, ventral, ECG, ECG_cR
+
+    #### correct chan_list for paris sujet
+    if sujet[:3] == 'pat' and monopol == False:
+        for nchan_i, nchan in enumerate(chan_list_ieeg):
+            if len(nchan.split('-')) == 3:
+                chan_list_ieeg[nchan_i] = f"{nchan.split('-')[0]}-{nchan.split('-')[1]}"
 
     #### go back to path source
     os.chdir(path_source)
 
-    return conditions, chan_list, chan_list_ieeg, srate
+    return chan_list, chan_list_ieeg
+
+
+
 
 
 
@@ -706,33 +645,27 @@ def load_respfeatures(sujet):
     path_source = os.getcwd()
     
     os.chdir(os.path.join(path_respfeatures, sujet, 'RESPI'))
-    respfeatures_listdir = os.listdir()
 
-    #### remove fig0 and fig1 file
-    respfeatures_listdir_clean = []
-    for file in respfeatures_listdir :
-        if file.find('fig') == -1 :
-            respfeatures_listdir_clean.append(file)
+    if sujet in sujet_list:
+
+        conditions = ['FR_CV', 'RD_CV', 'RD_FV', 'RD_SV']
+
+    else:
+
+        conditions = ['FR_CV']
 
     #### get respi features
     respfeatures_allcond = {}
 
-    for cond in conditions_allsubjects:
+    for cond in conditions:
 
-        load_i = []
-        for session_i, session_name in enumerate(respfeatures_listdir_clean):
-            if session_name.find(cond) > 0:
-                load_i.append(session_i)
-            else:
-                continue
+        respfeatures_cond = []
 
-        load_list = [respfeatures_listdir_clean[i] for i in load_i]
+        for session_i in range(session_count[cond]):
 
-        data = []
-        for load_name in load_list:
-            data.append(pd.read_excel(load_name))
+            respfeatures_cond.append(pd.read_excel(f'{sujet}_{cond}_{session_i+1}_respfeatures.xlsx'))
 
-        respfeatures_allcond[cond] = data
+        respfeatures_allcond[cond] = respfeatures_cond
     
     #### go back to path source
     os.chdir(path_source)
@@ -751,7 +684,7 @@ def get_all_respi_ratio(sujet):
 
         if len(respfeatures_allcond[cond]) == 1:
 
-            mean_cycle_duration = np.mean(respfeatures_allcond[cond][0][['insp_duration', 'exp_duration']].values, axis=0)
+            mean_cycle_duration = np.mean(respfeatures_allcond[cond][0][['inspi_duration', 'expi_duration']].values, axis=0)
             mean_inspi_ratio = mean_cycle_duration[0]/mean_cycle_duration.sum()
 
             respi_ratio_allcond[cond] = [ mean_inspi_ratio ]
@@ -765,13 +698,13 @@ def get_all_respi_ratio(sujet):
                 
                 if session_i == 0 :
 
-                    mean_cycle_duration = np.mean(respfeatures_allcond[cond][session_i][['insp_duration', 'exp_duration']].values, axis=0)
+                    mean_cycle_duration = np.mean(respfeatures_allcond[cond][session_i][['inspi_duration', 'expi_duration']].values, axis=0)
                     mean_inspi_ratio = mean_cycle_duration[0]/mean_cycle_duration.sum()
                     data_to_short = [ mean_inspi_ratio ]
 
                 elif session_i > 0 :
 
-                    mean_cycle_duration = np.mean(respfeatures_allcond[cond][session_i][['insp_duration', 'exp_duration']].values, axis=0)
+                    mean_cycle_duration = np.mean(respfeatures_allcond[cond][session_i][['inspi_duration', 'expi_duration']].values, axis=0)
                     mean_inspi_ratio = mean_cycle_duration[0]/mean_cycle_duration.sum()
 
                     data_replace = [(data_to_short[0] + mean_inspi_ratio)]
@@ -791,78 +724,93 @@ def get_all_respi_ratio(sujet):
 
 
 
+
 ################################
 ######## STRETCH ########
 ################################
 
 
-#resp_features, data = respfeatures_allcond[cond][session_i], data[0,:]
+#resp_features, nb_point_by_cycle, data = respfeatures_i, stretch_point_surrogates_MVL_Cxy, x_zscore
 def stretch_data(resp_features, nb_point_by_cycle, data, srate):
 
-    # params
-    cycle_times = resp_features[['inspi_time', 'expi_time']].values
-    mean_cycle_duration = np.mean(resp_features[['insp_duration', 'exp_duration']].values, axis=0)
+    #### params
+    cycle_times = resp_features[['inspi_time', 'expi_time', 'next_inspi_time']].values
+    mean_cycle_duration = np.mean(resp_features[['inspi_duration', 'expi_duration']].values, axis=0)
     mean_inspi_ratio = mean_cycle_duration[0]/mean_cycle_duration.sum()
-    times = np.arange(0,np.size(data))/srate
+    times = np.arange(0,data.shape[0])/srate
 
-    # stretch
+    #### stretch
     if stretch_TF_auto:
-        clipped_times, times_to_cycles, cycles, cycle_points, data_stretch_linear = respirationtools.deform_to_cycle_template(
-                data, times, cycle_times, nb_point_by_cycle=nb_point_by_cycle, inspi_ratio=mean_inspi_ratio)
+
+        cycles = physio.deform_traces_to_cycle_template(data.reshape(-1,1), times, cycle_times, points_per_cycle=nb_point_by_cycle, 
+                segment_ratios=mean_inspi_ratio, output_mode='stacked')
     else:
-        clipped_times, times_to_cycles, cycles, cycle_points, data_stretch_linear = respirationtools.deform_to_cycle_template(
-                data, times, cycle_times, nb_point_by_cycle=nb_point_by_cycle, inspi_ratio=ratio_stretch_TF)
+        
+        cycles = physio.deform_traces_to_cycle_template(data.reshape(-1,1), times, cycle_times, points_per_cycle=nb_point_by_cycle, 
+                segment_ratios=ratio_stretch_TF, output_mode='stacked')
 
-    nb_cycle = data_stretch_linear.shape[0]//nb_point_by_cycle
-    phase = np.arange(nb_point_by_cycle)/nb_point_by_cycle
-    data_stretch = data_stretch_linear.reshape(int(nb_cycle), int(nb_point_by_cycle))
+    #### clean
+    mask = resp_features[resp_features['select'] == 1].index.values
+    cycle_clean = cycles[mask, :, :]
 
-    # inspect
+    #### reshape
+    if np.iscomplex(data[0]):
+        data_stretch = np.zeros(( cycle_clean.shape[0], nb_point_by_cycle ), dtype='complex')
+    else:
+        data_stretch = np.zeros(( cycle_clean.shape[0], nb_point_by_cycle ))
+
+    for cycle_i in range(cycle_clean.shape[0]):
+
+        data_stretch[cycle_i, :] = cycle_clean[cycle_i,:].reshape(-1)
+
+    #### inspect
     if debug == True:
-        for i in range(int(nb_cycle)):
-            plt.plot(data_stretch[i])
-        plt.show()
 
-        i = 1
-        plt.plot(data_stretch[i])
+        plt.plot(data_stretch.mean(axis=0))
         plt.show()
 
     return data_stretch, mean_inspi_ratio
 
     
-#resp_features, nb_point_by_cycle, data, srate = resp_features, stretch_point_TF, ispc_mat, 1/slwin_step
+
+
+
+
+#resp_features, nb_point_by_cycle, data, srate = respfeatures_allcond[cond][odor_i], stretch_point_TF, tf[n_chan,:,:], srate
 def stretch_data_tf(resp_features, nb_point_by_cycle, data, srate):
 
-    # params
-    cycle_times = resp_features[['inspi_time', 'expi_time']].values
-    mean_cycle_duration = np.mean(resp_features[['insp_duration', 'exp_duration']].values, axis=0)
+    #### params
+    cycle_times = resp_features[['inspi_time', 'expi_time', 'next_inspi_time']].values
+    mean_cycle_duration = np.mean(resp_features[['inspi_duration', 'expi_duration']].values, axis=0)
     mean_inspi_ratio = mean_cycle_duration[0]/mean_cycle_duration.sum()
     times = np.arange(0,data.shape[1])/srate
 
-    # stretch
+    #### stretch
     if stretch_TF_auto:
-        clipped_times, times_to_cycles, cycles, cycle_points, data_stretch_linear = respirationtools.deform_to_cycle_template(
-                data.T, times, cycle_times, nb_point_by_cycle=nb_point_by_cycle, inspi_ratio=mean_inspi_ratio)
+
+        cycles = physio.deform_traces_to_cycle_template(data.T, times, cycle_times, points_per_cycle=nb_point_by_cycle, 
+                segment_ratios=mean_inspi_ratio, output_mode='stacked')
     else:
-        clipped_times, times_to_cycles, cycles, cycle_points, data_stretch_linear = respirationtools.deform_to_cycle_template(
-                data.T, times, cycle_times, nb_point_by_cycle=nb_point_by_cycle, inspi_ratio=ratio_stretch_TF)
+        
+        cycles = physio.deform_traces_to_cycle_template(data.T, times, cycle_times, points_per_cycle=nb_point_by_cycle, 
+                segment_ratios=ratio_stretch_TF, output_mode='stacked')
 
     #### clean
     mask = resp_features[resp_features['select'] == 1].index.values
-    cycle_clean = mask[np.isin(mask, cycles)]
+    cycle_clean = cycles[mask, :, :]
 
     #### reshape
     if np.iscomplex(data[0,0]):
         data_stretch = np.zeros(( cycle_clean.shape[0], data.shape[0], nb_point_by_cycle ), dtype='complex')
     else:
         data_stretch = np.zeros(( cycle_clean.shape[0], data.shape[0], nb_point_by_cycle ))
-    for cycle_i, cycle_val in enumerate(cycle_clean):
-        data_stretch[cycle_i, :, :] = data_stretch_linear.T[:, 1000*(cycle_val):1000*(cycle_val+1)]
 
-    # inspect
+    for cycle_i in range(cycle_clean.shape[0]):
+
+        data_stretch[cycle_i, :, :] = cycle_clean[cycle_i,:,:].T
+
+    #### inspect
     if debug == True:
-        plt.pcolormesh(data_stretch_linear.T)
-        plt.show()
 
         plt.pcolormesh(np.mean(data_stretch, axis=0))
         plt.show()
@@ -1108,6 +1056,7 @@ def Shannon_MI(a):
 
 
 def get_MVL(x):
+    
     _phase = np.arange(0, x.shape[0])*2*np.pi/x.shape[0]
     complex_vec = x*np.exp(1j*_phase)
 
@@ -1151,8 +1100,7 @@ def print_advancement(i, i_final, steps=[25, 50, 75]):
     for step, step_i in steps_i.items():
 
         if i == step_i:
-            print(f'{step}%')
-
+            print(f'{step}%', flush=True)
 
 
 
@@ -1163,14 +1111,7 @@ def print_advancement(i, i_final, steps=[25, 50, 75]):
 
 
 ################################
-######## MISCALLENOUS ########
-################################
-
-
-
-
-################################
-######## MISCALLENOUS ########
+######## NORMALIZATION ########
 ################################
 
 
@@ -1185,11 +1126,7 @@ def zscore(x):
 
 def zscore_mat(x):
 
-    _zscore_mat = np.zeros(( x.shape[0], x.shape[1] ))
-    
-    for i in range(x.shape[0]):
-
-        _zscore_mat[i,:] = zscore(x[i,:])
+    _zscore_mat = (x - x.mean(axis=1).reshape(-1,1)) / x.std(axis=1).reshape(-1,1)
 
     return _zscore_mat
 
@@ -1197,9 +1134,9 @@ def zscore_mat(x):
 
 def rscore(x):
 
-    mad = np.median( np.abs(x-np.median(x)) ) * 1.4826 # median_absolute_deviation
+    mad = np.median( np.abs(x-np.median(x)) ) # median_absolute_deviation
 
-    rzscore_x = (x-np.median(x)) / mad
+    rzscore_x = (x-np.median(x)) * 0.6745 / mad
 
     return rzscore_x
     
@@ -1208,15 +1145,150 @@ def rscore(x):
 
 def rscore_mat(x):
 
-    _zscore_mat = np.zeros(( x.shape[0], x.shape[1] ))
-    
-    for i in range(x.shape[0]):
+    mad = np.median(np.abs(x-np.median(x, axis=1).reshape(-1,1)), axis=1) # median_absolute_deviation
 
-        _zscore_mat[i,:] = rscore(x[i,:])
+    _rscore_mat = (x-np.median(x, axis=1).reshape(-1,1)) * 0.6745 / mad.reshape(-1,1)
 
-    return _zscore_mat
+    return _rscore_mat
 
 
+
+
+
+
+#tf_conv = tf_median_cycle[nchan, :, :]
+def norm_tf(sujet, tf_conv, electrode_recording_type, norm_method):
+
+    path_source = os.getcwd()
+
+    chan_list, chan_list_ieeg = get_chanlist(sujet, electrode_recording_type)
+
+    if norm_method not in ['rscore', 'zscore']:
+
+        #### load baseline
+        os.chdir(os.path.join(path_precompute, sujet, 'baselines'))
+
+        if electrode_recording_type == 'monopolaire':
+            baselines = xr.open_dataarray(f'{sujet}_baselines.nc')
+        if electrode_recording_type == 'bipolaire':
+            baselines = xr.open_dataarray(f'{sujet}_baselines_bi.nc')
+
+    if norm_method == 'dB':
+
+        for n_chan_i, n_chan in enumerate(chan_list_ieeg):
+
+            tf_conv[n_chan_i,:,:] = 10*np.log10(tf_conv[n_chan_i,:,:] / baselines.loc[n_chan, :, 'median'].values.reshape(-1,1))
+
+    if norm_method == 'zscore_baseline':
+
+        for n_chan_i, n_chan in enumerate(chan_list_ieeg):
+
+            tf_conv[n_chan_i,:,:] = (tf_conv[n_chan_i,:,:] - baselines.loc[n_chan,:,'mean'].values.reshape(-1,1)) / baselines.loc[n_chan,:,'std'].values.reshape(-1,1)
+                
+    if norm_method == 'rscore_baseline':
+
+        for n_chan_i, n_chan in enumerate(chan_list_ieeg):
+
+            tf_conv[n_chan_i,:,:] = (tf_conv[n_chan_i,:,:] - baselines.loc[n_chan,:,'median'].values.reshape(-1,1)) * 0.6745 / baselines.loc[n_chan,:,'mad'].values.reshape(-1,1)
+
+    if norm_method == 'zscore':
+
+        for n_chan_i, n_chan in enumerate(chan_list_ieeg):
+
+            tf_conv[n_chan_i,:,:] = zscore_mat(tf_conv[n_chan_i,:,:])
+                
+    if norm_method == 'rscore':
+
+        for n_chan_i, n_chan in enumerate(chan_list_ieeg):
+
+            tf_conv[n_chan_i,:,:] = rscore_mat(tf_conv[n_chan_i,:,:])
+
+
+    #### verify baseline
+    if debug:
+
+        nchan = 0
+        nchan_name = chan_list_ieeg[nchan]
+
+        fig, axs = plt.subplots(ncols=2)
+        axs[0].set_title('mean std')
+        axs[0].plot(baselines.loc[nchan_name,:,'mean'], label='mean')
+        axs[0].plot(baselines.loc[nchan_name,:,'std'], label='std')
+        axs[0].legend()
+        axs[0].set_yscale('log')
+        axs[1].set_title('median mad')
+        axs[1].plot(baselines.loc[nchan_name,:,'median'], label='median')
+        axs[1].plot(baselines.loc[nchan_name,:,'mad'], label='mad')
+        axs[1].legend()
+        axs[1].set_yscale('log')
+        plt.show()
+
+        tf_test = tf_conv[nchan,:,:int(tf_conv.shape[-1]/10)].copy()
+
+        fig, axs = plt.subplots(nrows=6)
+        fig.set_figheight(10)
+        fig.set_figwidth(15)
+
+        percentile_sel = 0
+
+        vmin = np.percentile(tf_test.reshape(-1),percentile_sel)
+        vmax = np.percentile(tf_test.reshape(-1),100-percentile_sel)
+        im = axs[0].pcolormesh(tf_test, vmin=vmin, vmax=vmax)
+        axs[0].set_title('raw')
+        fig.colorbar(im, ax=axs[0])
+
+        tf_baseline = 10*np.log10(tf_test / baselines.loc[chan_list_ieeg[nchan], :, 'median'].values.reshape(-1,1))
+        vmin = np.percentile(tf_baseline.reshape(-1),percentile_sel)
+        vmax = np.percentile(tf_baseline.reshape(-1),100-percentile_sel)
+        im = axs[1].pcolormesh(tf_baseline, vmin=vmin, vmax=vmax)
+        axs[1].set_title('db')
+        fig.colorbar(im, ax=axs[1])
+
+        tf_baseline = (tf_test - baselines.loc[chan_list_ieeg[nchan],:,'mean'].values.reshape(-1,1)) / baselines.loc[chan_list_ieeg[nchan],:,'std'].values.reshape(-1,1)
+        vmin = np.percentile(tf_baseline.reshape(-1),percentile_sel)
+        vmax = np.percentile(tf_baseline.reshape(-1),100-percentile_sel)
+        im = axs[2].pcolormesh(tf_baseline, vmin=vmin, vmax=vmax)
+        axs[2].set_title('zscore')
+        fig.colorbar(im, ax=axs[2])
+
+        tf_baseline = (tf_test - baselines.loc[chan_list_ieeg[nchan],:,'median'].values.reshape(-1,1)) / baselines.loc[chan_list_ieeg[nchan],:,'mad'].values.reshape(-1,1)
+        vmin = np.percentile(tf_baseline.reshape(-1),percentile_sel)
+        vmax = np.percentile(tf_baseline.reshape(-1),100-percentile_sel)
+        im = axs[3].pcolormesh(tf_baseline, vmin=vmin, vmax=vmax)
+        axs[3].set_title('rscore')
+        fig.colorbar(im, ax=axs[3])
+
+        tf_baseline = zscore_mat(tf_test)
+        vmin = np.percentile(tf_baseline.reshape(-1),percentile_sel)
+        vmax = np.percentile(tf_baseline.reshape(-1),100-percentile_sel)
+        im = axs[4].pcolormesh(tf_baseline, vmin=vmin, vmax=vmax)
+        axs[4].set_title('zscore_mat')
+        fig.colorbar(im, ax=axs[4])
+
+        tf_baseline = rscore_mat(tf_test)
+        vmin = np.percentile(tf_baseline.reshape(-1),percentile_sel)
+        vmax = np.percentile(tf_baseline.reshape(-1),100-percentile_sel)
+        im = axs[5].pcolormesh(tf_baseline, vmin=vmin, vmax=vmax)
+        axs[5].set_title('rscore_mat')
+        fig.colorbar(im, ax=axs[5])
+
+        plt.show()
+
+    os.chdir(path_source)
+
+    return tf_conv
+
+
+
+
+
+
+def get_mad(data, axis=0):
+
+    med = np.median(data, axis=axis)
+    mad = np.median(np.abs(data - med), axis=axis) / 0.6744897501960817
+
+    return mad
 
 
 

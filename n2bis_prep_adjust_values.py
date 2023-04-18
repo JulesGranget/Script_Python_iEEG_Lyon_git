@@ -39,6 +39,10 @@ trigger_allsujet = {
                 'trig_time' : [0,           153600]
     },
 
+    'MUGa': {   'trig_name' : ['CV_start', 'CV_stop'],
+                'trig_time' : [0,           153600]
+    },
+
     'pat_02459_0912' : {   'trig_name' : ['CV_start', 'CV_stop'],
                 'trig_time' : [830000, 980000]
     },

@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import scipy.signal
 import pandas as pd
 import joblib
+import pickle
+import cv2
 
 import pickle
 import gc
@@ -27,190 +29,43 @@ debug = False
 
 
 
-#dict2reduce = cyclefreq_binned_allcond
-def reduce_data(dict2reduce, prms):
-
-    #### identify count
-    dict_count = {}
-        #### for cyclefreq & Pxx
-    if list(dict2reduce.keys())[0] in band_prep_list:
-
-        for cond in prms['conditions']:
-            dict_count[cond] = len(dict2reduce[band_prep_list[0]][cond])
-        #### for surrogates
-    elif len(list(dict2reduce.keys())) == 4 and list(dict2reduce.keys())[0] not in prms['conditions']:
-
-        for cond in prms['conditions']:
-            dict_count[cond] = len(dict2reduce[list(dict2reduce.keys())[0]][cond])
-        #### for Cxy & MVL
-    else:
-
-        for cond in prms['conditions']:
-            dict_count[cond] = len(dict2reduce[cond])    
-
-    #### for Pxx & Cyclefreq reduce
-    if np.sum([True for i in list(dict2reduce.keys()) if i in band_prep_list]) > 0:
-    
-        #### generate dict
-        dict_reduced = {}
-
-        for band_prep in band_prep_list:
-            dict_reduced[band_prep] = {}
-
-            for cond in prms['conditions']:
-                dict_reduced[band_prep][cond] = np.zeros(( dict2reduce[band_prep][cond][0].shape ))
-
-        #### fill
-        for band_prep in band_prep_list:
-
-            for cond in prms['conditions']:
-
-                for session_i in range(dict_count[cond]):
-
-                    dict_reduced[band_prep][cond] += dict2reduce[band_prep][cond][session_i]
-
-                dict_reduced[band_prep][cond] /= dict_count[cond]
-
-    #### for Cxy & MVL reduce
-    elif np.sum([True for i in list(dict2reduce.keys()) if i in prms['conditions']]) > 0:
-
-        #### generate dict
-        dict_reduced = {}
-
-        for cond in prms['conditions']:
-
-            dict_reduced[cond] = np.zeros(( dict2reduce[cond][0].shape ))
-
-        #### fill
-        for cond in prms['conditions']:
-
-            for session_i in range(dict_count[cond]):
-
-                dict_reduced[cond] += dict2reduce[cond][session_i]
-
-            dict_reduced[cond] /= dict_count[cond]
-
-    #### for surrogates
-    else:
-        
-        #### generate dict
-        dict_reduced = {}
-        for key in list(dict2reduce.keys()):
-            dict_reduced[key] = {}
-            for cond in prms['conditions']:
-                dict_reduced[key][cond] = np.zeros(( dict2reduce[key][cond][0].shape ))
-
-        #### fill
-        #key = 'Cxy'
-        for key in list(dict2reduce.keys()):
-
-            for cond in prms['conditions']:
-
-                for session_i in range(dict_count[cond]):
-
-                    dict_reduced[key][cond] += dict2reduce[key][cond][session_i]
-
-                dict_reduced[key][cond] /= dict_count[cond]
-
-    #### verify
-        #### for cyclefreq & Pxx
-    if list(dict2reduce.keys())[0] in band_prep_list:
-
-        for band_prep in band_prep_list:
-            for cond in prms['conditions']:
-                try: 
-                    _ = dict_reduced[band_prep][cond].shape
-                except:
-                    raise ValueError('reducing wrong')
-        
-        #### for surrogates
-    elif len(list(dict2reduce.keys())) == 4 and list(dict2reduce.keys())[0] not in prms['conditions']:
-
-        list_surr = list(dict2reduce.keys())
-
-        for surr_i in list_surr:
-        
-            for cond in prms['conditions']:
-                try: 
-                    _ = dict_reduced[surr_i][cond].shape
-                except:
-                    raise ValueError('reducing wrong')
-    
-        #### for Cxy & MVL
-    else:
-
-        for cond in prms['conditions']:
-            try: 
-                _ = dict_reduced[cond].shape
-            except:
-                raise ValueError('reducing wrong')
-
-    return dict_reduced
-
-
-
-
-
-
-def load_surrogates(sujet, respfeatures_allcond, prms, monopol):
+def load_surrogates(sujet, monopol):
 
     os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
 
-    surrogates_allcond = {'Cxy' : {}, 'cyclefreq_lf' : {}, 'cyclefreq_hf' : {}, 'MVL' : {}}
+    #### Cxy
+    nwind, nfft, noverlap, hannw = get_params_spectral_analysis(srate)
+    chan_list, chan_list_ieeg = get_chanlist(sujet, monopol)
+    hzCxy = np.linspace(0,srate/2,int(nfft/2+1))
+    mask_hzCxy = (hzCxy>=freq_surrogates[0]) & (hzCxy<freq_surrogates[1])
+    hzCxy = hzCxy[mask_hzCxy]
 
-    if monopol:
+    surrogates_allcond = {'Cxy' : {}, 'cyclefreq' : {}, 'MVL' : {}}
 
-        for cond in prms['conditions']:
+    for cond in conditions:
 
-            if len(respfeatures_allcond[cond]) == 1:
+        surrogates_Cxy = np.zeros((session_count[cond], len(chan_list_ieeg), len(hzCxy)))
+        surrogates_cyclefreq = np.zeros((session_count[cond], 3, len(chan_list_ieeg), stretch_point_surrogates_MVL_Cxy))
+        surrogates_MVL = np.zeros(( session_count[cond], len(chan_list_ieeg), stretch_point_surrogates_MVL_Cxy ))
 
-                surrogates_allcond['Cxy'][cond] = [np.load(f'{sujet}_{cond}_{str(1)}_Coh.npy')]
-                surrogates_allcond['cyclefreq_lf'][cond] = [np.load(f'{sujet}_{cond}_{str(1)}_cyclefreq_lf.npy')]
-                surrogates_allcond['cyclefreq_hf'][cond] = [np.load(f'{sujet}_{cond}_{str(1)}_cyclefreq_hf.npy')]
-                surrogates_allcond['MVL'][cond] = [np.load(f'{sujet}_{cond}_{str(1)}_MVL_lf.npy')]
+        for session_i in range(session_count[cond]):
 
-            elif len(respfeatures_allcond[cond]) > 1:
+            if monopol:
 
-                data_load = {'Cxy' : [], 'cyclefreq_lf' : [], 'cyclefreq_hf' : [], 'MVL' : []}
+                surrogates_Cxy[session_i,:,:] = np.load(f'{sujet}_{cond}_{str(session_i+1)}_Coh.npy')[:len(chan_list_ieeg),:]
+                surrogates_cyclefreq[session_i,:,:,:] = np.load(f'{sujet}_{cond}_{str(session_i+1)}_cyclefreq_wb.npy')[:,:len(chan_list_ieeg),:]
+                surrogates_MVL[session_i,:] = np.load(f'{sujet}_{cond}_{str(session_i+1)}_MVL_wb.npy')[:len(chan_list_ieeg),:]
 
-                for session_i in range(len(respfeatures_allcond[cond])):
-
-                    data_load['Cxy'].append(np.load(f'{sujet}_{cond}_{str(session_i+1)}_Coh.npy'))
-                    data_load['cyclefreq_lf'].append(np.load(f'{sujet}_{cond}_{str(session_i+1)}_cyclefreq_lf.npy'))
-                    data_load['cyclefreq_hf'].append(np.load(f'{sujet}_{cond}_{str(session_i+1)}_cyclefreq_hf.npy'))
-                    data_load['MVL'].append(np.load(f'{sujet}_{cond}_{str(session_i+1)}_MVL_lf.npy'))
+            else:
                 
-                surrogates_allcond['Cxy'][cond] = data_load['Cxy']
-                surrogates_allcond['cyclefreq_lf'][cond] = data_load['cyclefreq_lf']
-                surrogates_allcond['cyclefreq_hf'][cond] = data_load['cyclefreq_hf']
-                surrogates_allcond['MVL'][cond] = data_load['MVL']
+                surrogates_Cxy[session_i,:,:] = np.load(f'{sujet}_{cond}_{str(session_i+1)}_Coh_bi.npy')[:len(chan_list_ieeg),:]
+                surrogates_cyclefreq[session_i,:,:,:] = np.load(f'{sujet}_{cond}_{str(session_i+1)}_cyclefreq_wb_bi.npy')[:len(chan_list_ieeg),:,:]
+                surrogates_MVL[session_i,:] = np.load(f'{sujet}_{cond}_{str(session_i+1)}_MVL_wb_bi.npy')[:len(chan_list_ieeg)]
 
-    else:
-
-        for cond in prms['conditions']:
-
-            if len(respfeatures_allcond[cond]) == 1:
-
-                surrogates_allcond['Cxy'][cond] = [np.load(f'{sujet}_{cond}_{str(1)}_Coh_bi.npy')]
-                surrogates_allcond['cyclefreq_lf'][cond] = [np.load(f'{sujet}_{cond}_{str(1)}_cyclefreq_lf_bi.npy')]
-                surrogates_allcond['cyclefreq_hf'][cond] = [np.load(f'{sujet}_{cond}_{str(1)}_cyclefreq_hf_bi.npy')]
-                surrogates_allcond['MVL'][cond] = [np.load(f'{sujet}_{cond}_{str(1)}_MVL_lf_bi.npy')]
-
-            elif len(respfeatures_allcond[cond]) > 1:
-
-                data_load = {'Cxy' : [], 'cyclefreq_lf' : [], 'cyclefreq_hf' : [], 'MVL' : []}
-
-                for session_i in range(len(respfeatures_allcond[cond])):
-
-                    data_load['Cxy'].append(np.load(f'{sujet}_{cond}_{str(session_i+1)}_Coh_bi.npy'))
-                    data_load['cyclefreq_lf'].append(np.load(f'{sujet}_{cond}_{str(session_i+1)}_cyclefreq_lf_bi.npy'))
-                    data_load['cyclefreq_hf'].append(np.load(f'{sujet}_{cond}_{str(session_i+1)}_cyclefreq_hf_bi.npy'))
-                    data_load['MVL'].append(np.load(f'{sujet}_{cond}_{str(session_i+1)}_MVL_lf_bi.npy'))
-                
-                surrogates_allcond['Cxy'][cond] = data_load['Cxy']
-                surrogates_allcond['cyclefreq_lf'][cond] = data_load['cyclefreq_lf']
-                surrogates_allcond['cyclefreq_hf'][cond] = data_load['cyclefreq_hf']
-                surrogates_allcond['MVL'][cond] = data_load['MVL']
+        #### median
+        surrogates_allcond['Cxy'][cond] = np.median(surrogates_Cxy, axis=0)
+        surrogates_allcond['cyclefreq'][cond] = np.median(surrogates_cyclefreq, axis=0)
+        surrogates_allcond['MVL'][cond] = np.median(surrogates_MVL, axis=0)
 
     return surrogates_allcond
 
@@ -219,219 +74,135 @@ def load_surrogates(sujet, respfeatures_allcond, prms, monopol):
 
 
 
+def get_metrics_for_sujet(sujet, monopol):
 
-#### compute Pxx & Cxy & Cyclefreq
-def compute_PxxCxyCyclefreq_for_cond_session(sujet, band_prep, cond, session_i, stretch_point_surrogates, respfeatures_allcond, prms, monopol):
-    
-    print(cond)
+    #### load params
+    respfeatures_allcond = load_respfeatures(sujet)
 
-    #### extract data
-    chan_i = prms['chan_list'].index('nasal')
-    respi = load_data_sujet(sujet, band_prep, cond, session_i, monopol)[chan_i,:]
-    data_tmp = load_data_sujet(sujet, band_prep, cond, session_i, monopol)
+    if sujet in sujet_list:
 
-    #### prepare analysis
-    hzPxx = np.linspace(0,prms['srate']/2,int(prms['nfft']/2+1))
-    hzCxy = np.linspace(0,prms['srate']/2,int(prms['nfft']/2+1))
+        conditions = ['FR_CV', 'RD_CV', 'RD_FV', 'RD_SV']
+
+    else:
+
+        conditions = ['FR_CV']
+
+    #### params
+    nwind, nfft, noverlap, hannw = get_params_spectral_analysis(srate)
+    chan_list, chan_list_ieeg = get_chanlist(sujet, monopol)
+
+    hzPxx = np.linspace(0,srate/2,int(nfft/2+1))
+    hzCxy = np.linspace(0,srate/2,int(nfft/2+1))
     mask_hzCxy = (hzCxy>=freq_surrogates[0]) & (hzCxy<freq_surrogates[1])
     hzCxy = hzCxy[mask_hzCxy]
 
+    band_prep = 'wb'
+
+    #### MA
+    metrics_allcond = {}
+
     #### compute
-    Cxy_for_cond = np.zeros(( data_tmp.shape[0], len(hzCxy)))
-    Pxx_for_cond = np.zeros(( data_tmp.shape[0], len(hzPxx)))
-    cyclefreq_for_cond = np.zeros(( data_tmp.shape[0], stretch_point_surrogates))
-    # MI_for_cond = np.zeros(( data_tmp.shape[0] ))
-    MVL_for_cond = np.zeros(( data_tmp.shape[0] ))
-    # cyclefreq_binned_for_cond = np.zeros(( data_tmp.shape[0], MI_n_bin))
+    for cond in conditions:
 
-    # MI_bin_i = int(stretch_point_surrogates / MI_n_bin)
+        #### MA
+        metrics_allcond[cond] = {}
 
-    for n_chan in range(data_tmp.shape[0]):
+        Cxy_for_cond = np.zeros(( len(chan_list_ieeg), session_count[cond], len(hzCxy) ))
+        Pxx_for_cond = np.zeros(( len(chan_list_ieeg), session_count[cond], len(hzPxx) ))
+        cyclefreq_for_cond = np.zeros(( len(chan_list_ieeg), session_count[cond], stretch_point_surrogates_MVL_Cxy ))
+        # MI_for_cond = np.zeros(( data_tmp.shape[0] ))
+        MVL_for_cond = np.zeros(( len(chan_list_ieeg), session_count[cond] ))
+        # cyclefreq_binned_for_cond = np.zeros(( data_tmp.shape[0], MI_n_bin))
 
-        #### Pxx, Cxy, CycleFreq
-        x = data_tmp[n_chan,:]
-        hzPxx, Pxx = scipy.signal.welch(x, fs=prms['srate'], window=prms['hannw'], nperseg=prms['nwind'], noverlap=prms['noverlap'], nfft=prms['nfft'])
+        for session_i in range(session_count[cond]):
+    
+            #### extract data
+            chan_i = chan_list.index('nasal')
+            respi = load_data_sujet(sujet, band_prep, cond, session_i, monopol)[chan_i,:]
+            data_tmp = load_data_sujet(sujet, band_prep, cond, session_i, monopol)
 
-        y = respi
-        hzPxx, Cxy = scipy.signal.coherence(x, y, fs=prms['srate'], window=prms['hannw'], nperseg=prms['nwind'], noverlap=prms['noverlap'], nfft=prms['nfft'])
+            #### compute
+            #n_chan = 0
+            for n_chan, _ in enumerate(chan_list_ieeg):
 
-        x_stretch, trash = stretch_data(respfeatures_allcond[cond][session_i], stretch_point_surrogates, x, prms['srate'])
-        x_stretch_mean = np.mean(x_stretch, 0)
+                #### Pxx, Cxy, CycleFreq
+                x = data_tmp[n_chan,:]
+                hzPxx, Pxx = scipy.signal.welch(x, fs=srate, window=hannw, nperseg=nwind, noverlap=noverlap, nfft=nfft)
 
-        Cxy_for_cond[n_chan,:] = Cxy[mask_hzCxy]
-        Pxx_for_cond[n_chan,:] = Pxx
-        cyclefreq_for_cond[n_chan,:] = x_stretch_mean
+                y = respi
+                hzPxx, Cxy = scipy.signal.coherence(x, y, fs=srate, window=hannw, nperseg=nwind, noverlap=noverlap, nfft=nfft)
 
-        #### MVL
-        x_zscore = zscore(x)
-        x_stretch, trash = stretch_data(respfeatures_allcond[cond][session_i], stretch_point_surrogates, x_zscore, prms['srate'])
+                x_stretch, trash = stretch_data(respfeatures_allcond[cond][session_i], stretch_point_surrogates_MVL_Cxy, x, srate)
+                x_stretch_mean = np.mean(x_stretch, 0)
 
-        MVL_for_cond[n_chan] = get_MVL(np.mean(x_stretch,axis=0)-np.mean(x_stretch,axis=0).min())
+                Cxy_for_cond[n_chan,session_i,:] = Cxy[mask_hzCxy]
+                Pxx_for_cond[n_chan,session_i,:] = Pxx
+                cyclefreq_for_cond[n_chan,session_i,:] = x_stretch_mean
 
-        # #### MI
-        # x = x_stretch_mean
+                #### MVL
+                x_zscore = zscore(x)
+                x_stretch, trash = stretch_data(respfeatures_allcond[cond][session_i], stretch_point_surrogates_MVL_Cxy, x_zscore, srate)
 
-        # x_bin = np.zeros(( MI_n_bin ))
+                MVL_for_cond[n_chan,session_i] = get_MVL(np.mean(x_stretch,axis=0)-np.mean(x_stretch,axis=0).min())
 
-        # for bin_i in range(MI_n_bin):
-        #     x_bin[bin_i] = np.mean(x[MI_bin_i*bin_i:MI_bin_i*(bin_i+1)])
+                # #### MI
+                # x = x_stretch_mean
 
-        # cyclefreq_binned_for_cond[n_chan,:] = x_bin
+                # x_bin = np.zeros(( MI_n_bin ))
 
-        # x_bin += np.abs(x_bin.min())*2 #supress zero values
-        # x_bin = x_bin/np.sum(x_bin) #transform into probabilities
-            
-        # MI_for_cond[n_chan] = Shannon_MI(x_bin)
+                # for bin_i in range(MI_n_bin):
+                #     x_bin[bin_i] = np.mean(x[MI_bin_i*bin_i:MI_bin_i*(bin_i+1)])
 
-    return Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond, MVL_for_cond
+                # cyclefreq_binned_for_cond[n_chan,:] = x_bin
 
-        
+                # x_bin += np.abs(x_bin.min())*2 #supress zero values
+                # x_bin = x_bin/np.sum(x_bin) #transform into probabilities
+                    
+                # MI_for_cond[n_chan] = Shannon_MI(x_bin)
 
+        #### mean
+        metrics_allcond[cond]['Cxy'] = Cxy_for_cond.mean(axis=1)
+        metrics_allcond[cond]['Pxx'] = Pxx_for_cond.mean(axis=1)
+        metrics_allcond[cond]['cyclefreq'] = cyclefreq_for_cond.mean(axis=1)
+        metrics_allcond[cond]['MVL'] = MVL_for_cond.mean(axis=1)
 
-
-
-
-def compute_all_PxxCxyCyclefreq(sujet, respfeatures_allcond, prms, monopol):
-
-    Pxx_allcond = {'lf' : {}, 'hf' : {}}
-    Cxy_allcond = {}
-    cyclefreq_allcond = {'lf' : {}, 'hf' : {}}
-    MVL_allcond = {}
-
-    #band_prep = band_prep_list[1]
-    for band_prep in band_prep_list:
-
-        print(band_prep)
-
-        for cond in prms['conditions']:
-
-            if ( len(respfeatures_allcond[cond]) == 1 ) & (band_prep == 'lf'):
-
-                Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond, MVL_for_cond = compute_PxxCxyCyclefreq_for_cond_session(sujet, band_prep, cond, 0, stretch_point_surrogates, respfeatures_allcond, prms, monopol)
-
-                Pxx_allcond['lf'][cond] = [Pxx_for_cond]
-                Cxy_allcond[cond] = [Cxy_for_cond]
-                MVL_allcond[cond] = [MVL_for_cond]
-                cyclefreq_allcond['lf'][cond] = [cyclefreq_for_cond]
-
-            elif ( len(respfeatures_allcond[cond]) == 1 ) & (band_prep == 'hf') :
-
-                Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond, MVL_for_cond = compute_PxxCxyCyclefreq_for_cond_session(sujet, band_prep, cond, 0, stretch_point_surrogates, respfeatures_allcond, prms, monopol)
-
-                Pxx_allcond['hf'][cond] = [Pxx_for_cond]
-                cyclefreq_allcond['hf'][cond] = [cyclefreq_for_cond]
-
-            elif (len(respfeatures_allcond[cond]) > 1) & (band_prep == 'lf'):
-
-                Pxx_load = []
-                Cxy_load = []
-                cyclefreq_load = []
-                MVL_load = []
-
-                for session_i, _ in enumerate(respfeatures_allcond[cond]):
-
-                    Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond, MVL_for_cond = compute_PxxCxyCyclefreq_for_cond_session(sujet, band_prep, cond, session_i, stretch_point_surrogates, respfeatures_allcond, prms, monopol)
-
-                    Pxx_load.append(Pxx_for_cond)
-                    Cxy_load.append(Cxy_for_cond)
-                    cyclefreq_load.append(cyclefreq_for_cond)
-                    MVL_load.append(MVL_for_cond)
-
-                Pxx_allcond['lf'][cond] = Pxx_load
-                Cxy_allcond[cond] = Cxy_load
-                MVL_allcond[cond] = MVL_load
-                cyclefreq_allcond['lf'][cond] = cyclefreq_load
-
-            elif (len(respfeatures_allcond[cond]) > 1) & (band_prep == 'hf'):
-
-                Pxx_load = []
-                cyclefreq_load = []
-
-                for session_i, _ in enumerate(respfeatures_allcond[cond]):
-
-                    Pxx_for_cond, Cxy_for_cond, cyclefreq_for_cond, MVL_for_cond = compute_PxxCxyCyclefreq_for_cond_session(sujet, band_prep, cond, session_i, stretch_point_surrogates, respfeatures_allcond, prms, monopol)
-
-                    Pxx_load.append(Pxx_for_cond)
-                    cyclefreq_load.append(cyclefreq_for_cond)
-
-                Pxx_allcond['hf'][cond] = Pxx_load
-                cyclefreq_allcond['hf'][cond] = cyclefreq_load
-
-    return Pxx_allcond, Cxy_allcond, cyclefreq_allcond, MVL_allcond
+    return metrics_allcond
 
 
 
 
-def compute_reduced_PxxCxyCyclefreqSurrogates(sujet, respfeatures_allcond, surrogates_allcond, prms, monopol):
+def compute_and_save_metrics_sujet(sujet, monopol):
 
-    compute_token = False
-
+    #### verify computation
     if monopol:
         
-        if os.path.exists(os.path.join(path_precompute, sujet, 'PSD_Coh', f'allcond_{sujet}_Pxx.pkl')) == False:
-
-            compute_token = True
+        if os.path.exists(os.path.join(path_precompute, sujet, 'PSD_Coh', f'allcond_{sujet}_metrics.pkl')):
+            print('ALREADY COMPUTED', flush=True)
+            return
 
     else:
         
-        if os.path.exists(os.path.join(path_precompute, sujet, 'PSD_Coh', f'allcond_{sujet}_Pxx_bi.pkl')) == False:
+        if os.path.exists(os.path.join(path_precompute, sujet, 'PSD_Coh', f'allcond_{sujet}_metrics_bi.pkl')):
+            print('ALREADY COMPUTED', flush=True)
+            return
 
-            compute_token = True
+    #### compute metrics
+    metrics_allcond = get_metrics_for_sujet(sujet, monopol)
 
-    if compute_token:
-    
-        #### compute metrics
-        Pxx_allcond, Cxy_allcond, cyclefreq_allcond, MVL_allcond = compute_all_PxxCxyCyclefreq(sujet, respfeatures_allcond, prms, monopol)
+    #### save 
+    os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
 
-        #### reduce
-        Pxx_allcond_red = reduce_data(Pxx_allcond, prms)
-        Cxy_allcond_red = reduce_data(Cxy_allcond, prms)
-        cyclefreq_allcond_red = reduce_data(cyclefreq_allcond, prms)
-        MVL_allcond_red = reduce_data(MVL_allcond, prms)
-        surrogates_allcond_red = reduce_data(surrogates_allcond, prms)
+    if monopol:
 
-        #### save 
-        os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
-
-        if monopol:
-
-            with open(f'allcond_{sujet}_Pxx.pkl', 'wb') as f:
-                pickle.dump(Pxx_allcond_red, f)
-
-            with open(f'allcond_{sujet}_Cxy.pkl', 'wb') as f:
-                pickle.dump(Cxy_allcond_red, f)
-
-            with open(f'allcond_{sujet}_surrogates.pkl', 'wb') as f:
-                pickle.dump(surrogates_allcond_red, f)
-
-            with open(f'allcond_{sujet}_cyclefreq.pkl', 'wb') as f:
-                pickle.dump(cyclefreq_allcond_red, f)
-
-            with open(f'allcond_{sujet}_MVL.pkl', 'wb') as f:
-                pickle.dump(MVL_allcond_red, f)
-
-        else:
-
-            with open(f'allcond_{sujet}_Pxx_bi.pkl', 'wb') as f:
-                pickle.dump(Pxx_allcond_red, f)
-
-            with open(f'allcond_{sujet}_Cxy_bi.pkl', 'wb') as f:
-                pickle.dump(Cxy_allcond_red, f)
-
-            with open(f'allcond_{sujet}_surrogates_bi.pkl', 'wb') as f:
-                pickle.dump(surrogates_allcond_red, f)
-
-            with open(f'allcond_{sujet}_cyclefreq_bi.pkl', 'wb') as f:
-                pickle.dump(cyclefreq_allcond_red, f)
-
-            with open(f'allcond_{sujet}_MVL_bi.pkl', 'wb') as f:
-                pickle.dump(MVL_allcond_red, f)
+        with open(f'allcond_{sujet}_metrics.pkl', 'wb') as f:
+            pickle.dump(metrics_allcond, f)
 
     else:
 
-        print('ALREADY COMPUTED')
+        with open(f'allcond_{sujet}_metrics_bi.pkl', 'wb') as f:
+            pickle.dump(metrics_allcond, f)
 
-    print('done') 
+    print('done', flush=True) 
 
 
 
@@ -442,131 +213,101 @@ def compute_reduced_PxxCxyCyclefreqSurrogates(sujet, respfeatures_allcond, surro
 
 
 
-
-def get_Pxx_Cxy_Cyclefreq_MVL_Surrogates_allcond(sujet, monopol):
-
-    source_path = os.getcwd()
-    
-    os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
-
-    if monopol:
-                
-        with open(f'allcond_{sujet}_Pxx.pkl', 'rb') as f:
-            Pxx_allcond = pickle.load(f)
-
-        with open(f'allcond_{sujet}_Cxy.pkl', 'rb') as f:
-            Cxy_allcond = pickle.load(f)
-
-        with open(f'allcond_{sujet}_surrogates.pkl', 'rb') as f:
-            surrogates_allcond = pickle.load(f)
-
-        with open(f'allcond_{sujet}_cyclefreq.pkl', 'rb') as f:
-            cyclefreq_allcond = pickle.load(f)
-
-        with open(f'allcond_{sujet}_MVL.pkl', 'rb') as f:
-            MVL_allcond = pickle.load(f)
-
-    else:
-                
-        with open(f'allcond_{sujet}_Pxx_bi.pkl', 'rb') as f:
-            Pxx_allcond = pickle.load(f)
-
-        with open(f'allcond_{sujet}_Cxy_bi.pkl', 'rb') as f:
-            Cxy_allcond = pickle.load(f)
-
-        with open(f'allcond_{sujet}_surrogates_bi.pkl', 'rb') as f:
-            surrogates_allcond = pickle.load(f)
-
-        with open(f'allcond_{sujet}_cyclefreq_bi.pkl', 'rb') as f:
-            cyclefreq_allcond = pickle.load(f)
-
-        with open(f'allcond_{sujet}_MVL_bi.pkl', 'rb') as f:
-            MVL_allcond = pickle.load(f)
-
-    os.chdir(source_path)
-
-    return Pxx_allcond, Cxy_allcond, surrogates_allcond, cyclefreq_allcond, MVL_allcond
-
-
-
 #n_chan = 0
 def plot_save_PSD_Cxy_CF_MVL(n_chan, monopol):
 
     #### load data
-    Pxx_allcond, Cxy_allcond, surrogates_allcond, cyclefreq_allcond, MVL_allcond = get_Pxx_Cxy_Cyclefreq_MVL_Surrogates_allcond(sujet, monopol)
-    prms = get_params(sujet, monopol)
+    os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
+    chan_list, chan_list_ieeg = get_chanlist(sujet, monopol)
+
+    if monopol:  
+        with open(f'allcond_{sujet}_metrics.pkl', 'rb') as f:
+            metrics_allcond = pickle.load(f)
+
+    else:   
+        with open(f'allcond_{sujet}_metrics_bi.pkl', 'rb') as f:
+            metrics_allcond = pickle.load(f)
+
+    nwind, nfft, noverlap, hannw = get_params_spectral_analysis(srate)
     respfeatures_allcond = load_respfeatures(sujet)
     df_loca = get_loca_df(sujet, monopol)
+    surrogates_allcond = load_surrogates(sujet, monopol)
 
     #### identify chan params
     if sujet[:3] != 'pat':
         if monopol:
-            chan_list_modified, chan_list_keep = modify_name(prms['chan_list_ieeg'])
+            chan_list_modified, chan_list_keep = modify_name(chan_list_ieeg)
             chan_name = chan_list_modified[n_chan]    
         else:
-            chan_name = prms['chan_list_ieeg'][n_chan]
+            chan_name = chan_list_ieeg[n_chan]
     else:
-        chan_name = prms['chan_list_ieeg'][n_chan]
-    chan_loca = df_loca['ROI'][df_loca['name'] == chan_name].values[0]
-    
-    #### plot
-    print_advancement(n_chan, len(prms['chan_list_ieeg']), steps=[25, 50, 75])
+        chan_name = chan_list_ieeg[n_chan]
 
-    hzPxx = np.linspace(0,prms['srate']/2,int(prms['nfft']/2+1))
-    hzCxy = np.linspace(0,prms['srate']/2,int(prms['nfft']/2+1))
+    chan_loca = df_loca['ROI'][df_loca['name'] == chan_name].values[0]
+
+    if sujet in sujet_list:
+        conditions = ['FR_CV', 'RD_CV', 'RD_FV', 'RD_SV']
+    else:
+        conditions = ['FR_CV']
+
+    #### plot
+    print_advancement(n_chan, len(chan_list_ieeg), steps=[25, 50, 75])
+
+    hzPxx = np.linspace(0,srate/2,int(nfft/2+1))
+    hzCxy = np.linspace(0,srate/2,int(nfft/2+1))
     mask_hzCxy = (hzCxy>=freq_surrogates[0]) & (hzCxy<freq_surrogates[1])
     hzCxy = hzCxy[mask_hzCxy]
 
-    band_prep = 'lf'
+    band_prep = 'wb'
 
-    fig, axs = plt.subplots(nrows=4, ncols=len(prms['conditions']))
+    fig, axs = plt.subplots(nrows=4, ncols=len(conditions))
     plt.suptitle(f'{sujet}_{chan_name}_{chan_loca}')
     fig.set_figheight(10)
     fig.set_figwidth(10)
 
     #c, cond = 0, 'FR_CV'   
-    for c, cond in enumerate(prms['conditions']):
+    for c, cond in enumerate(conditions):
 
         #### identify respi mean
-        respi_mean = []
-        for trial_i, _ in enumerate(respfeatures_allcond[cond]):
-            respi_mean.append(np.round(respfeatures_allcond[cond][trial_i]['cycle_freq'].median(), 3))
-        respi_mean = np.round(np.mean(respi_mean),3)
+        respi_median = []
+        for session_i in range(session_count[cond]):
+            respi_median.append(np.round(respfeatures_allcond[cond][session_i]['cycle_freq'].median(), 3))
+        respi_mean = np.round(np.median(respi_median),3)
                 
         #### plot
-        if len(prms['conditions']) == 1:
+        if len(conditions) == 1:
             ax = axs[0]
         else:      
             ax = axs[0, c]
         ax.set_title(cond, fontweight='bold', rotation=0)
-        ax.semilogy(hzPxx, Pxx_allcond['lf'][cond][n_chan,:], color='k')
-        ax.vlines(respi_mean, ymin=0, ymax=Pxx_allcond['lf'][cond][n_chan,:].max(), color='r')
+        ax.semilogy(hzPxx, metrics_allcond[cond]['Pxx'][n_chan,:], color='k')
+        ax.vlines(respi_mean, ymin=0, ymax=metrics_allcond[cond]['Pxx'][n_chan,:].max(), color='r')
         ax.set_xlim(0,60)
 
-        if len(prms['conditions']) == 1:
+        if len(conditions) == 1:
             ax = axs[1]
         else:      
             ax = axs[1, c]
-        Pxx_sel_min = Pxx_allcond['lf'][cond][n_chan,remove_zero_pad:][np.where(hzPxx[remove_zero_pad:] < 2)[0]].min()
-        Pxx_sel_max = Pxx_allcond['lf'][cond][n_chan,remove_zero_pad:][np.where(hzPxx[remove_zero_pad:] < 2)[0]].max()
-        ax.semilogy(hzPxx[remove_zero_pad:], Pxx_allcond['lf'][cond][n_chan,remove_zero_pad:], color='k')
+        Pxx_sel_min = metrics_allcond[cond]['Pxx'][n_chan,remove_zero_pad:][np.where(hzPxx[remove_zero_pad:] < 2)[0]].min()
+        Pxx_sel_max = metrics_allcond[cond]['Pxx'][n_chan,remove_zero_pad:][np.where(hzPxx[remove_zero_pad:] < 2)[0]].max()
+        ax.semilogy(hzPxx[remove_zero_pad:], metrics_allcond[cond]['Pxx'][n_chan,remove_zero_pad:], color='k')
         ax.set_xlim(0, 2)
         ax.set_ylim(Pxx_sel_min, Pxx_sel_max)
-        ax.vlines(respi_mean, ymin=0, ymax=Pxx_allcond['lf'][cond][n_chan,remove_zero_pad:].max(), color='r')
+        ax.vlines(respi_mean, ymin=0, ymax=metrics_allcond[cond]['Pxx'][n_chan,remove_zero_pad:].max(), color='r')
 
-        if len(prms['conditions']) == 1:
+        if len(conditions) == 1:
             ax = axs[2]
         else:      
             ax = axs[2, c]
-        ax.plot(hzCxy,Cxy_allcond[cond][n_chan,:], color='k')
+        ax.plot(hzCxy,metrics_allcond[cond]['Cxy'][n_chan,:], color='k')
         ax.plot(hzCxy,surrogates_allcond['Cxy'][cond][n_chan,:], color='c')
         ax.vlines(respi_mean, ymin=0, ymax=1, color='r')
 
-        if len(prms['conditions']) == 1:
+        if len(conditions) == 1:
             ax = axs[3]
         else:      
             ax = axs[3, c]
-        MVL_i = np.round(MVL_allcond[cond][n_chan], 5)
+        MVL_i = np.round(metrics_allcond[cond]['MVL'][n_chan], 5)
         MVL_surr = np.percentile(surrogates_allcond['MVL'][cond][n_chan,:], 99)
         if MVL_i > MVL_surr:
             MVL_p = f'MVL : {MVL_i}, *** {int(MVL_i * 100 / MVL_surr)}%'
@@ -575,14 +316,11 @@ def plot_save_PSD_Cxy_CF_MVL(n_chan, monopol):
         # ax.set_title(MVL_p, rotation=0)
         ax.set_xlabel(MVL_p)
 
-        ax.plot(cyclefreq_allcond['lf'][cond][n_chan,:], color='k')
-        ax.plot(surrogates_allcond['cyclefreq_lf'][cond][0, n_chan,:], color='b')
-        ax.plot(surrogates_allcond['cyclefreq_lf'][cond][1, n_chan,:], color='c', linestyle='dotted')
-        ax.plot(surrogates_allcond['cyclefreq_lf'][cond][2, n_chan,:], color='c', linestyle='dotted')
-        if stretch_TF_auto:
-            ax.vlines(prms['respi_ratio_allcond'][cond]*stretch_point_surrogates, ymin=surrogates_allcond['cyclefreq_lf'][cond][2, n_chan,:].min(), ymax=surrogates_allcond['cyclefreq_lf'][cond][1, n_chan,:].max(), colors='r')
-        else:
-            ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=surrogates_allcond['cyclefreq_lf'][cond][2, n_chan,:].min(), ymax=surrogates_allcond['cyclefreq_lf'][cond][1, n_chan,:].max(), colors='r')
+        ax.plot(metrics_allcond[cond]['cyclefreq'][n_chan,:], color='k')
+        ax.plot(surrogates_allcond['cyclefreq'][cond][0, n_chan,:], color='b')
+        ax.plot(surrogates_allcond['cyclefreq'][cond][1, n_chan,:], color='c', linestyle='dotted')
+        ax.plot(surrogates_allcond['cyclefreq'][cond][2, n_chan,:], color='c', linestyle='dotted')
+        ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=surrogates_allcond['cyclefreq'][cond][2, n_chan,:].min(), ymax=surrogates_allcond['cyclefreq'][cond][1, n_chan,:].max(), colors='r')
         #plt.show() 
 
     #### save
@@ -592,133 +330,9 @@ def plot_save_PSD_Cxy_CF_MVL(n_chan, monopol):
     plt.close('all')
     gc.collect()
 
-    return
 
 
     
-
-
-
-
-
-
-
-################################
-######## LOAD TF & ITPC ########
-################################
-
-
-def compute_TF_ITPC(sujet, prms, monopol):
-
-    #### identify count
-    respfeatures_allcond = load_respfeatures(sujet)
-    data_count = {}
-
-    for cond in prms['conditions']:
-        data_count[cond] = len(respfeatures_allcond[cond])
-
-    #tf_mode = 'TF'
-    for tf_mode in ['TF', 'ITPC']:
-    
-        if tf_mode == 'TF':
-            print('######## LOAD TF ########')
-            os.chdir(os.path.join(path_precompute, sujet, 'TF'))
-            if monopol:
-                if os.path.exists(os.path.join(path_precompute, sujet, 'TF', f'allcond_{sujet}_tf_stretch.pkl')):
-                    print('ALREADY COMPUTED')
-                    continue
-            else:
-                if os.path.exists(os.path.join(path_precompute, sujet, 'TF', f'allcond_{sujet}_tf_stretch_bi.pkl')):
-                    print('ALREADY COMPUTED')
-                    continue
-            
-        elif tf_mode == 'ITPC':
-            print('######## LOAD ITPC ########')
-            os.chdir(os.path.join(path_precompute, sujet, 'ITPC'))
-            if monopol:
-                if os.path.exists(os.path.join(path_precompute, sujet, 'ITPC', f'allcond_{sujet}_itpc_stretch.pkl')):
-                    print('ALREADY COMPUTED')
-                    continue
-            else:
-                if os.path.exists(os.path.join(path_precompute, sujet, 'ITPC', f'allcond_{sujet}_itpc_stretch_bi.pkl')):
-                    print('ALREADY COMPUTED')
-                    continue
-
-        #### load file with reducing to one TF
-        tf_stretch_allcond = {}
-
-        #band_prep = 'lf'
-        for band_prep in band_prep_list:
-
-            tf_stretch_allcond[band_prep] = {}
-
-            #### chose nfrex
-            if band_prep == 'lf':
-                nfrex = nfrex_lf
-            elif band_prep == 'hf':
-                nfrex = nfrex_hf
-
-            #cond = 'FR_CV'
-            for cond in prms['conditions']:
-
-                tf_stretch_allcond[band_prep][cond] = {}
-
-                #session_i = 0
-                for session_i in range(data_count[cond]):
-
-                    #### impose good order in dict
-                    for band, freq in freq_band_dict[band_prep].items():
-                        tf_stretch_allcond[band_prep][cond][band] = np.zeros(( len(prms['chan_list_ieeg']), nfrex, stretch_point_TF ))
-
-                    #### load file
-                    for band, freq in freq_band_dict[band_prep].items():
-                        
-                        for file_i in os.listdir(): 
-                            if monopol:
-                                if file_i.find(f'{freq[0]}_{freq[1]}_{cond}_{session_i+1}') != -1 and file_i.find('STATS') == -1 and file_i.find('bi') == -1:
-                                    file_to_load = file_i
-                                else:
-                                    continue
-                            else:
-                                if file_i.find(f'{freq[0]}_{freq[1]}_{cond}_{session_i+1}') != -1 and file_i.find('STATS') == -1 and file_i.find('bi') != -1:
-                                    file_to_load = file_i
-                                else:
-                                    continue
-                        
-                        tf_stretch_allcond[band_prep][cond][band] += np.load(file_to_load)
-
-                #### mean
-                for band, freq in freq_band_dict[band_prep].items():
-
-                    tf_stretch_allcond[band_prep][cond][band] /= data_count[cond]
-
-        #### verif
-        for band_prep in band_prep_list:
-            for cond in prms['conditions']:
-                for band, freq in freq_band_dict[band_prep].items():
-                    if len(tf_stretch_allcond[band_prep][cond][band]) != len(prms['chan_list_ieeg']):
-                        raise ValueError(f'reducing incorrect : {band_prep} {cond} {band}')
-               
-        #### save
-        if monopol:
-            if tf_mode == 'TF':
-                with open(f'allcond_{sujet}_tf_stretch.pkl', 'wb') as f:
-                    pickle.dump(tf_stretch_allcond, f)
-            elif tf_mode == 'ITPC':
-                with open(f'allcond_{sujet}_itpc_stretch.pkl', 'wb') as f:
-                    pickle.dump(tf_stretch_allcond, f)
-        else:
-            if tf_mode == 'TF':
-                with open(f'allcond_{sujet}_tf_stretch_bi.pkl', 'wb') as f:
-                    pickle.dump(tf_stretch_allcond, f)
-            elif tf_mode == 'ITPC':
-                with open(f'allcond_{sujet}_itpc_stretch_bi.pkl', 'wb') as f:
-                    pickle.dump(tf_stretch_allcond, f)
-
-    print('done')
-
-
-
 
 
 
@@ -729,16 +343,72 @@ def compute_TF_ITPC(sujet, prms, monopol):
 ########################################
 
 
-def get_tf_stats(tf, nchan, pixel_based_distrib, nfrex):
 
-    tf_thresh = tf.copy()
+
+def get_tf_stats(tf_plot, pixel_based_distrib, tf_stats_type):
+
+    tf_thresh = np.zeros(tf_plot.shape)
+    
+    phase_list = ['inspi', 'expi']
+    phase_point = int(stretch_point_TF/len(phase_list))
+
+    if tf_stats_type == 'inter':
+
+        start = 0
+        stop = stretch_point_TF
+
+    else:
+
+        start = phase_point
+        stop = stretch_point_TF
+
     #wavelet_i = 0
     for wavelet_i in range(nfrex):
-        mask = np.logical_or(tf_thresh[wavelet_i, :] >= pixel_based_distrib[nchan, wavelet_i, 0], tf_thresh[wavelet_i, :] <= pixel_based_distrib[nchan, wavelet_i, 1])
-        tf_thresh[wavelet_i, mask] = 1
-        tf_thresh[wavelet_i, np.logical_not(mask)] = 0
+
+        mask = np.logical_or(tf_plot[wavelet_i, start:stop] < pixel_based_distrib[wavelet_i, 0], tf_plot[wavelet_i, start:stop] > pixel_based_distrib[wavelet_i, 1])
+        tf_thresh[wavelet_i, start:stop] = mask*1
+
+    if debug:
+
+        plt.pcolormesh(tf_thresh)
+        plt.show()
+
+    #### if empty return
+    if tf_thresh.sum() == 0:
+
+        return tf_thresh
+
+    #### thresh cluster
+    tf_thresh = tf_thresh.astype('uint8')
+    nb_blobs, im_with_separated_blobs, stats, _ = cv2.connectedComponentsWithStats(tf_thresh)
+    #### nb_blobs, im_with_separated_blobs, stats = nb clusters, clusters image with labeled clusters, info on clusters
+    sizes = stats[1:, -1]
+    nb_blobs -= 1
+    min_size = np.percentile(sizes,tf_stats_percentile_cluster)  
+
+    if debug:
+
+        plt.hist(sizes, bins=100)
+        plt.vlines(np.percentile(sizes,95), ymin=0, ymax=20, colors='r')
+        plt.show()
+
+    tf_thresh = np.zeros_like(im_with_separated_blobs)
+    for blob in range(nb_blobs):
+        if sizes[blob] >= min_size:
+            tf_thresh[im_with_separated_blobs == blob + 1] = 1
+
+    if debug:
+    
+        time = np.arange(tf_plot.shape[-1])
+
+        plt.pcolormesh(time, frex, tf_plot, shading='gouraud', cmap='seismic')
+        plt.contour(time, frex, tf_thresh, levels=0, colors='g')
+        plt.yscale('log')
+        plt.show()
 
     return tf_thresh
+
+
 
 
 
@@ -787,141 +457,7 @@ def get_tf_itpc_stretch_allcond(sujet, tf_mode, monopol):
 
 
 
-
-
-
-#n_chan = 6
-def save_TF_ITPC_n_chan(n_chan, tf_mode, band_prep, monopol):
-
-    #### load prms
-    prms = get_params(sujet, monopol)
-    df_loca = get_loca_df(sujet, monopol)
-
-    if tf_mode == 'TF':
-        os.chdir(os.path.join(path_results, sujet, 'TF', 'summary'))
-    elif tf_mode == 'ITPC':
-        os.chdir(os.path.join(path_results, sujet, 'ITPC', 'summary'))
     
-    if sujet[:3] != 'pat' and monopol:
-        chan_list_modified, chan_list_keep = modify_name(prms['chan_list_ieeg'])
-        chan_name = chan_list_modified[n_chan]
-    else:
-        chan_name = prms['chan_list_ieeg'][n_chan]
-
-    chan_loca = df_loca['ROI'][df_loca['name'] == chan_name].values[0]
-
-    print_advancement(n_chan, len(prms['chan_list_ieeg']), steps=[25, 50, 75])
-
-    freq_band = freq_band_dict[band_prep]
-
-    #### scale
-    # vmaxs = {}
-    # vmins = {}
-    # for cond in prms['conditions']:
-
-    #     scales = {'vmin_val' : np.array(()), 'vmax_val' : np.array(()), 'median_val' : np.array(())}
-
-    #     for i, (band, freq) in enumerate(freq_band.items()) :
-
-    #         if band == 'whole' or band == 'l_gamma':
-    #             continue
-
-    #         data = get_tf_itpc_stretch_allcond(sujet, tf_mode, monopol)[band_prep][cond][band][n_chan, :, :]
-    #         frex = np.linspace(freq[0], freq[1], np.size(data,0))
-
-    #         scales['vmin_val'] = np.append(scales['vmin_val'], np.min(data))
-    #         scales['vmax_val'] = np.append(scales['vmax_val'], np.max(data))
-    #         scales['median_val'] = np.append(scales['median_val'], np.median(data))
-
-    #         del data
-
-    #     median_diff = np.max([np.abs(np.min(scales['vmin_val']) - np.median(scales['median_val'])), np.abs(np.max(scales['vmax_val']) - np.median(scales['median_val']))])
-
-    #     vmin = np.median(scales['median_val']) - median_diff
-    #     vmax = np.median(scales['median_val']) + median_diff
-
-    #     vmaxs[cond] = vmax
-    #     vmins[cond] = vmin
-
-    #### plot
-    fig, axs = plt.subplots(nrows=len(freq_band), ncols=len(prms['conditions']))
-    if monopol:
-        plt.suptitle(f'{sujet}_{chan_name}_{chan_loca}')
-    else:
-        plt.suptitle(f'{sujet}_{chan_name}_{chan_loca}_bi')
-
-    fig.set_figheight(10)
-    fig.set_figwidth(10)
-
-    #### for plotting l_gamma down
-    if band_prep == 'hf':
-        keys_list_reversed = list(freq_band.keys())
-        keys_list_reversed.reverse()
-        freq_band_reversed = {}
-        for key_i in keys_list_reversed:
-            freq_band_reversed[key_i] = freq_band[key_i]
-        freq_band = freq_band_reversed
-
-    #c, cond = 0, prms['conditions'][0]
-    for c, cond in enumerate(prms['conditions']):
-
-        #### plot
-        #i, (band, freq) = 0, list(freq_band.items())[0] 
-        for i, (band, freq) in enumerate(freq_band.items()) :
-
-            data = get_tf_itpc_stretch_allcond(sujet, tf_mode, monopol)[band_prep][cond][band][n_chan, :, :]
-            frex = np.linspace(freq[0], freq[1], np.size(data,0))
-        
-            if len(prms['conditions']) == 1:
-                ax = axs[i]
-            else:
-                ax = axs[i,c]
-
-            if i == 0 :
-                ax.set_title(cond, fontweight='bold', rotation=0)
-
-            time = range(stretch_point_TF)
-
-            ax.pcolormesh(time, frex, rscore_mat(data), vmin=-rscore_mat(data).max(), vmax=rscore_mat(data).max(), shading='gouraud', cmap=plt.get_cmap('seismic'))
-
-            if tf_mode == 'TF' and cond not in ['FR_CV', 'FR_MV', 'RD_AV']:
-                os.chdir(os.path.join(path_precompute, sujet, 'TF'))
-                if monopol:
-                    pixel_based_distrib = np.load(f'{sujet}_STATS_tf_{str(freq[0])}_{str(freq[1])}_{cond}.npy')
-                else:
-                    pixel_based_distrib = np.load(f'{sujet}_STATS_tf_{str(freq[0])}_{str(freq[1])}_{cond}_bi.npy')
-                _, nfrex = get_wavelets(sujet, band_prep, freq, monopol)
-                if get_tf_stats(rscore_mat(data), n_chan, pixel_based_distrib, nfrex).sum() != 0:
-                    ax.contour(time, frex, get_tf_stats(rscore_mat(data), n_chan, pixel_based_distrib, nfrex), levels=0, colors='g')
-
-            if c == 0:
-                ax.set_ylabel(band)
-
-            if stretch_TF_auto:
-                ax.vlines(prms['respi_ratio_allcond'][cond][0]*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='g')
-            else:
-                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='g')
-
-            del data
-
-    #plt.show()
-
-    if tf_mode == 'TF':
-        os.chdir(os.path.join(path_results, sujet, 'TF', 'summary'))
-    elif tf_mode == 'ITPC':
-        os.chdir(os.path.join(path_results, sujet, 'ITPC', 'summary'))
-
-    #### save
-    if monopol:
-        fig.savefig(f'{sujet}_{chan_name}_{chan_loca}_{band_prep}.jpeg', dpi=150)
-    else:
-        fig.savefig(f'{sujet}_{chan_name}_{chan_loca}_{band_prep}_bi.jpeg', dpi=150)
-        
-    fig.clf()
-    plt.close('all')
-    gc.collect()
-
-
 
 
 
@@ -932,48 +468,217 @@ def save_TF_ITPC_n_chan(n_chan, tf_mode, band_prep, monopol):
 ########################################
 
 def compilation_compute_Pxx_Cxy_Cyclefreq_MVL(sujet, monopol):
-    
-    #### load params
-    prms = get_params(sujet, monopol)
-    respfeatures_allcond = load_respfeatures(sujet)
-        
-    surrogates_allcond = load_surrogates(sujet, respfeatures_allcond, prms, monopol)
 
     #### compute & reduce surrogates
-    print('######## COMPUTE & REDUCE PSD AND COH ########')
-    compute_reduced_PxxCxyCyclefreqSurrogates(sujet, respfeatures_allcond, surrogates_allcond, prms, monopol)
+    print('######## COMPUTE & REDUCE PSD AND COH ########', flush=True)
+    compute_and_save_metrics_sujet(sujet, monopol)
     
     #### compute joblib
-    print('######## PLOT & SAVE PSD AND COH ########')
-    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(plot_save_PSD_Cxy_CF_MVL)(n_chan, monopol) for n_chan, _ in enumerate(prms['chan_list_ieeg']))
+    print('######## PLOT & SAVE PSD AND COH ########', flush=True)
+    chan_list, chan_list_ieeg = get_chanlist(sujet, monopol)
+    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(plot_save_PSD_Cxy_CF_MVL)(n_chan, monopol) for n_chan, _ in enumerate(chan_list_ieeg))
 
-    print('done')
+    print('done', flush=True)
 
     
 
 
 def compilation_compute_TF_ITPC(sujet, monopol):
-
-    prms = get_params(sujet, monopol)
-
-    compute_TF_ITPC(sujet, prms, monopol)
     
     #tf_mode = 'TF'
     for tf_mode in ['TF', 'ITPC']:
         
         if tf_mode == 'TF':
-            print('######## PLOT & SAVE TF ########')
+            print('######## PLOT & SAVE TF ########', flush=True)
         if tf_mode == 'ITPC':
-            print('######## PLOT & SAVE ITPC ########')
-        
-        #band_prep = 'hf'
-        for band_prep in band_prep_list: 
+            print('######## PLOT & SAVE ITPC ########', flush=True)
+            continue
 
-            print(band_prep)
+        #### load prms
+        if sujet in sujet_list:
+            conditions = ['FR_CV', 'RD_CV', 'RD_FV', 'RD_SV']
+        else:
+            conditions = ['FR_CV']
 
-            joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(save_TF_ITPC_n_chan)(n_chan, tf_mode, band_prep, monopol) for n_chan, tf_mode, band_prep in zip(range(len(prms['chan_list_ieeg'])), [tf_mode]*len(prms['chan_list_ieeg']), [band_prep]*len(prms['chan_list_ieeg'])))
+        chan_list, chan_list_ieeg = get_chanlist(sujet, monopol)
+        df_loca = get_loca_df(sujet, monopol)
 
-    print('done')
+        if tf_mode == 'TF':
+            os.chdir(os.path.join(path_results, sujet, 'TF', 'summary'))
+        elif tf_mode == 'ITPC':
+            os.chdir(os.path.join(path_results, sujet, 'ITPC', 'summary'))
+
+        #### load data
+        print('LOAD', flush=True)
+        os.chdir(os.path.join(path_precompute, sujet, tf_mode))
+
+        data_allcond = {}
+
+        for cond in conditions:
+
+            if monopol:
+                data_allcond[cond] = np.median(np.load(f'{sujet}_{tf_mode.lower()}_conv_{cond}.npy'), axis=1)
+            else:
+                data_allcond[cond] = np.median(np.load(f'{sujet}_{tf_mode.lower()}_conv_{cond}_bi.npy'), axis=1)
+
+        #### scale
+        vals = np.array([])
+
+        for cond in conditions:
+
+            vals = np.append(vals, data_allcond[cond].reshape(-1))
+
+        if debug:
+
+            vals_diff = np.abs(vals - np.median(vals))
+
+            count, _, _ = plt.hist(vals_diff, bins=500)
+            thresh = np.percentile(vals_diff, 100-tf_plot_percentile_scale)
+            val_max = vals_diff.max()
+            plt.vlines([thresh, val_max], ymin=0, ymax=count.max(), color='r')
+            plt.show()
+
+        # median_diff = np.max([np.abs(np.median(vals) - vals.min()), np.abs(np.median(vals) + vals.max())])
+        median_diff = np.percentile(np.abs(vals - np.median(vals)), 100-tf_plot_percentile_scale)
+
+        vmin = np.median(vals) - median_diff
+        vmax = np.median(vals) + median_diff
+
+        del vals
+
+        #### inspect stats
+        if debug:
+
+            tf_stats_type = 'intra'
+            n_chan, chan_name = 0, chan_list_ieeg[0]
+            c, cond = 1, conditions[1]
+
+            tf_plot = data_allcond[cond][n_chan,:,:]
+
+            os.chdir(os.path.join(path_precompute, sujet, 'TF'))
+            pixel_based_distrib = np.load(f'{sujet}_{tf_mode.lower()}_STATS_{cond}_intra.npy')[n_chan]
+
+            plt.pcolormesh(time, frex, tf_plot, vmin=vmin, vmax=vmax, shading='gouraud', cmap=plt.get_cmap('seismic'))
+            plt.yscale('log')
+            plt.contour(time, frex, get_tf_stats(tf_plot, pixel_based_distrib), levels=0, colors='g')
+
+            plt.show()
+
+            plt.pcolormesh(get_tf_stats(tf_plot, pixel_based_distrib))
+            plt.show()
+
+            #wavelet_i = 0
+            for wavelet_i in range(tf_plot.shape[0]):
+
+                plt.plot(tf_plot[wavelet_i,:], color='b')
+                plt.hlines([pixel_based_distrib[wavelet_i,0], pixel_based_distrib[wavelet_i,1]], xmin=0, xmax=tf_plot.shape[-1] ,color='r')
+
+                plt.title(f'{np.round(wavelet_i/tf_plot.shape[0],2)}')
+
+                plt.show()
+
+
+        #### plot
+        if tf_mode == 'TF':
+            os.chdir(os.path.join(path_results, sujet, 'TF', 'summary'))
+        elif tf_mode == 'ITPC':
+            os.chdir(os.path.join(path_results, sujet, 'ITPC', 'summary'))
+
+        print('COMPUTE', flush=True)
+
+        #tf_stats_type = 'intra'
+        for tf_stats_type in ['inter', 'intra']:
+
+            if sujet not in sujet_list and tf_stats_type == 'inter':
+                continue
+
+            #n_chan, chan_name = 0, chan_list_ieeg[0]
+            for n_chan, chan_name in enumerate(chan_list_ieeg):
+
+                if sujet[:3] != 'pat' and monopol:
+                    chan_list_modified, chan_list_keep = modify_name(chan_list_ieeg)
+                    chan_name = chan_list_modified[n_chan]
+                else:
+                    chan_name = chan_list_ieeg[n_chan]
+
+                chan_loca = df_loca['ROI'][df_loca['name'] == chan_name].values[0]
+
+                print_advancement(n_chan, len(chan_list_ieeg), steps=[25, 50, 75])
+
+                #### plot
+                fig, axs = plt.subplots(ncols=len(conditions))
+
+                plt.suptitle(f'{sujet}_{chan_name}_{chan_loca}')
+
+                fig.set_figheight(10)
+                fig.set_figwidth(15)
+
+                time = range(stretch_point_TF)
+
+                #c, cond = 0, conditions[0]
+                for c, cond in enumerate(conditions):
+
+                    tf_plot = data_allcond[cond][n_chan,:,:]
+                
+                    if len(conditions) == 1:
+                        ax = axs
+                    else:
+                        ax = axs[c]
+
+                    ax.set_title(cond, fontweight='bold', rotation=0)
+
+                    ax.pcolormesh(time, frex, tf_plot, vmin=vmin, vmax=vmax, shading='gouraud', cmap=plt.get_cmap('seismic'))
+                    ax.set_yscale('log')
+
+                    if tf_mode == 'TF' and cond != 'FR_CV' and tf_stats_type == 'inter':
+                        os.chdir(os.path.join(path_precompute, sujet, 'TF'))
+
+                        if monopol:
+                            pixel_based_distrib = np.load(f'{sujet}_{tf_mode.lower()}_STATS_{cond}_inter.npy')[n_chan]
+                        else:
+                            pixel_based_distrib = np.load(f'{sujet}_{tf_mode.lower()}_STATS_{cond}_inter_bi.npy')[n_chan]
+
+                        if get_tf_stats(tf_plot, pixel_based_distrib, tf_stats_type).sum() != 0:
+                            ax.contour(time, frex, get_tf_stats(tf_plot, pixel_based_distrib, tf_stats_type), levels=0, colors='g')
+
+                    if tf_mode == 'TF' and tf_stats_type == 'intra':
+                        os.chdir(os.path.join(path_precompute, sujet, 'TF'))
+
+                        if monopol:
+                            pixel_based_distrib = np.load(f'{sujet}_{tf_mode.lower()}_STATS_{cond}_intra.npy')[n_chan]
+                        else:
+                            pixel_based_distrib = np.load(f'{sujet}_{tf_mode.lower()}_STATS_{cond}_intra_bi.npy')[n_chan]    
+
+                        if get_tf_stats(tf_plot, pixel_based_distrib, tf_stats_type).sum() != 0:
+                            ax.contour(time, frex, get_tf_stats(tf_plot, pixel_based_distrib, tf_stats_type), levels=0, colors='g')
+
+                    ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=frex[0], ymax=frex[-1], colors='g')
+                    ax.set_yticks([2,8,10,30,50,100,150], labels=[2,8,10,30,50,100,150])
+
+                #plt.show()
+
+                if tf_mode == 'TF':
+                    os.chdir(os.path.join(path_results, sujet, 'TF', 'summary'))
+                elif tf_mode == 'ITPC':
+                    os.chdir(os.path.join(path_results, sujet, 'ITPC', 'summary'))
+
+                #### save
+                if monopol:
+                    if tf_stats_type == 'inter':
+                        fig.savefig(f'{sujet}_{chan_name}_inter.jpeg', dpi=150)
+                    if tf_stats_type == 'intra':
+                        fig.savefig(f'{sujet}_{chan_name}_intra.jpeg', dpi=150)
+                else:
+                    if tf_stats_type == 'inter':
+                        fig.savefig(f'{sujet}_{chan_name}_inter_bi.jpeg', dpi=150)
+                    if tf_stats_type == 'intra':
+                        fig.savefig(f'{sujet}_{chan_name}_intra_bi.jpeg', dpi=150)
+                    
+                fig.clf()
+                plt.close('all')
+                gc.collect()
+
+    print('done', flush=True)
 
 
 
@@ -986,18 +691,18 @@ def compilation_compute_TF_ITPC(sujet, monopol):
 
 if __name__ == '__main__':
 
-    #sujet = sujet_list[-1]
-    for sujet in sujet_list:
+    #sujet = sujet_list_FR_CV
+    for sujet in sujet_list_FR_CV:
 
-        #monopol = False
+        #monopol = True
         for monopol in [True, False]:
 
-            print(sujet)
+            print(sujet, flush=True)
 
             #### Pxx Cxy CycleFreq
             # compilation_compute_Pxx_Cxy_Cyclefreq_MVL(sujet, monopol)
-            # execute_function_in_slurm_bash_mem_choice('n10_res_power_analysis', 'compilation_compute_Pxx_Cxy_Cyclefreq_MVL', [sujet], 15)
+            # execute_function_in_slurm_bash_mem_choice('n10_res_power_analysis', 'compilation_compute_Pxx_Cxy_Cyclefreq_MVL', [sujet, monopol], '15G')
 
             #### TF & ITPC
             compilation_compute_TF_ITPC(sujet, monopol)
-            # execute_function_in_slurm_bash_mem_choice('n10_res_power_analysis', 'compilation_compute_TF_ITPC', [sujet], 15)
+            # execute_function_in_slurm_bash_mem_choice('n10_res_power_analysis', 'compilation_compute_TF_ITPC', [sujet, monopol], '15G')

@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import glob
 import pandas as pd
 import joblib
+import physio
 
 import mne
 import scipy.fftpack
@@ -109,20 +110,21 @@ def extract_data_trc(sujet):
         events_time_whole.append(events_time_file)
 
     #### verif
-    #file_i = 1
-    #data = data_whole[file_i]
-    #chan_list = chan_list_whole[file_i]
-    #events_time = events_time_whole[file_i]
-    #srate = srate_whole[file_i]
+    if debug:
+        file_i = 1
+        data = data_whole[file_i]
+        chan_list = chan_list_whole[file_i]
+        events_time = events_time_whole[file_i]
+        srate = srate_whole[file_i]
 
-    #chan_name = 'p19+'
-    #chan_i = chan_list.index(chan_name)
-    #file_stop = (np.size(data,1)/srate)/60
-    #start = 0 *60*srate 
-    #stop = int( file_stop *60*srate )
-    #plt.plot(data[chan_i,start:stop])
-    #plt.vlines( np.array(events_time)[(np.array(events_time) > start) & (np.array(events_time) < stop)], ymin=np.min(data[chan_i,start:stop]), ymax=np.max(data[chan_i,start:stop]))
-    #plt.show()
+        chan_name = 'p19+'
+        chan_i = chan_list.index(chan_name)
+        file_stop = (np.size(data,1)/srate)/60
+        start = 0 *60*srate 
+        stop = int( file_stop *60*srate )
+        plt.plot(data[chan_i,start:stop])
+        plt.vlines( np.array(events_time)[(np.array(events_time) > start) & (np.array(events_time) < stop)], ymin=np.min(data[chan_i,start:stop]), ymax=np.max(data[chan_i,start:stop]), color='r')
+        plt.show()
 
     #### concatenate 
     print('#### CONCATENATE ####')
@@ -592,6 +594,10 @@ def organize_raw(sujet, raw):
         plt.plot(data_aux[1,:])
         plt.plot(data_aux[2,:])
         plt.show()
+
+    #### inspi down
+    if sujet_respi_adjust[sujet] == 'inverse':
+        data_aux[0, :] *= -1
 
     #### remove from data
     data_ieeg = data.copy()
@@ -1082,37 +1088,114 @@ def preprocessing_ieeg(data, chan_list, srate, prep_step):
 
 
 ################################
-######## ECG DETECTION ########
+######## AUX PREPROC ########
 ################################
 
-def ecg_detection(sujet, data_aux, chan_list_aux, srate):
+def ecg_detection(data_aux, chan_list_aux, srate):
 
     print('#### ECG DETECTION ####')
     
     #### adjust ECG
     if sujet_ecg_adjust.get(sujet) == 'inverse':
-        data_aux[-1,:] = data_aux[-1,:] * -1
+        data_aux[1,:] = data_aux[1,:] * -1
+
+    #### filtre
+    ecg_clean = physio.preprocess(data_aux[1,:], srate, band=[5., 45.], ftype='bessel', order=5, normalize=True)
+
+    ecg_events_time = physio.detect_peak(ecg_clean, srate, thresh=10, exclude_sweep_ms=4.0) # thresh = n MAD
+
+    if debug:
+        plt.plot(data_aux[1,:])
+        plt.plot(ecg_clean)
+        plt.vlines(ecg_events_time, ymin=ecg_clean.min(), ymax=ecg_clean.max(), color='r')
+        plt.show()
     
-    #### notch ECG
+    #### replace
+    data_aux[1,:] = ecg_clean.copy()
+
     ch_types = ['misc'] * (np.size(data_aux,0)) # ‘ecg’, ‘stim’, ‘eog’, ‘misc’, ‘seeg’, ‘eeg’
 
     info_aux = mne.create_info(chan_list_aux, srate, ch_types=ch_types)
     raw_aux = mne.io.RawArray(data_aux, info_aux)
 
-    raw_aux.notch_filter(50, picks='misc', verbose='critical')
+    # raw_aux.notch_filter(50, picks='misc', verbose='critical')
 
     # ECG
-    event_id = 999
-    ch_name = 'ECG'
-    qrs_threshold = .5 #between o and 1
-    ecg_events = mne.preprocessing.find_ecg_events(raw_aux, event_id=event_id, ch_name=ch_name, qrs_threshold=qrs_threshold, verbose='critical')
-    ecg_events_time = list(ecg_events[0][:,0])
+    # event_id = 999
+    # ch_name = 'ECG'
+    # qrs_threshold = .5 #between o and 1
+    # ecg_events = mne.preprocessing.find_ecg_events(raw_aux, event_id=event_id, ch_name=ch_name, qrs_threshold=qrs_threshold, verbose='critical')
+    # ecg_events_time = list(ecg_events[0][:,0])
 
-    data_aux_final = raw_aux.get_data()
-
-    return data_aux_final, chan_list_aux, ecg_events_time
+    return raw_aux, ecg_events_time
 
 
+
+
+def respi_preproc(raw_aux):
+
+    raw_aux.info['ch_names']
+    srate = raw_aux.info['sfreq']
+    respi = raw_aux.get_data()[0,:]
+
+    #### inspect Pxx
+    if debug:
+        plt.plot(np.arange(respi.shape[0])/srate, respi)
+        plt.show()
+
+        srate = raw_aux.info['sfreq']
+        nwind = int(10*srate)
+        nfft = nwind
+        noverlap = np.round(nwind/2)
+        hannw = scipy.signal.windows.hann(nwind)
+        hzPxx, Pxx = scipy.signal.welch(respi,fs=srate,window=hannw,nperseg=nwind,noverlap=noverlap,nfft=nfft)
+        plt.semilogy(hzPxx, Pxx, label='respi')
+        plt.legend()
+        plt.xlim(0,60)
+        plt.show()
+
+    #### filter respi   
+    # fcutoff = 1.5
+    # transw  = .2
+    # order   = np.round( 7*srate/fcutoff )
+    # if order%2==0:
+    #     order += 1
+
+    # shape   = [ 1,1,0,0 ]
+    # frex    = [ 0, fcutoff, fcutoff+fcutoff*transw, srate/2 ]
+
+    # filtkern = scipy.signal.firls(order,frex,shape,fs=srate)
+
+    # respi_filt = scipy.signal.filtfilt(filtkern,1,respi)
+
+    #### filter respi physio
+    respi_filt = physio.preprocess(respi, srate, band=25., btype='lowpass', ftype='bessel', order=5, normalize=False)
+    respi_filt = physio.smooth_signal(respi_filt, srate, win_shape='gaussian', sigma_ms=40.0)
+
+    if debug:
+        plt.plot(respi, label='respi')
+        plt.plot(respi_filt, label='respi_filtered')
+        plt.legend()
+        plt.show()
+
+        hzPxx, Pxx_pre = scipy.signal.welch(respi,fs=srate,window=hannw,nperseg=nwind,noverlap=noverlap,nfft=nfft)
+        hzPxx, Pxx_post = scipy.signal.welch(respi_filt,fs=srate,window=hannw,nperseg=nwind,noverlap=noverlap,nfft=nfft)
+        plt.semilogy(hzPxx, Pxx_pre, label='pre')
+        plt.semilogy(hzPxx, Pxx_post, label='post')
+        plt.legend()
+        plt.xlim(0,60)
+        plt.show()
+
+
+    #### replace respi 
+    data = raw_aux.get_data()
+    data[0,:] = respi_filt
+    raw_aux._data = data
+
+    #### verif
+    #plt.plot(raw_aux.get_data()[0,:]),plt.show()
+
+    return raw_aux
 
 
 
@@ -1219,7 +1302,7 @@ def chop_save_trc(sujet, data, chan_list, data_aux, chan_list_aux, conditions_tr
     #condition, trig_cond = list(conditions_trig.items())[0]
     for condition, trig_cond in conditions_trig.items():
 
-        if sujet[:3] == 'pat'and condition != 'FR_CV':
+        if sujet not in sujet_list and condition != 'FR_CV':
             continue
 
         cond_i = np.where(trig.name.values == trig_cond[0])[0]
@@ -1295,10 +1378,33 @@ def chop_save_trc(sujet, data, chan_list, data_aux, chan_list_aux, conditions_tr
 
 if __name__== '__main__':
 
-    #monopol = False
+    #### whole protocole
+    # sujet = 'CHEe'
+    # sujet = 'GOBc' 
+    # sujet = 'MAZm' 
+    # sujet = 'TREt' 
+
+    #### FR_CV only
+    # sujet = 'KOFs'
+    # sujet = 'MUGa'
+    # sujet = 'BANc'
+    # sujet = 'LEMl'
+
+    # sujet = 'pat_02459_0912'
+    # sujet = 'pat_02476_0929'
+    # sujet = 'pat_02495_0949'
+
+    # sujet = 'pat_03083_1527'
+    # sujet = 'pat_03105_1551'
+    # sujet = 'pat_03128_1591'
+    # sujet = 'pat_03138_1601'
+    # sujet = 'pat_03146_1608'
+    # sujet = 'pat_03174_1634'
+
+    #monopol = True
     for monopol in [True, False]:
 
-        #sujet = sujet_list_FR_CV[0]
+        #sujet = sujet_list_FR_CV[8]
         for sujet in sujet_list_FR_CV:
 
             print(f'######## {sujet}, monopol : {monopol} ########')
@@ -1308,11 +1414,11 @@ if __name__== '__main__':
             os.chdir(os.path.join(path_prep, sujet, 'sections'))
     
             if monopol:
-                if os.path.exists(os.path.join(path_prep, sujet, 'sections', f'{sujet}_allcond_lf.fif')):
+                if os.path.exists(os.path.join(path_prep, sujet, 'sections', f'{sujet}_allcond_wb.fif')):
                     print('ALREADY COMPUTED')
                     continue
             else:
-                if os.path.exists(os.path.join(path_prep, sujet, 'sections', f'{sujet}_allcond_lf_bi.fif')):
+                if os.path.exists(os.path.join(path_prep, sujet, 'sections', f'{sujet}_allcond_wb_bi.fif')):
                     print('ALREADY COMPUTED')
                     continue
 
@@ -1348,7 +1454,7 @@ if __name__== '__main__':
                 data_plot = data_aux
                 chan_list_plot = chan_list_aux
                 start = 0 *60*srate # give min
-                stop =  57 *60*srate  # give min
+                stop =  5 *60*srate  # give min
 
                 chan_i = chan_list_plot.index(chan_name)
                 times = np.arange(np.size(data_plot,1))
@@ -1390,15 +1496,22 @@ if __name__== '__main__':
             ######## AUX PROCESSING ########
             ################################
 
-            data_aux, chan_list_aux, ecg_events_time = ecg_detection(sujet, data_aux, chan_list_aux, srate)
+            raw_aux, ecg_events_time = ecg_detection(data_aux, chan_list_aux, srate)
+
+            raw_aux = respi_preproc(raw_aux)
 
             if debug == True:
                 #### verif ECG
+                chan_list_aux = raw_aux.info['ch_names']
                 ecg_i = chan_list_aux.index('ECG')
-                ecg = data_aux[ecg_i,:]
+                ecg = raw_aux.get_data()[ecg_i,:]
                 plt.plot(ecg)
                 plt.vlines(ecg_events_time, ymin=min(ecg), ymax=max(ecg), colors='k')
-                plt.vlines(trig['time'].values, ymin=min(ecg), ymax=max(ecg), colors='r', linewidth=3)
+                trig_values = []
+                for trig_i in trig.values():
+                    [trig_values.append(i) for i in trig_i]
+                plt.vlines(trig_values, ymin=min(ecg), ymax=max(ecg), colors='r', linewidth=3)
+
                 plt.legend()
                 plt.show()
 
@@ -1409,7 +1522,7 @@ if __name__== '__main__':
 
                 #### find an event to remove
                 around_to_find = 1000
-                value_to_find = 1297748    
+                value_to_find = 3265670    
                 ecg_cR_array = np.array(ecg_events_time) 
                 ecg_cR_array[ ( np.array(ecg_events_time) >= (value_to_find - around_to_find) ) & ( np.array(ecg_events_time) <= (value_to_find + around_to_find) ) ] 
 
@@ -1424,18 +1537,19 @@ if __name__== '__main__':
 
 
 
+
             ################################
             ######## ADJUST ECG ######## 
             ################################
 
 
             #### add
-            ecg_events_corrected = ecg_adjust_allsujet[sujet]['ecg_events_corrected']
-            ecg_events_time += ecg_events_corrected
-            ecg_events_time.sort()
-            #### remove
-            ecg_events_to_remove = ecg_adjust_allsujet[sujet]['ecg_events_to_remove']
-            [ecg_events_time.remove(i) for i in ecg_events_to_remove]    
+            # ecg_events_corrected = ecg_adjust_allsujet[sujet]['ecg_events_corrected']
+            # ecg_events_time = np.append(ecg_events_time, np.array(ecg_events_corrected))
+            # ecg_events_time.sort()
+            # #### remove
+            # ecg_events_to_remove = ecg_adjust_allsujet[sujet]['ecg_events_to_remove']
+            # [ecg_events_time.remove(i) for i in ecg_events_to_remove]    
 
 
 
@@ -1446,17 +1560,22 @@ if __name__== '__main__':
             ######## PREPROCESSING, CHOP AND SAVE ########
             ################################################
 
-            data_preproc_lf  = preprocessing_ieeg(data, chan_list, srate, prep_step_lf)
-            chop_save_trc(sujet, data_preproc_lf, chan_list, data_aux, chan_list_aux, conditions_trig, trig, srate, ecg_events_time, monopol, band_preproc='lf', export_info=True)
+            data_preproc_wb  = preprocessing_ieeg(data, chan_list, srate, prep_step_wb)
+            chop_save_trc(sujet, data_preproc_wb, chan_list, data_aux, chan_list_aux, conditions_trig, trig, srate, ecg_events_time, monopol, band_preproc='wb', export_info=True)
 
-            del data_preproc_lf
+            del data_preproc_wb
 
-            data_preproc_hf = preprocessing_ieeg(data, chan_list, srate, prep_step_hf)
-            chop_save_trc(sujet, data_preproc_hf, chan_list, data_aux, chan_list_aux, conditions_trig, trig, srate, ecg_events_time, monopol, band_preproc='hf', export_info=False)
+            # data_preproc_lf  = preprocessing_ieeg(data, chan_list, srate, prep_step_lf)
+            # chop_save_trc(sujet, data_preproc_lf, chan_list, data_aux, chan_list_aux, conditions_trig, trig, srate, ecg_events_time, monopol, band_preproc='lf', export_info=True)
+
+            # del data_preproc_lf
+
+            # data_preproc_hf = preprocessing_ieeg(data, chan_list, srate, prep_step_hf)
+            # chop_save_trc(sujet, data_preproc_hf, chan_list, data_aux, chan_list_aux, conditions_trig, trig, srate, ecg_events_time, monopol, band_preproc='hf', export_info=False)
 
             #### verif
             if debug == True:
-                compare_pre_post(data, data_preproc_lf, 0)
+                compare_pre_post(data, data_preproc_wb, 0)
 
 
 

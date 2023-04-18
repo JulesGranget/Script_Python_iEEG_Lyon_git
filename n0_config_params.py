@@ -32,11 +32,13 @@ sujet = 'TREt'
 
 #sujet = 'DEBUG'
 
+srate = 500
+
 #### whole protocole
 sujet_list = ['CHEe', 'GOBc', 'MAZm', 'TREt']
 
 #### FR_CV
-sujet_list_FR_CV =  ['CHEe', 'GOBc', 'MAZm', 'TREt', 'BANc', 'KOFs', 'LEMl', 
+sujet_list_FR_CV =  ['CHEe', 'GOBc', 'MAZm', 'TREt', 'BANc', 'KOFs', 'LEMl', 'MUGa',
                     'pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949',
                     'pat_03083_1527', 'pat_03105_1551', 'pat_03128_1591', 'pat_03138_1601',
                     'pat_03146_1608', 'pat_03174_1634'
@@ -47,6 +49,7 @@ sujet_list_paris_only_FR_CV = ['pat_02459_0912', 'pat_02476_0929', 'pat_02495_09
                     'pat_03146_1608', 'pat_03174_1634']
 
 conditions_allsubjects = ['RD_CV', 'RD_FV', 'RD_SV', 'RD_AV', 'FR_CV', 'FR_MV']
+conditions = ['FR_CV', 'RD_CV', 'RD_FV', 'RD_SV']
 
 condition_diff = [['FV','SV']]
 
@@ -68,6 +71,7 @@ freq_band_dict_FC_function = {'lf' : {'theta' : [4,8], 'alpha' : [8,12], 'beta' 
                 'hf' : {'l_gamma' : [50, 80], 'h_gamma' : [80, 120]} }
 
 
+session_count =    {'FR_CV' : 1, 'RD_CV' : 2, 'RD_FV' : 2, 'RD_SV' : 3}
 
 ########################################
 ######## PATH DEFINITION ########
@@ -244,6 +248,14 @@ prep_step_hf = {
 }
 
 
+prep_step_wb = {
+'mean_centered' : {'execute': True},
+'line_noise_removing' : {'execute': True},
+'high_pass' : {'execute': False, 'params' : {'l_freq' : None, 'h_freq': None}},
+'low_pass' : {'execute': False, 'params' : {'l_freq' : None, 'h_freq': None}},
+'average_reref' : {'execute': True},
+}
+
 
 ################################
 ######## ECG PARAMS ########
@@ -283,9 +295,9 @@ sujet_respi_adjust = {
 'KOFs' : 'inverse',
 'LEMl' : 'inverse',
 
-'pat_02459_0912' : 'normal',
+'pat_02459_0912' : 'inverse',
 'pat_02476_0929' : 'normal',
-'pat_02495_0949' : 'normal',
+'pat_02495_0949' : 'inverse',
 
 'pat_03083_1527' : 'normal',
 'pat_03105_1551' : 'inverse',
@@ -311,7 +323,22 @@ sujet_for_more_filter = ['pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949', '
                         'pat_03146_1608', 'pat_03174_1634']
 
 
+respi_scale_cond = {'FR_CV' : [0.1, 0.35],
+                'RD_CV' : [0.1, 0.35],
+                'RD_SV' : [0.1, 0.2],
+                'RD_FV' : [0.35, 0.60]}
 
+outlier_coeff_removing_cond = {'FR_CV' : 6,
+                'RD_CV' : 4,
+                'RD_SV' : 4,
+                'RD_FV' : 4}
+
+cycle_detection_params = {
+'exclusion_metrics' : 'med',
+'outlier_coeff_removing' : outlier_coeff_removing_cond,
+'metric_coeff_exclusion' : 3,
+'respi_scale' : respi_scale_cond, #Hz
+}
 
 
 
@@ -335,7 +362,7 @@ def get_params_spectral_analysis(srate):
 remove_zero_pad = 5
 
 #### stretch
-stretch_point_surrogates = 1000
+stretch_point_surrogates_MVL_Cxy = 1000
 stretch_point_IE = [300, 500]
 stretch_point_EI = [900, 100]
 stretch_point_I = [100, 300]
@@ -367,15 +394,29 @@ stretch_TF_auto = False
 ratio_stretch_TF = 0.50
 
 #### TF & ITPC
-nfrex_hf = 50
-nfrex_lf = 50
-ncycle_list_lf = [7, 15]
-ncycle_list_hf = [20, 30]
-ncycle_list_wb = [7, 30]
+nfrex = 150
+ncycle_list = [7, 41]
+freq_list = [2, 150]
 srate_dw = 10
+wavetime = np.arange(-3,3,1/srate)
+frex = np.logspace(np.log10(freq_list[0]), np.log10(freq_list[1]), nfrex) 
+cycles = np.logspace(np.log10(ncycle_list[0]), np.log10(ncycle_list[1]), nfrex).astype('int')
+Pxx_wavelet_norm = 1000
 
 #### STATS
 n_surrogates_tf = 1000
+tf_percentile_sel_stats = 2 # for both side
+tf_stats_percentile_cluster = 95
+norm_method = 'rscore'# 'zscore', 'dB'
+tf_stats_percentile_cluster_allplot = 99
+
+
+#### plot
+tf_plot_percentile_scale = 1 #for one side
+
+
+
+
 
 
 ################################
