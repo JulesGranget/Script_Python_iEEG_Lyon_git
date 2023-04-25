@@ -26,22 +26,36 @@ debug = False
 #tf, respfeatures_i = tf_allchan.copy(), respfeatures_allcond[cond][session_i]
 def compute_stretch_tf(sujet, tf, cond, respfeatures_i, stretch_point_TF, srate, monopol):
 
-    #### norm
-    tf = norm_tf(sujet, tf, monopol, norm_method)
-
     #n_chan = 0
     def stretch_tf_db_n_chan(n_chan):
 
         tf_mean = stretch_data_tf(respfeatures_i, stretch_point_TF, tf[n_chan,:,:], srate)[0]
 
         return tf_mean
+    
+    #### raw
+    n_cycle_stretch = stretch_data_tf(respfeatures_i, stretch_point_TF, tf[0,:,:], srate)[0].shape[0]
+    tf_mean_allchan = np.zeros((tf.shape[0], n_cycle_stretch, tf.shape[1], stretch_point_TF))
+    stretch_tf_db_nchan_res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(stretch_tf_db_n_chan)(n_chan) for n_chan in range(tf.shape[0]))
+    
+    for n_chan in range(tf.shape[0]):
+        tf_mean_allchan[n_chan,:,:,:] = stretch_tf_db_nchan_res[n_chan]
+
+    print('SAVE RAW', flush=True)
+    os.chdir(os.path.join(path_precompute, sujet, 'TF'))
+    if monopol:
+        np.save(f'{sujet}_tf_raw_{cond}.npy', tf_mean_allchan)
+    else:
+        np.save(f'{sujet}_tf_raw_{cond}_bi.npy', tf_mean_allchan)
+
+    del stretch_tf_db_nchan_res
+
+    #### norm
+    tf[:] = norm_tf(sujet, tf, monopol, norm_method)
 
     stretch_tf_db_nchan_res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(stretch_tf_db_n_chan)(n_chan) for n_chan in range(tf.shape[0]))
 
-    #### extarct
-    n_cycle_stretch = stretch_data_tf(respfeatures_i, stretch_point_TF, tf[0,:,:], srate)[0].shape[0]
-    tf_mean_allchan = np.zeros((tf.shape[0], n_cycle_stretch, tf.shape[1], stretch_point_TF))
-
+    #### extract
     for n_chan in range(tf.shape[0]):
         tf_mean_allchan[n_chan,:,:,:] = stretch_tf_db_nchan_res[n_chan]
 
@@ -74,11 +88,11 @@ def precompute_tf_allconv(sujet, cond, monopol):
     os.chdir(os.path.join(path_precompute, sujet, 'TF'))
 
     if monopol:
-        if os.path.exists(f'{sujet}_tf_conv_{cond}.npy'):
+        if os.path.exists(f'{sujet}_tf_conv_{cond}.npy') and os.path.exists(f'{sujet}_tf_raw_{cond}.npy'):
             print('ALREADY COMPUTED', flush=True)
             return
     else:
-        if os.path.exists(f'{sujet}_tf_conv_{cond}_bi.npy'):
+        if os.path.exists(f'{sujet}_tf_conv_{cond}_bi.npy') and os.path.exists(f'{sujet}_tf_raw_{cond}_bi.npy'):
             print('ALREADY COMPUTED', flush=True)
             return
 
@@ -318,8 +332,8 @@ if __name__ == '__main__':
             #cond = 'RD_FV'
             for cond in conditions:
 
-                # precompute_tf_allconv(sujet, cond, monopol)
-                execute_function_in_slurm_bash_mem_choice('n7_precompute_TF', 'precompute_tf_allconv', [sujet, cond, monopol], '40G')
+                precompute_tf_allconv(sujet, cond, monopol)
+                # execute_function_in_slurm_bash_mem_choice('n7_precompute_TF', 'precompute_tf_allconv', [sujet, cond, monopol], '40G')
                 
                 # precompute_itpc(sujet, cond, session_i, freq_band_list, band_prep_list, monopol)
                 # execute_function_in_slurm_bash_mem_choice('n7_precompute_TF', 'precompute_itpc', [sujet, cond, session_i, freq_band_list, band_prep_list, monopol], '15G')

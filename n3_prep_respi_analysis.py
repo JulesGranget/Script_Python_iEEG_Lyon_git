@@ -13,7 +13,6 @@ from bycycle.plts import plot_cyclepoints_array
 
 from n0_config_params import *
 from n0bis_config_analysis_functions import *
-from n3bis_prep_respi_values import *
 
 debug = False
 
@@ -648,6 +647,7 @@ if __name__ == '__main__':
     # sujet = 'GOBc' 
     # sujet = 'MAZm' 
     # sujet = 'TREt' 
+    # sujet = 'POTm'
 
     #### FR_CV only
     # sujet = 'KOFs'

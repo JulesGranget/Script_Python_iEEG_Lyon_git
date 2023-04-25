@@ -28,17 +28,18 @@ monopol = False
 # sujet = 'CHEe'
 # sujet = 'GOBc'
 # sujet = 'MAZm'
-sujet = 'TREt'
+# sujet = 'TREt'
+sujet = 'POTm'
 
 #sujet = 'DEBUG'
 
 srate = 500
 
 #### whole protocole
-sujet_list = ['CHEe', 'GOBc', 'MAZm', 'TREt']
+sujet_list = ['CHEe', 'GOBc', 'MAZm', 'TREt', 'POTm']
 
 #### FR_CV
-sujet_list_FR_CV =  ['CHEe', 'GOBc', 'MAZm', 'TREt', 'BANc', 'KOFs', 'LEMl', 'MUGa',
+sujet_list_FR_CV =  ['CHEe', 'GOBc', 'MAZm', 'TREt', 'POTm', 'BANc', 'KOFs', 'LEMl', 'MUGa',
                     'pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949',
                     'pat_03083_1527', 'pat_03105_1551', 'pat_03128_1591', 'pat_03138_1601',
                     'pat_03146_1608', 'pat_03174_1634'
@@ -68,7 +69,8 @@ freq_band_dict = {'wb' : {'theta' : [2,10], 'alpha' : [8,14], 'beta' : [10,40]},
                 'hf' : {'l_gamma' : [50, 80], 'h_gamma' : [80, 120]} }
 
 freq_band_dict_FC_function = {'lf' : {'theta' : [4,8], 'alpha' : [8,12], 'beta' : [10,40]},
-                'hf' : {'l_gamma' : [50, 80], 'h_gamma' : [80, 120]} }
+                'hf' : {'l_gamma' : [50, 80], 'h_gamma' : [80, 120]},
+                'wb' : {'theta' : [4,8], 'alpha' : [8,12], 'beta' : [10,40], 'l_gamma' : [50, 80], 'h_gamma' : [80, 120]}  }
 
 
 session_count =    {'FR_CV' : 1, 'RD_CV' : 2, 'RD_FV' : 2, 'RD_SV' : 3}
@@ -169,6 +171,7 @@ electrodes_to_remove = {
 'MAZm' : [],
 'MUGa' : [],
 'TREt' : [],
+'POTm' : [],
 'BANc' : [], 
 'KOFs' : [], 
 'LEMl' : [], 
@@ -209,6 +212,7 @@ aux_chan = {
 'GOBc' : {'nasal': 'p13+', 'ventral' : 'p14+', 'ECG' : 'ECG'}, # OK
 'MAZm' : {'nasal': 'p7+', 'ventral' : 'p8+', 'ECG' : 'ECG'}, # OK
 'TREt' : {'nasal': 'p19+', 'ventral' : 'p20+', 'ECG' : 'ECG1'}, # OK
+'POTm' : {'nasal': 'p16+', 'ventral' : 'p17+', 'ECG' : 'ECG1'}, # OK
 'MUGa' : {'nasal': 'p20+', 'ventral' : 'p19+', 'ECG' : 'ECG'}, # OK
 'BANc' : {'nasal': 'p19+', 'ventral' : None, 'ECG' : 'ECG'}, # OK
 'KOFs' : {'nasal': 'p7+', 'ventral' : None, 'ECG' : 'ECG'}, # OK
@@ -266,6 +270,7 @@ sujet_ecg_adjust = {
 'GOBc' : 'inverse',
 'MAZm' : 'inverse',
 'TREt' : 'normal',
+'POTm' : 'normal',
 'MUGa' : 'normal',
 'BANc' : 'inverse',
 'KOFs' : 'normal',
@@ -290,6 +295,7 @@ sujet_respi_adjust = {
 'GOBc' : 'inverse',
 'MAZm' : 'inverse',
 'TREt' : 'normal',
+'POTm' : 'normal',
 'MUGa' : 'normal',
 'BANc' : 'inverse',
 'KOFs' : 'inverse',
@@ -409,6 +415,7 @@ tf_percentile_sel_stats = 2 # for both side
 tf_stats_percentile_cluster = 95
 norm_method = 'rscore'# 'zscore', 'dB'
 tf_stats_percentile_cluster_allplot = 99
+df_extraction_Cxy = 0.02 #Hz aroutd respi median
 
 
 #### plot
@@ -434,6 +441,9 @@ coh_computation_interval = .02 #Hz around respi
 #### ROI for DFC
 ROI_for_DFC_df =    ['orbitofrontal', 'cingulaire ant rostral', 'cingulaire ant caudal', 'cingulaire post',
                     'insula ant', 'insula post', 'parahippocampique', 'amygdala', 'hippocampus']
+ROI_for_DFC_plot =    ['orbitofrontal', 'cingulaire ant rostral', 'cingulaire ant caudal', 'cingulaire post',
+                    'insula ant', 'insula post', 'parahippocampique', 'amygdala', 'hippocampus', 'temporal inf',
+                    'temporal med', 'temporal sup']
 
 #### band to remove
 freq_band_fc_analysis = {'theta' : [4, 8], 'alpha' : [9,12], 'beta' : [15,40], 'l_gamma' : [50, 80], 'h_gamma' : [80, 120]}

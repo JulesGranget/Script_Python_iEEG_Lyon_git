@@ -23,32 +23,41 @@ debug = False
 
 
 
-def clean_data(allband_data, allpairs, prms):
+
+def clean_data(allband_data, allpairs):
 
     #### identify pairs to clean
     mask_keep = []
 
     for pair_i, pair in enumerate(allpairs):
 
-        if pair.find('WM') == -1 and pair.find('ventricule') == -1 and pair.find('choroide plexus') == -1:
+        if pair.split('-')[0] in ROI_for_DFC_plot and pair.split('-')[-1] in ROI_for_DFC_plot:
 
-            mask_keep.append(pair_i)
+            mask_keep.append(True)
+
+        else:
+
+            mask_keep.append(False)
 
     mask_keep = np.array(mask_keep)
 
     #### clean pairs
     allpairs = allpairs[mask_keep]
 
+    if debug:
+
+        allpairs[~mask_keep]
+
     #### clean data
     #band_i = 'beta'
     for band_i in allband_data:
 
-        for cond in prms['conditions']:
+        for cond in conditions:
 
-            for phase in allband_data[band_i][cond]:
+            for phase in allband_data[band_i][cond].keys():
 
                 allband_data[band_i][cond][phase] = allband_data[band_i][cond][phase][:, mask_keep, :]
-            
+
     return allband_data, allpairs
 
 
@@ -329,9 +338,19 @@ def generate_count_pairs_mat(pairs):
 
 
 
-def process_fc_res(sujet, monopol, FR_CV_normalized=True, plot_circle_dfc=False, plot_verif=False):
+def process_fc_res(sujet, monopol, plot_circle_dfc=False, plot_verif=False, FR_CV_normalized=True):
 
     print(f'######## FC ########')
+
+    band_prep = 'wb'
+
+    if sujet in sujet_list:
+
+        conditions = ['FR_CV', 'RD_CV', 'RD_FV', 'RD_SV']
+
+    else:
+
+        conditions = ['FR_CV']
 
     #### LOAD DATA ####
 
@@ -339,83 +358,78 @@ def process_fc_res(sujet, monopol, FR_CV_normalized=True, plot_circle_dfc=False,
     os.chdir(os.path.join(path_precompute, sujet, 'FC'))
 
     if monopol:
-        file_to_load = [i for i in os.listdir() if ( i.find('allpairs') != -1 and i.find(band_name_fc_dfc[0]) != -1 and i.find('bi') == -1)]
+        xr_fc = xr.open_dataarray(f'{sujet}_FC_wpli_ispc_FR_CV_allpairs.nc')
     else:
-        file_to_load = [i for i in os.listdir() if ( i.find('allpairs') != -1 and i.find(band_name_fc_dfc[0]) != -1 and i.find('bi') != -1)]
+        xr_fc = xr.open_dataarray(f'{sujet}_FC_wpli_ispc_FR_CV_allpairs_bi.nc')
 
-    pair_unique, roi_in_data = get_pair_unique_and_roi_unique(xr.open_dataarray(file_to_load[0])['pairs'].data)
-    cf_metrics_list = xr.open_dataarray(file_to_load[0])['mat_type'].data
-    n_band = len(band_name_fc_dfc)
-    prms = get_params(sujet, monopol)
+    pair_unique, roi_in_data = get_pair_unique_and_roi_unique(xr_fc['pairs'].data)
+    cf_metrics_list = xr_fc['mat_type'].data
+    n_band = len(freq_band_dict_FC_function[band_prep])
 
     phase_list = ['whole', 'inspi', 'expi']
 
     #### load data 
     allband_data = {}
-    #band_prep = 'lf'
-    for band_prep in band_prep_list:
-        #band = 'theta'
-        for band in freq_band_dict_FC_function[band_prep]:
+    #band = 'theta'
+    for band in freq_band_dict_FC_function[band_prep]:
 
-            allband_data[band] = {}
-            #cond = 'RD_SV'
-            for cond in prms['conditions']:
+        allband_data[band] = {}
+        
+        #cond = 'RD_SV'
+        for cond in conditions:
 
-                allband_data[band][cond] = {}
+            allband_data[band][cond] = {}
 
-                for phase_i, phase in enumerate(phase_list):
+            for phase_i, phase in enumerate(phase_list):
 
-                    if monopol:
-                        file_to_load = [i for i in os.listdir() if ( i.find('allpairs') != -1 and i.find(band) != -1 and i.find(cond) != -1 and i.find('bi') == -1)]
-                    else:
-                        file_to_load = [i for i in os.listdir() if ( i.find('allpairs') != -1 and i.find(band) != -1 and i.find(cond) != -1 and i.find('bi') != -1)]
-                    
-                    allband_data[band][cond][phase] = xr.open_dataarray(file_to_load[0]).data[:, :, phase_i, :]
-                    allpairs = xr.open_dataarray(file_to_load[0])['pairs'].data
+                if monopol:
+                    xr_fc = xr.open_dataarray(f'{sujet}_FC_wpli_ispc_{cond}_allpairs.nc')
+                else:
+                    xr_fc = xr.open_dataarray(f'{sujet}_FC_wpli_ispc_{cond}_allpairs_bi.nc')
+                
+                allband_data[band][cond][phase] = xr_fc.data[:, :, phase_i, :]
+                allpairs = xr_fc['pairs'].data
 
     #### clean data
-    allband_data, allpairs = clean_data(allband_data, allpairs, prms)
+    allband_data, allpairs = clean_data(allband_data, allpairs)
     pair_unique, roi_in_data = get_pair_unique_and_roi_unique(allpairs)
 
     #### plot verif
     if plot_verif:
 
-        plot_all_verif(allband_data, allpairs, phase_list, prms)
+        plot_all_verif(allband_data, allpairs, phase_list)
             
     #### mean
-    #band_prep = 'lf'
-    for band_prep in band_prep_list:
+    #band = 'theta'
+    for band in freq_band_dict_FC_function[band_prep]:
+        #cond = 'RD_SV'
+        for cond in conditions:
+            #phase = 'whole'
+            for phase_i, phase in enumerate(phase_list):
+                #cf_metric_i, cf_metric = 0, 'ispc'
+
+                mat_fc_i = np.zeros((2, len(roi_in_data), len(roi_in_data)))
+
+                for cf_metric_i, cf_metric in enumerate(['ispc', 'wpli']):
+
+                    mat_fc_i[cf_metric_i, :, :] = dfc_pairs_to_mat(allband_data[band][cond][phase][cf_metric_i,:,:], allpairs)
+
+                allband_data[band][cond][phase] = mat_fc_i
+
+    #### normalized
+    if FR_CV_normalized:
+
         #band = 'theta'
         for band in freq_band_dict_FC_function[band_prep]:
             #cond = 'RD_SV'
-            for cond in prms['conditions']:
+            for cond in conditions:
+                if cond == 'FR_CV':
+                    continue
                 #phase = 'whole'
                 for phase_i, phase in enumerate(phase_list):
                     #cf_metric_i, cf_metric = 0, 'ispc'
 
-                    mat_fc_i = np.zeros((2, len(roi_in_data), len(roi_in_data)))
-
-                    for cf_metric_i, cf_metric in enumerate(['ispc', 'wpli']):
-
-                        mat_fc_i[cf_metric_i, :, :] = dfc_pairs_to_mat(allband_data[band][cond][phase][cf_metric_i,:,:], allpairs)
-
-                    allband_data[band][cond][phase] = mat_fc_i
-
-    #### normalization
-    if FR_CV_normalized:
-            
-        for band_prep in band_prep_list:
-            #band = 'theta'
-            for band in freq_band_dict_FC_function[band_prep]:
-                #cond = 'RD_SV'
-                for cond in prms['conditions']:
-                    if cond == 'FR_CV':
-                        continue
-                    #phase = 'whole'
-                    for phase_i, phase in enumerate(phase_list):
-                        #cf_metric_i, cf_metric = 0, 'ispc'
-
-                        allband_data[band][cond][phase] = allband_data[band][cond][phase] - allband_data[band]['FR_CV'][phase]
+                    allband_data[band][cond][phase] = allband_data[band][cond][phase] - allband_data[band]['FR_CV'][phase]
 
     #### identify scales
     scales_abs = {}
@@ -424,23 +438,22 @@ def process_fc_res(sujet, monopol, FR_CV_normalized=True, plot_circle_dfc=False,
 
         scales_abs[mat_type] = {}
 
-        for band_prep in band_prep_list:
-            #band = 'theta'
-            for band in freq_band_dict_FC_function[band_prep]:
+        #band = 'theta'
+        for band in freq_band_dict_FC_function[band_prep]:
 
-                max_list = np.array(())
+            max_list = np.array(())
 
-                #cond = 'RD_SV'
-                for cond in prms['conditions']:
-                    if cond == 'FR_CV':
-                        continue
+            #cond = 'RD_SV'
+            for cond in conditions:
+                if cond == 'FR_CV':
+                    continue
 
-                    for phase_i, phase in enumerate(phase_list):
+                for phase_i, phase in enumerate(phase_list):
 
-                        max_list = np.append(max_list, np.abs(allband_data[band][cond][phase][mat_type_i,:,:].min()))
-                        max_list = np.append(max_list, allband_data[band][cond][phase][mat_type_i,:,:].max())
+                    max_list = np.append(max_list, np.abs(allband_data[band][cond][phase][mat_type_i,:,:].min()))
+                    max_list = np.append(max_list, allband_data[band][cond][phase][mat_type_i,:,:].max())
 
-                scales_abs[mat_type][band] = max_list.max()
+            scales_abs[mat_type][band] = max_list.max()
 
     #### thresh on previous plot
     percentile_thresh_up = 99
@@ -450,218 +463,213 @@ def process_fc_res(sujet, monopol, FR_CV_normalized=True, plot_circle_dfc=False,
 
     for mat_type_i, mat_type in enumerate(cf_metrics_list):
 
-        for band_prep in band_prep_list:
-            #band = 'theta'
-            for band in freq_band_dict_FC_function[band_prep]:
+        for band in freq_band_dict_FC_function[band_prep]:
 
-                for cond in prms['conditions']:
+            for cond in conditions:
 
-                    if cond == 'FR_CV':
-                        continue
+                if cond == 'FR_CV':
+                    continue
 
-                    for phase_i, phase in enumerate(phase_list):
+                for phase_i, phase in enumerate(phase_list):
 
-                        thresh_up = np.percentile(allband_data[band][cond][phase][mat_type_i,:,:].reshape(-1), percentile_thresh_up)
-                        thresh_down = np.percentile(allband_data[band][cond][phase][mat_type_i,:,:].reshape(-1), percentile_thresh_down)
+                    thresh_up = np.percentile(allband_data[band][cond][phase][mat_type_i,:,:].reshape(-1), percentile_thresh_up)
+                    thresh_down = np.percentile(allband_data[band][cond][phase][mat_type_i,:,:].reshape(-1), percentile_thresh_down)
 
-                        for x in range(mat_dfc_clean[band][cond][phase][mat_type_i,:,:].shape[1]):
-                            for y in range(mat_dfc_clean[band][cond][phase][mat_type_i,:,:].shape[1]):
-                                if mat_type_i == 0:
-                                    if mat_dfc_clean[band][cond][phase][mat_type_i,x,y] < thresh_up:
-                                        mat_dfc_clean[band][cond][phase][mat_type_i,x,y] = 0
-                                else:
-                                    if (mat_dfc_clean[band][cond][phase][mat_type_i,x,y] < thresh_up) & (mat_dfc_clean[band][cond][phase][mat_type_i,x,y] > thresh_down):
-                                        mat_dfc_clean[band][cond][phase][mat_type_i,x,y] = 0
-
-
-
+                    for x in range(mat_dfc_clean[band][cond][phase][mat_type_i,:,:].shape[1]):
+                        for y in range(mat_dfc_clean[band][cond][phase][mat_type_i,:,:].shape[1]):
+                            if mat_type_i == 0:
+                                if mat_dfc_clean[band][cond][phase][mat_type_i,x,y] < thresh_up:
+                                    mat_dfc_clean[band][cond][phase][mat_type_i,x,y] = 0
+                            else:
+                                if (mat_dfc_clean[band][cond][phase][mat_type_i,x,y] < thresh_up) & (mat_dfc_clean[band][cond][phase][mat_type_i,x,y] > thresh_down):
+                                    mat_dfc_clean[band][cond][phase][mat_type_i,x,y] = 0
 
     ######## PLOT ########
-
-
-
 
     #### go to results
     os.chdir(os.path.join(path_results, sujet, 'FC', 'allcond'))
 
     #### RAW
-
     n_cols_raw = len(phase_list)
 
     #mat_type_i, mat_type = 0, 'ispc'
     for mat_type_i, mat_type in enumerate(cf_metrics_list):
 
-        for band_prep in band_prep_list:
+        ######## NO THRESH ########
 
-            ######## NO THRESH ########
+        #cond = 'RD_SV'
+        for cond in conditions:
 
-            #cond = 'RD_SV'
-            for cond in prms['conditions']:
-                if cond == 'FR_CV':
-                    continue
+            if cond == 'FR_CV':
+                continue
 
-                #### mat plot raw
+            #### mat plot raw
 
-                fig, axs = plt.subplots(nrows=len(freq_band_dict_FC_function[band_prep]), ncols=n_cols_raw, figsize=(15,15))
+            fig, axs = plt.subplots(nrows=len(freq_band_dict_FC_function[band_prep]), ncols=n_cols_raw, figsize=(15,15))
 
-                if monopol:
-                    plt.suptitle(f'{cond} {mat_type}')
-                else:
-                    plt.suptitle(f'{cond} {mat_type} bi')
+            if monopol:
+                plt.suptitle(f'{cond} {mat_type}')
+            else:
+                plt.suptitle(f'{cond} {mat_type} bi')
+            
+            for r, band in enumerate(freq_band_dict_FC_function[band_prep]):
                 
+                for c, phase in enumerate(phase_list):
+
+                    ax = axs[r, c]
+
+                    if c == 0:
+                        ax.set_ylabel(band)
+                    if r == 0:
+                        ax.set_title(f'{phase}')
+                    
+                    cax = ax.matshow(allband_data[band][cond][phase][mat_type_i,:,:], vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], cmap=cm.seismic)
+
+                    fig.colorbar(cax, ax=ax)
+
+                    ax.set_yticks(np.arange(roi_in_data.shape[0]))
+                    ax.set_yticklabels(roi_in_data)
+
+            # plt.show()
+
+            if monopol:
+                if FR_CV_normalized:
+                    fig.savefig(f'MAT_{mat_type}_{cond}_norm_{band_prep}.png')
+                else:
+                    fig.savefig(f'MAT_{mat_type}_{cond}_{band_prep}.png')
+            else:
+                if FR_CV_normalized:
+                    fig.savefig(f'MAT_bi_{mat_type}_{cond}_norm_{band_prep}.png')
+                else:
+                    fig.savefig(f'MAT_bi_{mat_type}_{cond}_{band_prep}.png')
+            
+            plt.close('all')
+
+            #### circle plot RAW
+                
+            if plot_circle_dfc:
+                
+                nrows, ncols = len(freq_band_dict_FC_function[band_prep]), n_cols_raw
+                fig, axs = plt.subplots(nrows=nrows, ncols=ncols, subplot_kw=dict(polar=True))
+
                 for r, band in enumerate(freq_band_dict_FC_function[band_prep]):
+
                     for c, phase in enumerate(phase_list):
 
-                        ax = axs[r, c]
+                        mne_connectivity.viz.plot_connectivity_circle(allband_data[band][cond][phase][mat_type_i,:,:], node_names=roi_in_data, n_lines=None, 
+                                                    title=f'{band} {phase}', show=False, padding=7, ax=axs[r, c],
+                                                    vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], colormap=cm.seismic, facecolor='w', 
+                                                    textcolor='k')
 
-                        if c == 0:
-                            ax.set_ylabel(band)
-                        if r == 0:
-                            ax.set_title(f'{phase}')
-                        
-                        cax = ax.matshow(allband_data[band][cond][phase][mat_type_i,:,:], vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], cmap=cm.seismic)
-
-                        fig.colorbar(cax, ax=ax)
-
-                        ax.set_yticks(np.arange(roi_in_data.shape[0]))
-                        ax.set_yticklabels(roi_in_data)
-                # plt.show()
+                if monopol:
+                    plt.suptitle(f'{cond}_{mat_type}', color='k')
+                else:
+                    plt.suptitle(f'{cond}_{mat_type}_bi', color='k')
+                
+                fig.set_figheight(10)
+                fig.set_figwidth(12)
+                # fig.show()
 
                 if monopol:
                     if FR_CV_normalized:
-                        fig.savefig(f'MAT_{mat_type}_{cond}_norm_{band_prep}.png')
+                        fig.savefig(f'CIRCLE_{mat_type}_{cond}_norm_{band_prep}.png')
                     else:
-                        fig.savefig(f'MAT_{mat_type}_{cond}_{band_prep}.png')
+                        fig.savefig(f'CIRCLE_{mat_type}_{cond}_{band_prep}.png')
                 else:
                     if FR_CV_normalized:
-                        fig.savefig(f'MAT_bi_{mat_type}_{cond}_norm_{band_prep}.png')
+                        fig.savefig(f'CIRCLE_bi_{mat_type}_{cond}_norm_{band_prep}.png')
                     else:
-                        fig.savefig(f'MAT_bi_{mat_type}_{cond}_{band_prep}.png')
-                
+                        fig.savefig(f'CIRCLE_bi_{mat_type}_{cond}_{band_prep}.png')
+
                 plt.close('all')
 
-                #### circle plot RAW
+        ######## THRESH ########
+
+        #cond = 'RD_SV'
+        for cond in conditions:
+
+            if cond == 'FR_CV':
+                continue
+
+            #### mat plot raw 
+
+            fig, axs = plt.subplots(nrows=len(freq_band_dict_FC_function[band_prep]), ncols=n_cols_raw, figsize=(15,15))
+
+            if monopol:
+                plt.suptitle(f'{cond} {mat_type}')
+            else:
+                plt.suptitle(f'{cond} {mat_type} bi')
+            
+            for r, band in enumerate(freq_band_dict_FC_function[band_prep]):
+                for c, phase in enumerate(phase_list):
+
+                    ax = axs[r, c]
+
+                    if c == 0:
+                        ax.set_ylabel(band)
+                    if r == 0:
+                        ax.set_title(f'{phase}')
                     
-                if plot_circle_dfc:
-                    
-                    nrows, ncols = len(freq_band_dict_FC_function[band_prep]), n_cols_raw
-                    fig, axs = plt.subplots(nrows=nrows, ncols=ncols, subplot_kw=dict(polar=True))
+                    cax = ax.matshow(mat_dfc_clean[band][cond][phase][mat_type_i,:,:], vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], cmap=cm.seismic)
 
-                    for r, band in enumerate(freq_band_dict_FC_function[band_prep]):
+                    fig.colorbar(cax, ax=ax)
 
-                        for c, phase in enumerate(phase_list):
+                    ax.set_yticks(np.arange(roi_in_data.shape[0]))
+                    ax.set_yticklabels(roi_in_data)
 
-                            mne_connectivity.viz.plot_connectivity_circle(allband_data[band][cond][phase][mat_type_i,:,:], node_names=roi_in_data, n_lines=None, 
-                                                        title=f'{band} {phase}', show=False, padding=7, ax=axs[r, c],
-                                                        vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], colormap=cm.seismic, facecolor='w', 
-                                                        textcolor='k')
+            # plt.show()
 
-                    if monopol:
-                        plt.suptitle(f'{cond}_{mat_type}', color='k')
-                    else:
-                        plt.suptitle(f'{cond}_{mat_type}_bi', color='k')
-                    
-                    fig.set_figheight(10)
-                    fig.set_figwidth(12)
-                    # fig.show()
-
-                    if monopol:
-                        if FR_CV_normalized:
-                            fig.savefig(f'CIRCLE_{mat_type}_{cond}_norm_{band_prep}.png')
-                        else:
-                            fig.savefig(f'CIRCLE_{mat_type}_{cond}_{band_prep}.png')
-                    else:
-                        if FR_CV_normalized:
-                            fig.savefig(f'CIRCLE_bi_{mat_type}_{cond}_norm_{band_prep}.png')
-                        else:
-                            fig.savefig(f'CIRCLE_bi_{mat_type}_{cond}_{band_prep}.png')
-
-                    plt.close('all')
-
-            ######## THRESH ########
-
-            #cond = 'RD_SV'
-            for cond in prms['conditions']:
-                if cond == 'FR_CV':
-                    continue
-
-                #### mat plot raw 
-
-                fig, axs = plt.subplots(nrows=len(freq_band_dict_FC_function[band_prep]), ncols=n_cols_raw, figsize=(15,15))
-
-                if monopol:
-                    plt.suptitle(f'{cond} {mat_type}')
+            if monopol:
+                if FR_CV_normalized:
+                    fig.savefig(f'THRESH_MAT_{mat_type}_{cond}_norm_{band_prep}.png')
                 else:
-                    plt.suptitle(f'{cond} {mat_type} bi')
+                    fig.savefig(f'THRESH_MAT_{mat_type}_{cond}_{band_prep}.png')
+            else:
+                if FR_CV_normalized:
+                    fig.savefig(f'THRESH_MAT_bi_{mat_type}_{cond}_norm_{band_prep}.png')
+                else:
+                    fig.savefig(f'THRESH_MAT_bi_{mat_type}_{cond}_{band_prep}.png')
+            
+            plt.close('all')
+
+            #### circle plot RAW
                 
+            if plot_circle_dfc:
+                
+                nrows, ncols = len(freq_band_dict_FC_function[band_prep]), n_cols_raw
+                fig, axs = plt.subplots(nrows=nrows, ncols=ncols, subplot_kw=dict(polar=True))
+
                 for r, band in enumerate(freq_band_dict_FC_function[band_prep]):
+
                     for c, phase in enumerate(phase_list):
 
-                        ax = axs[r, c]
+                        mne_connectivity.viz.plot_connectivity_circle(mat_dfc_clean[band][cond][phase][mat_type_i,:,:], node_names=roi_in_data, n_lines=None, 
+                                                    title=f'{band} {phase}', show=False, padding=7, ax=axs[r, c],
+                                                    vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], colormap=cm.seismic, facecolor='w', 
+                                                    textcolor='k')
 
-                        if c == 0:
-                            ax.set_ylabel(band)
-                        if r == 0:
-                            ax.set_title(f'{phase}')
-                        
-                        cax = ax.matshow(mat_dfc_clean[band][cond][phase][mat_type_i,:,:], vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], cmap=cm.seismic)
-
-                        fig.colorbar(cax, ax=ax)
-
-                        ax.set_yticks(np.arange(roi_in_data.shape[0]))
-                        ax.set_yticklabels(roi_in_data)
-                # plt.show()
+                if monopol:
+                    plt.suptitle(f'{cond}_{mat_type}', color='k')
+                else:
+                    plt.suptitle(f'{cond}_{mat_type}_bi', color='k')
+                
+                fig.set_figheight(10)
+                fig.set_figwidth(12)
+                
+                # fig.show()
 
                 if monopol:
                     if FR_CV_normalized:
-                        fig.savefig(f'THRESH_MAT_{mat_type}_{cond}_norm_{band_prep}.png')
+                        fig.savefig(f'THRESH_CIRCLE_{mat_type}_{cond}_norm_{band_prep}.png')
                     else:
-                        fig.savefig(f'THRESH_MAT_{mat_type}_{cond}_{band_prep}.png')
+                        fig.savefig(f'THRESH_CIRCLE_{mat_type}_{cond}_{band_prep}.png')
                 else:
                     if FR_CV_normalized:
-                        fig.savefig(f'THRESH_MAT_bi_{mat_type}_{cond}_norm_{band_prep}.png')
+                        fig.savefig(f'THRESH_CIRCLE_bi_{mat_type}_{cond}_norm_{band_prep}.png')
                     else:
-                        fig.savefig(f'THRESH_MAT_bi_{mat_type}_{cond}_{band_prep}.png')
-                
+                        fig.savefig(f'THRESH_CIRCLE_bi_{mat_type}_{cond}_{band_prep}.png')
+
                 plt.close('all')
-
-                #### circle plot RAW
-                    
-                if plot_circle_dfc:
-                    
-                    nrows, ncols = len(freq_band_dict_FC_function[band_prep]), n_cols_raw
-                    fig, axs = plt.subplots(nrows=nrows, ncols=ncols, subplot_kw=dict(polar=True))
-
-                    for r, band in enumerate(freq_band_dict_FC_function[band_prep]):
-
-                        for c, phase in enumerate(phase_list):
-
-                            mne_connectivity.viz.plot_connectivity_circle(mat_dfc_clean[band][cond][phase][mat_type_i,:,:], node_names=roi_in_data, n_lines=None, 
-                                                        title=f'{band} {phase}', show=False, padding=7, ax=axs[r, c],
-                                                        vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], colormap=cm.seismic, facecolor='w', 
-                                                        textcolor='k')
-
-                    if monopol:
-                        plt.suptitle(f'{cond}_{mat_type}', color='k')
-                    else:
-                        plt.suptitle(f'{cond}_{mat_type}_bi', color='k')
-                    
-                    fig.set_figheight(10)
-                    fig.set_figwidth(12)
-                    # fig.show()
-
-                    if monopol:
-                        if FR_CV_normalized:
-                            fig.savefig(f'THRESH_CIRCLE_{mat_type}_{cond}_norm_{band_prep}.png')
-                        else:
-                            fig.savefig(f'THRESH_CIRCLE_{mat_type}_{cond}_{band_prep}.png')
-                    else:
-                        if FR_CV_normalized:
-                            fig.savefig(f'THRESH_CIRCLE_bi_{mat_type}_{cond}_norm_{band_prep}.png')
-                        else:
-                            fig.savefig(f'THRESH_CIRCLE_bi_{mat_type}_{cond}_{band_prep}.png')
-
-                    plt.close('all')
 
 
 
@@ -676,7 +684,7 @@ def process_fc_res(sujet, monopol, FR_CV_normalized=True, plot_circle_dfc=False,
 
     #### RAW
 
-    cond_to_plot = [cond for cond in prms['conditions'] if cond != 'FR_CV']
+    cond_to_plot = [cond for cond in conditions if cond != 'FR_CV']
 
     #mat_type_i, mat_type = 0, 'ispc'
     for mat_type_i, mat_type in enumerate(cf_metrics_list):
@@ -857,12 +865,12 @@ def process_fc_res(sujet, monopol, FR_CV_normalized=True, plot_circle_dfc=False,
 
 if __name__ == '__main__':
 
-    #sujet = sujet_list[0]
-    for sujet in sujet_list:
+    #sujet = sujet_list_FR_CV[0]
+    for sujet in sujet_list_FR_CV:
 
         #monopol = True
         for monopol in [True, False]:
 
+            # process_fc_res(sujet, monopol)
             execute_function_in_slurm_bash('n9_res_FC', 'process_fc_res', [sujet, monopol])
 
-        

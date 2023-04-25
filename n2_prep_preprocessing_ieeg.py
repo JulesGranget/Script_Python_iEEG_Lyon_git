@@ -111,13 +111,19 @@ def extract_data_trc(sujet):
 
     #### verif
     if debug:
-        file_i = 1
+        file_i = 2
         data = data_whole[file_i]
         chan_list = chan_list_whole[file_i]
         events_time = events_time_whole[file_i]
         srate = srate_whole[file_i]
 
-        chan_name = 'p19+'
+        chan_name = 'p17+'
+        chan_i = chan_list.index(chan_name)
+        plt.plot(data[chan_i,:])
+        plt.vlines( np.array(events_time), ymin=np.min(data[chan_i,start:stop]), ymax=np.max(data[chan_i,start:stop]), color='r')
+        plt.show()
+
+        chan_name = 'p17+'
         chan_i = chan_list.index(chan_name)
         file_stop = (np.size(data,1)/srate)/60
         start = 0 *60*srate 
@@ -136,7 +142,7 @@ def extract_data_trc(sujet):
 
     if len(trc_file_names) > 1 :
         #trc_i = 0
-        for trc_i in range(len(trc_file_names)): 
+        for trc_i, trc_name in enumerate(trc_file_names_ordered): 
 
             if trc_i == 0 :
                 len_trc = np.size(data_whole[trc_i],1)
@@ -157,6 +163,15 @@ def extract_data_trc(sujet):
                     exit()
 
                 len_trc += np.size(data_whole[trc_i],1)
+
+    #### verif
+    if debug:
+
+        chan_name = 'p17+'
+        chan_i = chan_list.index(chan_name)
+        plt.plot(data[chan_i,:])
+        plt.vlines( np.array(events_time), ymin=np.min(data[chan_i,start:stop]), ymax=np.max(data[chan_i,start:stop]), color='r')
+        plt.show()
 
     
     #### no more use
@@ -179,7 +194,7 @@ def extract_data_trc(sujet):
     chan_list_first_clean = chan_list_first_clean.split("\n")[:-1]
     chan_list_first_clean_file.close()
 
-        #### remove chan
+    #### remove chan
     if debug:
         data_rmv_first = data.copy() 
     else:
@@ -390,7 +405,7 @@ def extract_data_trc_bi(sujet):
 
     if len(trc_file_names) > 1 :
         #trc_i = 0
-        for trc_i in range(len(trc_file_names)): 
+        for trc_i in range(len(trc_file_names_ordered)): 
 
             if trc_i == 0 :
                 len_trc = np.size(data_whole[trc_i],1)
@@ -1383,6 +1398,7 @@ if __name__== '__main__':
     # sujet = 'GOBc' 
     # sujet = 'MAZm' 
     # sujet = 'TREt' 
+    # sujet = 'POTm'
 
     #### FR_CV only
     # sujet = 'KOFs'
@@ -1404,7 +1420,7 @@ if __name__== '__main__':
     #monopol = True
     for monopol in [True, False]:
 
-        #sujet = sujet_list_FR_CV[8]
+        #sujet = sujet_list_FR_CV[4]
         for sujet in sujet_list_FR_CV:
 
             print(f'######## {sujet}, monopol : {monopol} ########')
@@ -1450,11 +1466,21 @@ if __name__== '__main__':
 
             #### verif and adjust trig for some patients
             if debug == True:
+
+                trig_clean = trig.query("name in ['CV_start', 'CV_stop', '11', '12', '31', '32', '51', '52', '61', '62', '71', '72']")
+
+                chan_name = 'nasal'
+                chan_i = chan_list_aux.index(chan_name)
+                plt.plot(data_aux[chan_i,:])
+                plt.vlines(trig_clean.time.values, ymin=data_aux[chan_i,:].min(), ymax=data_aux[chan_i,:].max(), colors='k')
+                plt.show()
+
                 chan_name = 'nasal'
                 data_plot = data_aux
                 chan_list_plot = chan_list_aux
                 start = 0 *60*srate # give min
-                stop =  5 *60*srate  # give min
+                stop =  50 *60*srate  # give min
+                stop =  data_plot.shape[-1]
 
                 chan_i = chan_list_plot.index(chan_name)
                 times = np.arange(np.size(data_plot,1))

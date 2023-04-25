@@ -354,17 +354,18 @@ def precompute_tf_ROI_STATS(ROI, monopol):
     
     print(f'#### COMPUTE TF STATS INTER {ROI} ####', flush=True)
 
-    #### params
-    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots('FR_CV', monopol)
+    #### test if compute
+    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(conditions[1], monopol)
 
     if len(ROI_dict_plots[ROI]) == 0:
         print('ROI only in FR_CV', flush=True)
         return
-    else:
-        site_list = ROI_dict_plots[ROI] 
 
     #### load baselines
     print('#### LOAD BASELINES ####', flush=True)
+
+    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots('FR_CV', monopol)
+    site_list = ROI_dict_plots[ROI]
 
     cycle_baseline_tot = 0
     cond = 'FR_CV'
@@ -416,7 +417,7 @@ def precompute_tf_ROI_STATS(ROI, monopol):
 
     del tf_load
 
-    #cond = conditions[0]
+    #cond = conditions[1]
     for cond in conditions:
 
         if cond == 'FR_CV':
@@ -435,7 +436,7 @@ def precompute_tf_ROI_STATS(ROI, monopol):
                 continue
 
         #### params
-        ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots('FR_CV', monopol)
+        ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(cond, monopol)
         site_list = ROI_dict_plots[ROI]
 
         #### load cond
@@ -635,10 +636,10 @@ if __name__ == '__main__':
         #### load anat
         ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots('FR_CV', monopol) 
 
-        #ROI = ROI_to_include[5]
+        #ROI = ROI_to_include[21]
         for ROI in ROI_to_include:
 
-            # precompute_tf_ROI_STATS(ROI, cond, monopol)
+            # precompute_tf_ROI_STATS(ROI, monopol)
             execute_function_in_slurm_bash_mem_choice('n12bis_precompute_allplot_TF_STATS', 'precompute_tf_ROI_STATS', [ROI, monopol], '30G')
 
     

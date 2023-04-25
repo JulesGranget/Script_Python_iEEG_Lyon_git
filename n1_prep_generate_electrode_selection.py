@@ -171,6 +171,25 @@ def generate_plot_loca(sujet, chan_list_trc):
         correspondance_ROI.append(nomenclature['Our correspondances'][nomenclature['Labels'] == parcel_i_chunk].values[0])
         correspondance_lobes.append(nomenclature['Lobes'][nomenclature['Labels'] == parcel_i_chunk].values[0])
 
+    if debug:
+
+        for parcel_i in freesurfer_destrieux:
+
+            if parcel_i[0] == 'c':
+                parcel_i_chunk = parcel_i[7:]
+            elif parcel_i[0] == 'L':
+                parcel_i_chunk = parcel_i[5:]
+            elif parcel_i[0] == 'R':
+                parcel_i_chunk = parcel_i[6:]
+            elif parcel_i[0] == 'W':
+                parcel_i_chunk = 'Cerebral-White-Matter'
+            else:
+                parcel_i_chunk = parcel_i
+
+            if parcel_i_chunk not in nomenclature['Labels'].values:
+
+                print(parcel_i_chunk)
+
     #### generate df
     electrode_select_dict = {}
     for ncol in columns:
@@ -199,7 +218,6 @@ def generate_plot_loca(sujet, chan_list_trc):
     
     electrode_select_df.to_excel(sujet + '_plot_loca.xlsx')
 
-    return
         
 
 
@@ -344,7 +362,6 @@ def generate_plot_loca_bipolaire(sujet):
     
     df.to_excel(sujet + '_plot_loca_bi.xlsx')
 
-    return
         
 
 
@@ -360,7 +377,7 @@ def generate_plot_loca_bipolaire(sujet):
 
 if __name__== '__main__':
 
-    #sujet = sujet_list_FR_CV[8]
+    #sujet = sujet_list_FR_CV[4]
     for sujet in sujet_list_FR_CV:
 
         print(f'#### {sujet}')
