@@ -43,7 +43,7 @@ def get_all_ROI_and_Lobes_name():
 
 
 
-def get_ROI_Lobes_list_and_Plots(monopol):
+def get_ROI_Lobes_list_and_Plots(cond, monopol):
 
     #### generate anat list
     os.chdir(os.path.join(path_anatomy, 'nomenclature'))
@@ -69,7 +69,10 @@ def get_ROI_Lobes_list_and_Plots(monopol):
         lobe_dict_plots[lobe_i] = []
 
     #### search for ROI & lobe that have been counted
-    sujet_list_selected = sujet_list
+    if cond == 'FR_CV':
+        sujet_list_selected = sujet_list_FR_CV
+    else:
+        sujet_list_selected = sujet_list
 
     #sujet_i = sujet_list_selected[0]
     for sujet_i in sujet_list_selected:
@@ -121,16 +124,16 @@ def get_ROI_Lobes_list_and_Plots(monopol):
 
 
 
+#tf_plot = data_allcond[cond].values
+def get_tf_stats(tf_plot, pixel_based_distrib, nfrex, stats_type):
 
-def get_tf_stats(tf, nchan, pixel_based_distrib, nfrex, stats_type):
-
-    tf_thresh = tf.copy()
+    tf_thresh = np.zeros(tf_plot.shape)
 
     if stats_type == 'inter':
             
         #wavelet_i = 0
         for wavelet_i in range(nfrex):
-            mask = np.logical_or(tf_thresh[wavelet_i, :] >= pixel_based_distrib[nchan, wavelet_i, 0], tf_thresh[wavelet_i, :] <= pixel_based_distrib[nchan, wavelet_i, 1])
+            mask = np.logical_or(tf_thresh[wavelet_i, :] >= pixel_based_distrib[wavelet_i, 0], tf_thresh[wavelet_i, :] <= pixel_based_distrib[wavelet_i, 1])
             tf_thresh[wavelet_i, mask] = 1
             tf_thresh[wavelet_i, np.logical_not(mask)] = 0
 
@@ -138,9 +141,19 @@ def get_tf_stats(tf, nchan, pixel_based_distrib, nfrex, stats_type):
             
         #wavelet_i = 0
         for wavelet_i in range(nfrex):
-            mask = np.logical_or(tf_thresh[wavelet_i, :] >= pixel_based_distrib[nchan, wavelet_i, 0], tf_thresh[wavelet_i, :] <= pixel_based_distrib[nchan, wavelet_i, 1])
+            mask = np.logical_or(tf_thresh[wavelet_i, :] >= pixel_based_distrib[wavelet_i, 0], tf_thresh[wavelet_i, :] <= pixel_based_distrib[wavelet_i, 1])
             tf_thresh[wavelet_i, mask] = 1
             tf_thresh[wavelet_i, np.logical_not(mask)] = 0
+
+    if debug:
+
+        plt.pcolormesh(tf_thresh)
+        plt.show()
+
+    #### if empty return
+    if tf_thresh.sum() == 0:
+
+        return tf_thresh
 
     #### thresh cluster
     tf_thresh = tf_thresh.astype('uint8')
@@ -148,7 +161,7 @@ def get_tf_stats(tf, nchan, pixel_based_distrib, nfrex, stats_type):
     #### nb_blobs, im_with_separated_blobs, stats = nb clusters, clusters image with labeled clusters, info on clusters
     sizes = stats[1:, -1]
     nb_blobs -= 1
-    min_size = np.percentile(sizes,tf_stats_percentile_cluster_allplot)  
+    min_size = np.percentile(sizes,tf_stats_percentile_cluster)  
 
     if debug:
 
@@ -163,14 +176,15 @@ def get_tf_stats(tf, nchan, pixel_based_distrib, nfrex, stats_type):
 
     if debug:
     
-        time = np.arange(tf.shape[-1])
+        time = np.arange(tf_plot.shape[-1])
 
-        plt.pcolormesh(time, frex, tf, shading='gouraud', cmap='seismic')
+        plt.pcolormesh(time, frex, tf_plot, shading='gouraud', cmap='seismic')
         plt.contour(time, frex, tf_thresh, levels=0, colors='g')
         plt.yscale('log')
         plt.show()
 
     return tf_thresh
+
 
 
 
@@ -256,12 +270,21 @@ def open_TForITPC_data(struct_name, cond, mat_type, anat_type, monopol):
 
 
 
-#ROI_i, ROI = 1, 'amygdala'
+#ROI_i, ROI = ROI_to_include.index('amygdala'), 'amygdala'
 def compute_for_one_ROI_allcond(ROI_i, ROI, monopol):
 
-    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(monopol)
+    #### count ROI
+    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots('FR_CV', monopol)
+    ROI_count_FR_CV = len(ROI_dict_plots[ROI])
 
-    ROI_count = [len(ROI_dict_plots[ROI]) for ROI in ROI_to_include]
+    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots('RD_SV', monopol)
+    ROI_count_allcond = len(ROI_dict_plots[ROI])
+
+    #### select cond
+    if ROI_count_allcond == 0:
+        conditions = ['FR_CV']
+    else:
+        conditions = ['FR_CV', 'RD_CV', 'RD_SV', 'RD_FV']
 
     #### scale
     os.chdir(os.path.join(path_precompute, 'allplot', 'TF'))
@@ -296,9 +319,9 @@ def compute_for_one_ROI_allcond(ROI_i, ROI, monopol):
         fig, axs = plt.subplots(ncols=len(conditions))
 
         if monopol:
-            plt.suptitle(f'{ROI} count : {ROI_count[ROI_i]}')
+            plt.suptitle(f'{ROI}, stats:{stats_type}')
         else:
-            plt.suptitle(f'{ROI}_bi count : {ROI_count[ROI_i]}')
+            plt.suptitle(f'{ROI}_bi, stats:{stats_type}')
 
         fig.set_figheight(5)
         fig.set_figwidth(15)
@@ -307,9 +330,16 @@ def compute_for_one_ROI_allcond(ROI_i, ROI, monopol):
         #c, cond = 1, cond_to_plot[1]
         for c, cond in enumerate(conditions):
 
-            ax = axs[c]
-            ax.set_title(cond, fontweight='bold', rotation=0)
+            if len(conditions) == 1:
+                ax = axs
+            else:
+                ax = axs[c]
 
+            if cond == 'FR_CV':
+                ax.set_title(f'{cond}, n:{ROI_count_FR_CV}', fontweight='bold', rotation=0)
+            else:
+                ax.set_title(f'{cond}, n:{ROI_count_allcond}', fontweight='bold', rotation=0)
+                
             #### generate time vec
             time_vec = np.arange(stretch_point_TF)
 
@@ -318,23 +348,23 @@ def compute_for_one_ROI_allcond(ROI_i, ROI, monopol):
             ax.set_yscale('log')
 
             #### stats
-            if stats_type == 'inter' and cond != 'FR_CV':
-                if monopol:
-                    pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_inter.npy')
-                else:
-                    pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_inter_bi.npy')
+            # if stats_type == 'inter' and cond != 'FR_CV':
+            #     if monopol:
+            #         pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_inter.npy')
+            #     else:
+            #         pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_inter_bi.npy')
 
-                if get_tf_stats(cond, data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type).sum() != 0:
-                    ax.contour(time_vec, frex, get_tf_stats(cond, data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type), levels=0, colors='g')
+            #     if get_tf_stats(data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type).sum() != 0:
+            #         ax.contour(time_vec, frex, get_tf_stats(data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type), levels=0, colors='g')
 
-            if stats_type == 'intra':
-                if monopol:
-                    pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_intra.npy')
-                else:
-                    pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_intra_bi.npy')
+            # if stats_type == 'intra':
+            #     if monopol:
+            #         pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_intra.npy')
+            #     else:
+            #         pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_intra_bi.npy')
 
-                if get_tf_stats(cond, data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type).sum() != 0:
-                    ax.contour(time_vec, frex, get_tf_stats(cond, data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type), levels=0, colors='g')
+            #     if get_tf_stats(data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type).sum() != 0:
+            #         ax.contour(time_vec, frex, get_tf_stats(data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type), levels=0, colors='g')
 
             ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=frex[0], ymax=frex[-1], colors='g')
 
@@ -365,106 +395,106 @@ def compute_for_one_ROI_allcond(ROI_i, ROI, monopol):
 
 
 
-#Lobe_name, mat_type = 'Temporal', 'TF'
-def compute_for_one_Lobe_allcond(Lobe_name, mat_type, cond_to_compute, srate, monopol):
+# #Lobe_name, mat_type = 'Temporal', 'TF'
+# def compute_for_one_Lobe_allcond(Lobe_name, mat_type, cond_to_compute, srate, monopol):
 
-    print(Lobe_name)
+#     print(Lobe_name)
 
-    #### params
-    anat_type = 'Lobes'
+#     #### params
+#     anat_type = 'Lobes'
 
-    #### extract band names
-    band_names = []
-    freq_values = []
-    for band_freq_i in freq_band_list:
-        [band_names.append(band_name_i) for band_name_i in list(band_freq_i.keys())]
-        [freq_values.append(freq_values_i) for freq_values_i in list(band_freq_i.values())]
+#     #### extract band names
+#     band_names = []
+#     freq_values = []
+#     for band_freq_i in freq_band_list:
+#         [band_names.append(band_name_i) for band_name_i in list(band_freq_i.keys())]
+#         [freq_values.append(freq_values_i) for freq_values_i in list(band_freq_i.values())]
 
-    #### get stats
-    STATS_for_Lobe_to_process = {}
+#     #### get stats
+#     STATS_for_Lobe_to_process = {}
 
-    for cond in cond_to_compute:
+#     for cond in cond_to_compute:
 
-        if cond != 'FR_CV':
+#         if cond != 'FR_CV':
 
-            STATS_for_Lobe_to_process[cond] = get_STATS_for_Lobes(Lobe_name, cond, monopol)
+#             STATS_for_Lobe_to_process[cond] = get_STATS_for_Lobes(Lobe_name, cond, monopol)
 
-    allcond_TF = {}
-    allcond_count = {}
-    #cond = 'FR_CV'
-    for cond in cond_to_compute:
+#     allcond_TF = {}
+#     allcond_count = {}
+#     #cond = 'FR_CV'
+#     for cond in cond_to_compute:
 
-        allcond_TF[cond], allcond_count[cond] = open_TForITPC_data(Lobe_name, cond, mat_type, anat_type, monopol)
+#         allcond_TF[cond], allcond_count[cond] = open_TForITPC_data(Lobe_name, cond, mat_type, anat_type, monopol)
 
-    #### plot & save
-    if mat_type == 'TF':
-        os.chdir(os.path.join(path_results, 'allplot', 'allcond', 'TF', 'Lobes'))
-    if mat_type == 'ITPC':
-        os.chdir(os.path.join(path_results, 'allplot', 'allcond', 'ITPC', 'Lobes'))
+#     #### plot & save
+#     if mat_type == 'TF':
+#         os.chdir(os.path.join(path_results, 'allplot', 'allcond', 'TF', 'Lobes'))
+#     if mat_type == 'ITPC':
+#         os.chdir(os.path.join(path_results, 'allplot', 'allcond', 'ITPC', 'Lobes'))
 
-    #### plot
-    # band_prep_i, band_prep = 0, 'lf'
-    for band_prep_i, band_prep in enumerate(band_prep_list):
+#     #### plot
+#     # band_prep_i, band_prep = 0, 'lf'
+#     for band_prep_i, band_prep in enumerate(band_prep_list):
 
-        #### extract band to plot
-        freq_band = freq_band_dict[band_prep]
+#         #### extract band to plot
+#         freq_band = freq_band_dict[band_prep]
 
-        #### initiate fig
-        fig, axs = plt.subplots(nrows=len(freq_band), ncols=len(cond_to_compute))
+#         #### initiate fig
+#         fig, axs = plt.subplots(nrows=len(freq_band), ncols=len(cond_to_compute))
 
-        fig.set_figheight(10)
-        fig.set_figwidth(15)
+#         fig.set_figheight(10)
+#         fig.set_figwidth(15)
 
-        #### for plotting l_gamma down
-        if band_prep == 'hf':
-            keys_list_reversed = list(freq_band.keys())
-            keys_list_reversed.reverse()
-            freq_band_reversed = {}
-            for key_i in keys_list_reversed:
-                freq_band_reversed[key_i] = freq_band[key_i]
-            freq_band = freq_band_reversed
+#         #### for plotting l_gamma down
+#         if band_prep == 'hf':
+#             keys_list_reversed = list(freq_band.keys())
+#             keys_list_reversed.reverse()
+#             freq_band_reversed = {}
+#             for key_i in keys_list_reversed:
+#                 freq_band_reversed[key_i] = freq_band[key_i]
+#             freq_band = freq_band_reversed
 
-        if monopol:
-            plt.suptitle(Lobe_name)
-        else:
-            plt.suptitle(f'{Lobe_name} bi')
+#         if monopol:
+#             plt.suptitle(Lobe_name)
+#         else:
+#             plt.suptitle(f'{Lobe_name} bi')
 
-        #cond_i, cond = 0, 'FR_CV'
-        for c, cond in enumerate(cond_to_compute):
+#         #cond_i, cond = 0, 'FR_CV'
+#         for c, cond in enumerate(cond_to_compute):
 
-            #### generate time vec
-            time_vec = np.arange(stretch_point_TF)
+#             #### generate time vec
+#             time_vec = np.arange(stretch_point_TF)
                         
-            # i, (band, freq) = 0, ('theta', [2 ,10])
-            for r, (band, freq) in enumerate(list(freq_band.items())) :
+#             # i, (band, freq) = 0, ('theta', [2 ,10])
+#             for r, (band, freq) in enumerate(list(freq_band.items())) :
 
-                TF_i = allcond_TF[cond].loc[band, :, :].data
-                TF_count_i = allcond_count[cond]
-                frex = np.linspace(freq[0], freq[1], TF_i.shape[0])
+#                 TF_i = allcond_TF[cond].loc[band, :, :].data
+#                 TF_count_i = allcond_count[cond]
+#                 frex = np.linspace(freq[0], freq[1], TF_i.shape[0])
                 
-                ax = axs[r, c]
-                if r == 0 :
-                    ax.set_title(f' {cond} : {TF_count_i}')
-                if c == 0:
-                    ax.set_ylabel(band)
+#                 ax = axs[r, c]
+#                 if r == 0 :
+#                     ax.set_title(f' {cond} : {TF_count_i}')
+#                 if c == 0:
+#                     ax.set_ylabel(band)
                     
-                ax.pcolormesh(time_vec, frex, robust_zscore(TF_i), vmin=-robust_zscore(TF_i).max(), vmax=robust_zscore(TF_i).max(), shading='gouraud', cmap=plt.get_cmap('seismic'))
+#                 ax.pcolormesh(time_vec, frex, robust_zscore(TF_i), vmin=-robust_zscore(TF_i).max(), vmax=robust_zscore(TF_i).max(), shading='gouraud', cmap=plt.get_cmap('seismic'))
 
-                if cond != 'FR_CV':
-                    # ax.contour(time_vec, frex, STATS_for_Lobe_to_process[band], levels=0, colors='g')
-                    ax.contour(time_vec, frex, STATS_for_Lobe_to_process[cond][band])
+#                 if cond != 'FR_CV':
+#                     # ax.contour(time_vec, frex, STATS_for_Lobe_to_process[band], levels=0, colors='g')
+#                     ax.contour(time_vec, frex, STATS_for_Lobe_to_process[cond][band])
 
-                ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='g')
+#                 ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=freq[0], ymax=freq[1], colors='g')
 
-        # plt.show()
+#         # plt.show()
                     
-        #### save
-        if monopol:
-            fig.savefig(f'{Lobe_name}_allcond_{band_prep}.jpeg', dpi=150)
-        else:
-            fig.savefig(f'{Lobe_name}_allcond_{band_prep}_bi.jpeg', dpi=150)
+#         #### save
+#         if monopol:
+#             fig.savefig(f'{Lobe_name}_allcond_{band_prep}.jpeg', dpi=150)
+#         else:
+#             fig.savefig(f'{Lobe_name}_allcond_{band_prep}_bi.jpeg', dpi=150)
 
-        plt.close('all')
+#         plt.close('all')
 
 
 
@@ -479,9 +509,7 @@ def compilation_slurm(anat_type, mat_type, monopol):
 
     print(f'#### {anat_type} {mat_type} ####')
 
-    cond_to_compute = ['FR_CV', 'RD_CV', 'RD_SV', 'RD_FV']
-
-    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(monopol)
+    ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots('FR_CV', monopol)
 
     if anat_type == 'ROI':
 
@@ -489,9 +517,9 @@ def compilation_slurm(anat_type, mat_type, monopol):
         # for ROI_i in ROI_to_include:
         #     compute_for_one_ROI_allcond(ROI_i, mat_type, cond_to_compute, srate)
 
-    if anat_type == 'Lobes':
+    # if anat_type == 'Lobes':
 
-        joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_for_one_Lobe_allcond)(Lobe_i, mat_type, cond_to_compute, srate, monopol) for Lobe_i, Lobe in enumerate(lobe_to_include))
+    #     joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(compute_for_one_Lobe_allcond)(Lobe_i, mat_type, cond_to_compute, srate, monopol) for Lobe_i, Lobe in enumerate(lobe_to_include))
         # for Lobe_i in lobe_to_include:
         #     compute_for_one_Lobe_allcond(Lobe_i, mat_type, cond_to_compute, srate)
 
@@ -506,14 +534,14 @@ def compilation_slurm(anat_type, mat_type, monopol):
 
 if __name__ == '__main__':
 
-    #monopol = True
+    #monopol = False
     for monopol in [True, False]:
 
-        anat_type = 'ROI'        
+        anat_type = 'ROI'
         mat_type = 'TF'
         
-        # compilation_slurm(anat_type, mat_type, monopol)
-        execute_function_in_slurm_bash('n16_res_allplot_TF', 'compilation_slurm', [anat_type, mat_type, monopol])
+        compilation_slurm(anat_type, mat_type, monopol)
+        # execute_function_in_slurm_bash('n16_res_allplot_TF', 'compilation_slurm', [anat_type, mat_type, monopol])
 
 
 

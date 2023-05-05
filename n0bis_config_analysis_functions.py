@@ -916,6 +916,7 @@ def modify_name(chan_list):
     chan_list_modified = []
     chan_list_keep = []
 
+    #nchan = ".A'1"
     for nchan in chan_list:
 
         #### what we remove
@@ -928,15 +929,19 @@ def modify_name(chan_list):
         if nchan.find('ECG') != -1:
             continue
 
-        if nchan.find('.') != -1:
+        if nchan.find('. ') != -1:
             continue
 
         if nchan.find('*') != -1:
             continue
 
+        if nchan.find('@') != -1:
+            continue
+
         #### what we do to chan we keep
         else:
 
+            nchan = nchan.replace('.', '')
             nchan_mod = nchan.replace(' ', '')
             nchan_mod = nchan_mod.replace("'", 'p')
 
@@ -951,6 +956,7 @@ def modify_name(chan_list):
 
                 chan_list_modified.append(letter_chan + 'p' + num_chan)
                 chan_list_keep.append(nchan)
+
                 continue
 
             if nchan_mod.find('p') == -1:

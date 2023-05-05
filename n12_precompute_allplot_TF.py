@@ -138,7 +138,7 @@ def compilation_allplot_analysis(cond, monopol):
     
     #### compute TF & ITPC for ROI
     #ROI_to_process = ROI_to_include[10]
-    for ROI_to_process in ROI_to_include[10:]:
+    for ROI_to_process in ROI_to_include:
 
         print(ROI_to_process, flush=True)
 
@@ -205,11 +205,11 @@ if __name__ == '__main__':
     #monopol = True
     for monopol in [True, False]:
 
-        #cond = 'FR_CV'
+        #cond = 'RD_CV'
         for cond in ['FR_CV', 'RD_CV', 'RD_SV', 'RD_FV']:
 
-            # compilation_allplot_analysis(cond, monopol)
-            execute_function_in_slurm_bash_mem_choice('n12_precompute_allplot_TF', 'compilation_allplot_analysis', [cond, monopol], '20G')
+            compilation_allplot_analysis(cond, monopol)
+            # execute_function_in_slurm_bash_mem_choice('n12_precompute_allplot_TF', 'compilation_allplot_analysis', [cond, monopol], '20G')
     
 
 

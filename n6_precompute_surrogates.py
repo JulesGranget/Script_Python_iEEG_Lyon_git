@@ -414,7 +414,7 @@ def precompute_MVL(sujet, band_prep, cond, monopol):
 
 if __name__ == '__main__':
 
-    #sujet = sujet_list_FR_CV[-1]
+    #sujet = sujet_list_FR_CV[4]
     for sujet in sujet_list_FR_CV:    
 
         if sujet in sujet_list:

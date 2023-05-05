@@ -66,6 +66,7 @@ def extract_chanlist(sujet):
     chan_list = chan_list_whole[0]
 
     if len(trc_file_names) > 1 :
+        
         for trc_i in range(len(trc_file_names)-1): 
 
             trc_i += 1

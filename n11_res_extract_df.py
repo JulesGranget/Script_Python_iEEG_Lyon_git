@@ -198,6 +198,17 @@ def export_Cxy_MVL_in_df(sujet, monopol):
         else:
             side_i = 'r' 
 
+        #### identify normalize params
+        os.chdir(os.path.join(path_precompute, sujet, 'TF'))
+
+        if monopol:
+            tf_raw = np.median(np.load(f'{sujet}_tf_raw_FR_CV.npy')[chan_i,:,:,:], axis=0)
+        else:
+            tf_raw = np.median(np.load(f'{sujet}_tf_raw_FR_CV_bi.npy')[chan_i,:,:,:], axis=0)
+
+        _mean = tf_raw.mean(axis=1).reshape(-1,1)
+        _std = tf_raw.std(axis=1).reshape(-1,1)
+
         #cond = conditions[0]
         for cond in conditions:
                 
@@ -210,6 +221,9 @@ def export_Cxy_MVL_in_df(sujet, monopol):
                 tf_raw = np.median(np.load(f'{sujet}_tf_raw_{cond}.npy')[chan_i,:,:,:], axis=0)
             else:
                 tf_raw = np.median(np.load(f'{sujet}_tf_raw_{cond}_bi.npy')[chan_i,:,:,:], axis=0)
+
+            #### normalize
+            tf_raw[:] = (tf_raw - _mean) / _std
 
             #band, freq = 'theta', [4,8]
             for band, freq in freq_band_dict_FC_function['wb'].items():
@@ -786,13 +800,14 @@ def compilation_export_df(sujet, monopol):
 
 if __name__ == '__main__':
 
-    #sujet = sujet_list_FR_CV[0]
+    #sujet = sujet_list_FR_CV[3]
     for sujet in sujet_list_FR_CV:
 
         #monopol = True
         for monopol in [True, False]:
                 
             #### export df
-            execute_function_in_slurm_bash('n11_res_extract_df', 'compilation_export_df', [sujet, monopol]) 
+            # compilation_export_df(sujet, monopol)
+            execute_function_in_slurm_bash_mem_choice('n11_res_extract_df', 'compilation_export_df', [sujet, monopol], '20G') 
         
         

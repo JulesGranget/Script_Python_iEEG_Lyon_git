@@ -23,7 +23,7 @@ def compilation_export_df_allplot(sujet_list, monopol):
 
     #### generate df
     df_export_Cxy_MVL = pd.DataFrame(columns=['sujet', 'cond', 'chan', 'ROI', 'Lobe', 'side', 'Cxy', 'Cxy_surr', 'MVL', 'MVL_surr'])
-    df_export_Pxx = pd.DataFrame(columns=['sujet', 'cond', 'chan', 'ROI', 'Lobe', 'side', 'Pxx', 'Phase'])
+    df_export_Pxx = pd.DataFrame(columns=['sujet', 'cond', 'chan', 'ROI', 'Lobe', 'side', 'Pxx', 'phase'])
     # df_export_graph_DFC = pd.DataFrame(columns=['sujet', 'cond', 'band', 'metric', 'phase', 'CPL', 'GE', 'SWN'])
     # df_export_HRV = pd.DataFrame(columns=['sujet', 'cond', 'session', 'RDorFR', 'compute_type', 'HRV_MeanNN', 'HRV_SDNN', 'HRV_RMSSD', 'HRV_pNN50', 'HRV_LF', 'HRV_HF', 'HRV_LFHF', 'HRV_SD1', 'HRV_SD2', 'HRV_S'])
     df_export_FC = pd.DataFrame(columns=['sujet', 'cond', 'band', 'metric', 'phase', 'pair', 'value'])
@@ -68,7 +68,7 @@ def compilation_export_df_allplot(sujet_list, monopol):
         if os.path.exists('allplot_df_Pxx.xlsx'):
             print('Pxx : ALREADY COMPUTED')
         else:
-            df_export_Cxy_MVL.to_excel('allplot_df_Pxx.xlsx')
+            df_export_Pxx.to_excel('allplot_df_Pxx.xlsx')
         
         # if os.path.exists('allplot_df_graph_DFC.xlsx'):
         #     print('graph DFC : ALREADY COMPUTED')
@@ -95,7 +95,7 @@ def compilation_export_df_allplot(sujet_list, monopol):
         if os.path.exists('allplot_df_Pxx_bi.xlsx'):
             print('Pxx : ALREADY COMPUTED')
         else:
-            df_export_Cxy_MVL.to_excel('allplot_df_Pxx_bi.xlsx')
+            df_export_Pxx.to_excel('allplot_df_Pxx_bi.xlsx')
         
         # if os.path.exists('allplot_df_graph_DFC_bi.xlsx'):
         #     print('graph DFC : ALREADY COMPUTED')
@@ -129,7 +129,9 @@ if __name__ == '__main__':
 
         
     #### export df
+    #monopol = True
     for monopol in [True, False]:
+
         sujet_list = sujet_list_FR_CV
         compilation_export_df_allplot(sujet_list, monopol)
     

@@ -29,17 +29,13 @@ def compute_stretch_tf(sujet, tf, cond, respfeatures_i, stretch_point_TF, srate,
     #n_chan = 0
     def stretch_tf_db_n_chan(n_chan):
 
-        tf_mean = stretch_data_tf(respfeatures_i, stretch_point_TF, tf[n_chan,:,:], srate)[0]
-
-        return tf_mean
+        tf_mean_allchan[n_chan,:,:,:] = stretch_data_tf(respfeatures_i, stretch_point_TF, tf[n_chan,:,:], srate)[0]
     
     #### raw
     n_cycle_stretch = stretch_data_tf(respfeatures_i, stretch_point_TF, tf[0,:,:], srate)[0].shape[0]
-    tf_mean_allchan = np.zeros((tf.shape[0], n_cycle_stretch, tf.shape[1], stretch_point_TF))
-    stretch_tf_db_nchan_res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(stretch_tf_db_n_chan)(n_chan) for n_chan in range(tf.shape[0]))
-    
-    for n_chan in range(tf.shape[0]):
-        tf_mean_allchan[n_chan,:,:,:] = stretch_tf_db_nchan_res[n_chan]
+    os.chdir(path_memmap)
+    tf_mean_allchan = np.memmap(f'{sujet}_stretch_tf_{cond}_{monopol}.dat', dtype=np.float32, mode='w+', shape=(tf.shape[0], n_cycle_stretch, tf.shape[1], stretch_point_TF))
+    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(stretch_tf_db_n_chan)(n_chan) for n_chan in range(tf.shape[0]))
 
     print('SAVE RAW', flush=True)
     os.chdir(os.path.join(path_precompute, sujet, 'TF'))
@@ -48,16 +44,11 @@ def compute_stretch_tf(sujet, tf, cond, respfeatures_i, stretch_point_TF, srate,
     else:
         np.save(f'{sujet}_tf_raw_{cond}_bi.npy', tf_mean_allchan)
 
-    del stretch_tf_db_nchan_res
-
     #### norm
+    print('COMPUTE STRETCH', flush=True)
     tf[:] = norm_tf(sujet, tf, monopol, norm_method)
 
-    stretch_tf_db_nchan_res = joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(stretch_tf_db_n_chan)(n_chan) for n_chan in range(tf.shape[0]))
-
-    #### extract
-    for n_chan in range(tf.shape[0]):
-        tf_mean_allchan[n_chan,:,:,:] = stretch_tf_db_nchan_res[n_chan]
+    joblib.Parallel(n_jobs = n_core, prefer = 'processes')(joblib.delayed(stretch_tf_db_n_chan)(n_chan) for n_chan in range(tf.shape[0]))
 
     return tf_mean_allchan
 
@@ -124,7 +115,7 @@ def precompute_tf_allconv(sujet, cond, monopol):
     for session_i in range(session_count[cond]):
 
         #### load data
-        data = load_data_sujet(sujet, band_prep, cond, session_i, monopol)
+        data = load_data_sujet(sujet, band_prep, cond, session_i, monopol)[:len(chan_list_ieeg),:]
             
         print(f'COMPUTE ses{session_i+1}', flush=True)
 
@@ -158,9 +149,11 @@ def precompute_tf_allconv(sujet, cond, monopol):
 
         os.chdir(path_memmap)
         os.remove(f'{sujet}_tf_{cond}_precompute_convolutions_{monopol}.dat')
+        os.remove(f'{sujet}_stretch_tf_{cond}_{monopol}.dat')
         os.remove(f'{sujet}_tf_{cond}_data_read_{monopol}.dat')
 
     #### save
+    print('SAVE STRETCH', flush=True)
     os.chdir(os.path.join(path_precompute, sujet, 'TF'))
     if monopol:
         np.save(f'{sujet}_tf_conv_{cond}.npy', tf_allsession)
@@ -309,7 +302,7 @@ def precompute_tf_allconv(sujet, cond, monopol):
 
 if __name__ == '__main__':
 
-    #sujet = sujet_list[1]
+    #sujet = sujet_list_FR_CV[4]
     for sujet in sujet_list_FR_CV:    
 
         if sujet in sujet_list:
@@ -329,7 +322,7 @@ if __name__ == '__main__':
             print('######## PRECOMPUTE TF & ITPC ########', flush=True)
 
             #### compute and save tf
-            #cond = 'RD_FV'
+            #cond = 'RD_CV'
             for cond in conditions:
 
                 precompute_tf_allconv(sujet, cond, monopol)

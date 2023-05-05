@@ -611,7 +611,7 @@ def precompute_tf_ROI_STATS(ROI, monopol):
     except:
         pass
     
-
+    print('done', flush=True)
 
                     
                 
@@ -639,8 +639,12 @@ if __name__ == '__main__':
         #ROI = ROI_to_include[21]
         for ROI in ROI_to_include:
 
+            if ROI in ['temporal inf', 'temporal med', 'temporal sup']:
+
+                continue
+
             # precompute_tf_ROI_STATS(ROI, monopol)
-            execute_function_in_slurm_bash_mem_choice('n12bis_precompute_allplot_TF_STATS', 'precompute_tf_ROI_STATS', [ROI, monopol], '30G')
+            execute_function_in_slurm_bash_mem_choice('n12bis_precompute_allplot_TF_STATS', 'precompute_tf_ROI_STATS', [ROI, monopol], '40G')
 
     
     

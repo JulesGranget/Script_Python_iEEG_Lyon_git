@@ -691,16 +691,16 @@ def compilation_compute_TF_ITPC(sujet, monopol):
 
 if __name__ == '__main__':
 
-    #sujet = sujet_list_FR_CV
+    #sujet = sujet_list_FR_CV[4]
     for sujet in sujet_list_FR_CV:
 
-        #monopol = True
+        #monopol = False
         for monopol in [True, False]:
 
             print(sujet, flush=True)
 
             #### Pxx Cxy CycleFreq
-            # compilation_compute_Pxx_Cxy_Cyclefreq_MVL(sujet, monopol)
+            compilation_compute_Pxx_Cxy_Cyclefreq_MVL(sujet, monopol)
             # execute_function_in_slurm_bash_mem_choice('n10_res_power_analysis', 'compilation_compute_Pxx_Cxy_Cyclefreq_MVL', [sujet, monopol], '15G')
 
             #### TF & ITPC

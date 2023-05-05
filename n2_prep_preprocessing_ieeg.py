@@ -194,6 +194,10 @@ def extract_data_trc(sujet):
     chan_list_first_clean = chan_list_first_clean.split("\n")[:-1]
     chan_list_first_clean_file.close()
 
+    #### clean point for POTm
+    if sujet == 'POTm':
+        chan_list = [chan.replace('.', '') for chan in chan_list]
+
     #### remove chan
     if debug:
         data_rmv_first = data.copy() 
@@ -451,6 +455,10 @@ def extract_data_trc_bi(sujet):
     chan_list_first_clean = chan_list_first_clean_file.read()
     chan_list_first_clean = chan_list_first_clean.split("\n")[:-1]
     chan_list_first_clean_file.close()
+
+    #### clean point for POTm
+    if sujet == 'POTm':
+        chan_list = [chan.replace('.', '') for chan in chan_list]
 
         #### remove chan
     if debug:
@@ -1417,7 +1425,7 @@ if __name__== '__main__':
     # sujet = 'pat_03146_1608'
     # sujet = 'pat_03174_1634'
 
-    #monopol = True
+    #monopol = False
     for monopol in [True, False]:
 
         #sujet = sujet_list_FR_CV[4]
