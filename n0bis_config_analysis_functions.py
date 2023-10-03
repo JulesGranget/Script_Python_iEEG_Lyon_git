@@ -541,24 +541,23 @@ def load_data_sujet(sujet, band_prep, cond, session_i, monopol):
     
     os.chdir(os.path.join(path_prep, sujet, 'sections'))
 
-    load_i = []
-    for i, session_name in enumerate(os.listdir()):
+    if cond == 'allcond':
+        
         if monopol:
-            if ( session_name.find(cond) != -1 ) & ( session_name.find(band_prep) != -1 ) & ( session_name.find('bi') == -1 ):
-                load_i.append(i)
+            load_i = f"{sujet}_{cond}_{band_prep}.fif"
         else:
-            if ( session_name.find(cond) != -1 ) & ( session_name.find(band_prep) != -1 ) & ( session_name.find('bi') != -1 ):
-                load_i.append(i)
+            load_i = f"{sujet}_{cond}_{band_prep}_bi.fif"
 
-    load_list = [os.listdir()[i] for i in load_i if os.listdir()[i].find(str(session_i+1)) != -1]
+    else:
 
-    raw = mne.io.read_raw_fif(load_list[0], preload=True, verbose='critical')
+        if monopol:
+            load_i = f"{sujet}_{cond}_{session_i+1}_{band_prep}.fif"
+        else:
+            load_i = f"{sujet}_{cond}_{session_i+1}_{band_prep}_bi.fif"
+
+    raw = mne.io.read_raw_fif(load_i, preload=True, verbose='critical')
 
     data = raw.get_data()
-
-    if sujet[:3] == 'pat' and sujet_respi_adjust[sujet] == 'inverse':
-        data[-3,:] = data[-3,:]*-1
-        data[-4,:] = data[-4,:]*-1
 
     #### go back to path source
     os.chdir(path_source)

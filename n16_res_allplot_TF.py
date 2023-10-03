@@ -133,7 +133,7 @@ def get_tf_stats(tf_plot, pixel_based_distrib, nfrex, stats_type):
             
         #wavelet_i = 0
         for wavelet_i in range(nfrex):
-            mask = np.logical_or(tf_thresh[wavelet_i, :] >= pixel_based_distrib[wavelet_i, 0], tf_thresh[wavelet_i, :] <= pixel_based_distrib[wavelet_i, 1])
+            mask = np.logical_or(tf_plot[wavelet_i, :] <= pixel_based_distrib[wavelet_i, 0], tf_plot[wavelet_i, :] >= pixel_based_distrib[wavelet_i, 1])
             tf_thresh[wavelet_i, mask] = 1
             tf_thresh[wavelet_i, np.logical_not(mask)] = 0
 
@@ -141,9 +141,11 @@ def get_tf_stats(tf_plot, pixel_based_distrib, nfrex, stats_type):
             
         #wavelet_i = 0
         for wavelet_i in range(nfrex):
-            mask = np.logical_or(tf_thresh[wavelet_i, :] >= pixel_based_distrib[wavelet_i, 0], tf_thresh[wavelet_i, :] <= pixel_based_distrib[wavelet_i, 1])
+            mask = np.logical_or(tf_plot[wavelet_i, :] <= pixel_based_distrib[wavelet_i, 0], tf_plot[wavelet_i, :] >= pixel_based_distrib[wavelet_i, 1])
             tf_thresh[wavelet_i, mask] = 1
             tf_thresh[wavelet_i, np.logical_not(mask)] = 0
+
+        tf_thresh[:, :int(tf_plot.shape[-1]/2)] = 0
 
     if debug:
 
@@ -273,6 +275,8 @@ def open_TForITPC_data(struct_name, cond, mat_type, anat_type, monopol):
 #ROI_i, ROI = ROI_to_include.index('amygdala'), 'amygdala'
 def compute_for_one_ROI_allcond(ROI_i, ROI, monopol):
 
+    print(ROI, monopol)
+
     #### count ROI
     ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots('FR_CV', monopol)
     ROI_count_FR_CV = len(ROI_dict_plots[ROI])
@@ -348,23 +352,24 @@ def compute_for_one_ROI_allcond(ROI_i, ROI, monopol):
             ax.set_yscale('log')
 
             #### stats
-            # if stats_type == 'inter' and cond != 'FR_CV':
-            #     if monopol:
-            #         pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_inter.npy')
-            #     else:
-            #         pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_inter_bi.npy')
+            os.chdir(os.path.join(path_precompute, 'allplot', 'TF'))
+            if stats_type == 'inter' and cond != 'FR_CV':
+                if monopol:
+                    pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_inter.npy')
+                else:
+                    pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_inter_bi.npy')
 
-            #     if get_tf_stats(data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type).sum() != 0:
-            #         ax.contour(time_vec, frex, get_tf_stats(data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type), levels=0, colors='g')
+                if get_tf_stats(data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type).sum() != 0:
+                    ax.contour(time_vec, frex, get_tf_stats(data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type), levels=0, colors='g')
 
-            # if stats_type == 'intra':
-            #     if monopol:
-            #         pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_intra.npy')
-            #     else:
-            #         pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_intra_bi.npy')
+            if stats_type == 'intra':
+                if monopol:
+                    pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_intra.npy')
+                else:
+                    pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_intra_bi.npy')
 
-            #     if get_tf_stats(data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type).sum() != 0:
-            #         ax.contour(time_vec, frex, get_tf_stats(data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type), levels=0, colors='g')
+                if get_tf_stats(data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type).sum() != 0:
+                    ax.contour(time_vec, frex, get_tf_stats(data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type), levels=0, colors='g')
 
             ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=frex[0], ymax=frex[-1], colors='g')
 
@@ -376,9 +381,9 @@ def compute_for_one_ROI_allcond(ROI_i, ROI, monopol):
         os.chdir(os.path.join(path_results, 'allplot', 'allcond', 'TF'))
 
         if monopol:
-            fig.savefig(f'{ROI}.jpeg', dpi=150)
+            fig.savefig(f'{ROI}_{stats_type}.jpeg', dpi=150)
         else:
-            fig.savefig(f'{ROI}_bi.jpeg', dpi=150)
+            fig.savefig(f'{ROI}_{stats_type}_bi.jpeg', dpi=150)
 
         fig.clf()
         plt.close('all')
@@ -534,7 +539,7 @@ def compilation_slurm(anat_type, mat_type, monopol):
 
 if __name__ == '__main__':
 
-    #monopol = False
+    #monopol = True
     for monopol in [True, False]:
 
         anat_type = 'ROI'
