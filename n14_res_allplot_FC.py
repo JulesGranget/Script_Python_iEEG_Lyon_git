@@ -6,986 +6,432 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 import xarray as xr
 import copy
-import mne_connectivity
 
-from n0_config_params import *
-from n0bis_config_analysis_functions import *
+from n00_config_params import *
+from n00bis_config_analysis_functions import *
 
 debug = False
 
 
 
-
-
-
-################################################
-######## COMPUTE DATA RESPI PHASE ########
-################################################
-
-
-#data_dfc, pairs, roi_in_data = data.loc[AL_i+1, cf_metric, :, select_time_vec], pairs, roi_in_data
-def from_dfc_to_mat_conn_mean(data_dfc, pairs, roi_in_data):
-
-    #### fill mat
-    mat_cf = np.zeros(( len(roi_in_data), len(roi_in_data) ))
-
-    #x_i, x_name = 0, roi_in_data[0]
-    for x_i, x_name in enumerate(roi_in_data):
-        #y_i, y_name = 2, roi_in_data[2]
-        for y_i, y_name in enumerate(roi_in_data):
-            if x_name == y_name:
-                continue
-            pair_to_find = f'{x_name}-{y_name}'
-            pair_to_find_rev = f'{y_name}-{x_name}'
-            
-            x = data_dfc[pairs == pair_to_find]
-            x_rev = data_dfc[pairs == pair_to_find_rev]
-
-            x_mean = np.vstack([x, x_rev]).mean(axis=0)
-            val_to_place = np.trapz(x_mean)
-
-            mat_cf[x_i, y_i] = val_to_place
-
-    if debug:
-        plt.matshow(mat_cf)
-        plt.show()
-
-    return mat_cf
-
-
-
-
-
 ################################
-######## PRECOMPUTE MAT ########
+######## PLOT ########
 ################################
 
 
 
-def get_pair_unique_and_roi_unique(pairs):
 
-    #### pairs unique
-    pair_unique = []
+def plot_results(monopol):
+    #cf_metric = 'WPLI'
+    for cf_metric in ['ISPC', 'WPLI']:
 
-    for pair_i in np.unique(pairs):
-        if pair_i.split('-')[0] == pair_i.split('-')[-1]:
-            continue
-        if f"{pair_i.split('-')[-1]}-{pair_i.split('-')[0]}" in pair_unique:
-            continue
-        if pair_i not in pair_unique:
-            pair_unique.append(pair_i)
+        print(cf_metric, monopol)
 
-    pair_unique = np.array(pair_unique)
+        band_sel = list(freq_band_dict_FC['wb'].keys())
 
-    #### get roi in data
-    roi_in_data = []
+        ######## FR_CV ########
 
-    for pair_i in np.unique(pairs):
-        if pair_i.split('-')[0] not in roi_in_data:
-            roi_in_data.append(pair_i.split('-')[0])
-
-        if pair_i.split('-')[-1] not in roi_in_data:
-            roi_in_data.append(pair_i.split('-')[-1])
-
-    roi_in_data = np.array(roi_in_data)
-
-    return pair_unique, roi_in_data
-
-
-
-
-
-def precompute_dfc_mat_AL_allplot(cond, monopol):
-
-    #### initiate containers
-    mat_pairs_allplot = {}
-
-    #### filter only sujet with correct cond
-    sujet_list_selected = []
-    for sujet_i in sujet_list:
-        prms_i = get_params(sujet_i, monopol)
-        if cond in prms_i['conditions']:
-            if cond == 'FR_CV':
-                continue
-            sujet_list_selected.append(sujet_i)
-
-    #AL_i = 0
-    for AL_i in range(3):
-        mat_pairs_allplot[f'AL_{AL_i+1}'] = {}
-        #cf_metric = 'ispc'
-        for cf_metric in ['ispc', 'wpli']:
-            mat_pairs_allplot[f'AL_{AL_i+1}'][cf_metric] = {}
-            #band_prep = 'lf'
-            for band_prep in band_prep_list:
-                #band, freq = 'beta', [10,40]
-                for band, freq in freq_band_dict_FC_function[band_prep].items():
-
-                    if band in ['beta', 'l_gamma', 'h_gamma']:
-
-                        print(AL_i, cf_metric, band)
-
-                        #sujet = sujet_list_selected[0]
-                        for sujet_i, sujet in enumerate(sujet_list_selected):
-
-                            #### extract data
-                            os.chdir(os.path.join(path_precompute, sujet, 'DFC'))
-
-                            if monopol:
-                                xr_dfc = xr.open_dataarray(f'{sujet}_DFC_wpli_ispc_{band}_{cond}_allpairs.nc')
-                            else:
-                                xr_dfc = xr.open_dataarray(f'{sujet}_DFC_wpli_ispc_{band}_{cond}_allpairs_bi.nc')
-                            
-                            #### concat pairs name
-                            if sujet_i == 0:
-                                pairs_allplot = xr_dfc['pairs'].data
-                            else:
-                                pairs_allplot = np.concatenate((pairs_allplot, xr_dfc['pairs'].data), axis=0)
-
-                            #### extract data and concat
-                            mat = xr_dfc.loc[AL_i+1, cf_metric,:,:,:].data
-
-                            del xr_dfc
-
-                            if sujet_i == 0:
-                                mat_values_allplot = mat
-                            else:
-                                mat_values_allplot = np.concatenate((mat_values_allplot, mat), axis=0)
-
-                            del mat
-
-                            #### mean
-                            pair_unique_allplot, roi_in_data_allplot = get_pair_unique_and_roi_unique(pairs_allplot)
+        #### extract data
+        os.chdir(os.path.join(path_precompute, 'allplot', 'FC'))
         
-                            dfc_mean_pair = np.zeros(( pair_unique_allplot.shape[0], mat_values_allplot.shape[1], mat_values_allplot.shape[-1] ))
+        xr_list = {}
 
-                            #x_i, x_name = 0, roi_in_data[0]
-                            for x_i, x_name in enumerate(roi_in_data_allplot):
-                                #y_i, y_name = 2, roi_in_data[2]
-                                for y_i, y_name in enumerate(roi_in_data_allplot):
-                                    if x_name == y_name:
-                                        continue
+        #sujet = sujet_list_dfc_FR_CV[1]
+        for sujet_i, sujet in enumerate(sujet_list_dfc_FR_CV):
 
-                                    pair_to_find = f'{x_name}-{y_name}'
-                                    pair_to_find_rev = f'{y_name}-{x_name}'
-                                    
-                                    x = mat_values_allplot[pairs_allplot == pair_to_find, :, :]
-                                    x_rev = mat_values_allplot[pairs_allplot == pair_to_find_rev, :, :]
+            print(sujet)
+                
+            if monopol:
+                _xr_dfc_FR_CV = xr.open_dataarray(f'{cf_metric}_{sujet}_stretch_rscore.nc')
+            else:
+                _xr_dfc_FR_CV = xr.open_dataarray(f'{cf_metric}_{sujet}_stretch_rscore_bi.nc')
 
-                                    x_mean = np.vstack([x, x_rev]).mean(axis=0)
+            _xr_dfc_FR_CV = _xr_dfc_FR_CV.loc[:,'FR_CV']
+            _xr_dfc_FR_CV = _xr_dfc_FR_CV.drop_vars('cond')
+            normalized_pairs = ['-'.join(sorted(pair.split('-'))) for pair in _xr_dfc_FR_CV['pair'].values]
+            _xr_dfc_FR_CV['pair'] = normalized_pairs
+            xr_list[sujet] = _xr_dfc_FR_CV
 
-                                    if np.isnan(x_mean).sum() > 1:
-                                        continue
+        pair_list = []        
+        
+        for _sujet in sujet_list_dfc_FR_CV:
 
-                                    #### identify pair name mean
-                                    try:
-                                        pair_position = np.where(pair_unique_allplot == pair_to_find)[0][0]
-                                    except:
-                                        pair_position = np.where(pair_unique_allplot == pair_to_find_rev)[0][0]
+            pair_list.extend(np.unique(xr_list[_sujet]['pair']))
 
-                                    dfc_mean_pair[pair_position, :, :] = x_mean
+        pair_list = np.unique(pair_list)
 
-                            mat_pairs_allplot[f'AL_{AL_i+1}'][cf_metric][band] = dfc_mean_pair
+        params_pairs = {}
 
-                        del mat_values_allplot
+        for pair in pair_list:
+
+            params_pairs[pair] = {}
+            _sujet_list_sel = [_sujet for _sujet in sujet_list_dfc_FR_CV if any(xr_list[_sujet]['pair'] == pair)]
+            params_pairs[pair]['sujet_list'] = _sujet_list_sel
+            params_pairs[pair]['min_count'] = np.array([(xr_list[_sujet]['pair'] == pair).sum() for _sujet in _sujet_list_sel]).min()
+
+        xr_allpairs = []
+
+        for pair in pair_list:
+
+            _xr_pair = []
                         
-    #### identify missing pairs with clean ROI
-    for ROI_to_clean in ['WM', 'ventricule', 'choroide plexus', 'not in a freesurfer parcel']:
-        if ROI_to_clean in roi_in_data_allplot:
-            roi_in_data_allplot = np.delete(roi_in_data_allplot, roi_in_data_allplot==ROI_to_clean)
+            for _sujet in params_pairs[pair]['sujet_list']:
 
-    mat_verif = np.zeros(( roi_in_data_allplot.shape[0], roi_in_data_allplot.shape[0]))
-    for ROI_row_i, ROI_row_name in enumerate(roi_in_data_allplot):
-        #ROI_col_i, ROI_col_name = 1, ROI_list[1]
-        for ROI_col_i, ROI_col_name in enumerate(roi_in_data_allplot):
+                _xr = xr_list[_sujet].loc[pair][:params_pairs[pair]['min_count']]
+            
+                _xr_pair.append(_xr)
 
-            if ROI_row_name == ROI_col_name:
-                mat_verif[ROI_row_i, ROI_col_i] = 1
-                continue
+            _xr_pair = xr.concat(_xr_pair, dim='pair').median('pair')
+            xr_allpairs.append(_xr_pair.expand_dims({'pair': [pair]}))
 
-            pair_name = f'{ROI_row_name}-{ROI_col_name}'
-            pair_name_rev = f'{ROI_col_name}-{ROI_row_name}'
+        xr_allpairs = xr.concat(xr_allpairs, dim='pair')
 
-            if pair_name in pair_unique_allplot:
-                mat_verif[ROI_row_i, ROI_col_i] = 1
-            if pair_name_rev in pair_unique_allplot:
-                mat_verif[ROI_row_i, ROI_col_i] = 1
-
-    if debug:
-        plt.matshow(mat_verif)
-        plt.show()
-
-    #### export missig matrix
-    os.chdir(os.path.join(path_results, 'allplot', 'allcond', 'DFC', 'allcond'))
-    plt.matshow(mat_verif)
-    plt.savefig('missing_mat.png')
-    plt.close('all')
-
-    #### clean pairs
-    pairs_to_keep = []
-    for pair_i, pair in enumerate(pair_unique_allplot):
-        if pair.split('-')[0] not in ['WM', 'ventricule', 'choroide plexus', 'not in a freesurfer parcel'] and pair.split('-')[1] not in ['WM', 'ventricule', 'choroide plexus', 'not in a freesurfer parcel']:
-            pairs_to_keep.append(pair_i)
-
-    for AL_i in range(3):
-        for cf_metric in ['ispc', 'wpli']:
-            for band in mat_pairs_allplot[f'AL_{AL_i+1}'][cf_metric].keys():
-                mat_pairs_allplot[f'AL_{AL_i+1}'][cf_metric][band] = mat_pairs_allplot[f'AL_{AL_i+1}'][cf_metric][band][pairs_to_keep, :, :].copy()
-
-    pair_unique_allplot = pair_unique_allplot[pairs_to_keep]
-
-    #### save
-    os.chdir(os.path.join(path_precompute, 'allplot'))
-    data_dfc_allpairs = np.zeros((3, 2, len(band_name_fc_dfc), pair_unique_allplot.shape[0], mat_pairs_allplot['AL_1']['ispc']['beta'].shape[1], mat_pairs_allplot['AL_1']['ispc']['beta'].shape[2]))
-    
-    for AL_i in range(3):
-        for cf_metric_i, cf_metric in enumerate(['ispc', 'wpli']):
-            for band_i, band in enumerate(mat_pairs_allplot[f'AL_{AL_i+1}'][cf_metric].keys()):
-                data_dfc_allpairs[AL_i, cf_metric_i, band_i, :, :, :] = mat_pairs_allplot[f'AL_{AL_i+1}'][cf_metric][band]
-
-    dims = ['AL_num', 'cf_metric', 'band', 'pairs', 'nfrex', 'time']
-    coords = [range(3), ['ispc', 'wpli'], band_name_fc_dfc, pair_unique_allplot, range(nfrex_lf), range(mat_pairs_allplot['AL_1']['ispc']['beta'].shape[2])]
-    xr_dfc_allpairs = xr.DataArray(data_dfc_allpairs, coords=coords, dims=dims)
-
-    if monopol:
-        xr_dfc_allpairs.to_netcdf(f'allcond_dfc_{cond}_allpairs.nc')
-    else:
-        xr_dfc_allpairs.to_netcdf(f'allcond_dfc_{cond}_allpairs_bi.nc')
-
-    return xr_dfc_allpairs, pair_unique_allplot, roi_in_data_allplot
-
-
-
-
-
-
-
-def precompute_dfc_mat_allplot(band_to_compute, cond, monopol):
-
-    os.chdir(os.path.join(path_precompute, 'allplot'))
-
-    if monopol and os.path.exists(f'allcond_dfc_{cond}_allpairs.nc'):
-
-        xr_dfc_allpairs = xr.open_dataarray(f'allcond_dfc_{cond}_allpairs.nc')
-        pair_unique_allplot = xr_dfc_allpairs['pairs']
-        pair_unique_allplot, roi_in_data_allplot = get_pair_unique_and_roi_unique(pair_unique_allplot)
-
-        return xr_dfc_allpairs, pair_unique_allplot, roi_in_data_allplot
-
-    if monopol == False and os.path.exists(f'allcond_dfc_{cond}_allpairs_bi.nc'):
+        #### plot
+        g = xr_allpairs.median('cycle').plot(x='time', col='band', row='pair')
+        g.fig.suptitle(f"c({params_pairs[pair]['min_count']}) s({len(params_pairs[pair]['sujet_list'])})")
+        g.fig.tight_layout()
+        # plt.show()
         
-        xr_dfc_allpairs = xr.open_dataarray(f'allcond_dfc_{cond}_allpairs_bi.nc')
-        pair_unique_allplot = xr_dfc_allpairs['pairs']
-        pair_unique_allplot, roi_in_data_allplot = get_pair_unique_and_roi_unique(pair_unique_allplot)
-
-        return xr_dfc_allpairs, pair_unique_allplot, roi_in_data_allplot
-
-    else:
-
-        #### initiate containers
-        mat_pairs_allplot = {}
-
-        #### filter only sujet with correct cond
-        sujet_list_selected = []
-        for sujet_i in sujet_list:
-            prms_i = get_params(sujet_i, monopol)
-            if cond in prms_i['conditions']:
-                if cond == 'FR_CV':
-                    continue
-                sujet_list_selected.append(sujet_i)
-
-        #cf_metric = 'ispc'
-        for cf_metric in ['ispc', 'wpli']:
-
-            mat_pairs_allplot[cf_metric] = {}
-
-            #band_prep = 'lf'
-            for band in band_to_compute:
-
-                print(cf_metric, band)
-
-                #sujet = sujet_list_selected[0]
-                for sujet_i, sujet in enumerate(sujet_list_selected):
-
-                    #### extract data
-                    os.chdir(os.path.join(path_precompute, sujet, 'FC'))
-
-                    if monopol:
-                        xr_dfc = xr.open_dataarray(f'{sujet}_FC_wpli_ispc_{band}_{cond}_allpairs.nc')
-                    else:
-                        xr_dfc = xr.open_dataarray(f'{sujet}_FC_wpli_ispc_{band}_{cond}_allpairs_bi.nc')
-                    
-                    #### concat pairs name
-                    if sujet_i == 0:
-                        pairs_allplot = xr_dfc['pairs'].data
-                    else:
-                        pairs_allplot = np.concatenate((pairs_allplot, xr_dfc['pairs'].data), axis=0)
-
-                    #### extract data and concat
-                    mat = xr_dfc.loc[cf_metric,:,:,:].data
-
-                    del xr_dfc
-
-                    if sujet_i == 0:
-                        mat_values_allplot = mat
-                    else:
-                        mat_values_allplot = np.concatenate((mat_values_allplot, mat), axis=0)
-
-                    del mat
-
-                    #### mean
-                    pair_unique_allplot, roi_in_data_allplot = get_pair_unique_and_roi_unique(pairs_allplot)
-
-                    dfc_mean_pair = np.zeros(( pair_unique_allplot.shape[0], mat_values_allplot.shape[1], mat_values_allplot.shape[-1] ))
-
-                    #x_i, x_name = 0, roi_in_data[0]
-                    for x_i, x_name in enumerate(roi_in_data_allplot):
-                        #y_i, y_name = 2, roi_in_data[2]
-                        for y_i, y_name in enumerate(roi_in_data_allplot):
-                            if x_name == y_name:
-                                continue
-
-                            pair_to_find = f'{x_name}-{y_name}'
-                            pair_to_find_rev = f'{y_name}-{x_name}'
-                            
-                            x = mat_values_allplot[pairs_allplot == pair_to_find, :, :]
-                            x_rev = mat_values_allplot[pairs_allplot == pair_to_find_rev, :, :]
-
-                            x_mean = np.vstack([x, x_rev]).mean(axis=0)
-
-                            if np.isnan(x_mean).sum() > 1:
-                                continue
-
-                            #### identify pair name mean
-                            try:
-                                pair_position = np.where(pair_unique_allplot == pair_to_find)[0][0]
-                            except:
-                                pair_position = np.where(pair_unique_allplot == pair_to_find_rev)[0][0]
-
-                            dfc_mean_pair[pair_position, :, :] = x_mean
-
-                    mat_pairs_allplot[cf_metric][band] = dfc_mean_pair
-
-                del mat_values_allplot
-                            
-        #### identify missing pairs with clean ROI
-        for ROI_to_clean in ['WM', 'ventricule', 'choroide plexus', 'not in a freesurfer parcel']:
-            if ROI_to_clean in roi_in_data_allplot:
-                roi_in_data_allplot = np.delete(roi_in_data_allplot, roi_in_data_allplot==ROI_to_clean)
-
-        mat_verif = np.zeros(( roi_in_data_allplot.shape[0], roi_in_data_allplot.shape[0]))
-        for ROI_row_i, ROI_row_name in enumerate(roi_in_data_allplot):
-            #ROI_col_i, ROI_col_name = 1, ROI_list[1]
-            for ROI_col_i, ROI_col_name in enumerate(roi_in_data_allplot):
-
-                if ROI_row_name == ROI_col_name:
-                    mat_verif[ROI_row_i, ROI_col_i] = 1
-                    continue
-
-                pair_name = f'{ROI_row_name}-{ROI_col_name}'
-                pair_name_rev = f'{ROI_col_name}-{ROI_row_name}'
-
-                if pair_name in pair_unique_allplot:
-                    mat_verif[ROI_row_i, ROI_col_i] = 1
-                if pair_name_rev in pair_unique_allplot:
-                    mat_verif[ROI_row_i, ROI_col_i] = 1
-
-        if debug:
-            plt.matshow(mat_verif)
-            plt.show()
-
-        #### export missig matrix
-        os.chdir(os.path.join(path_results, 'allplot', 'allcond', 'FC', 'allcond'))
-        plt.matshow(mat_verif)
-        plt.savefig('missing_mat.png')
-        plt.close('all')
-
-        #### clean pairs
-        pairs_to_keep = []
-        for pair_i, pair in enumerate(pair_unique_allplot):
-            if pair.split('-')[0] not in ['WM', 'ventricule', 'choroide plexus', 'not in a freesurfer parcel'] and pair.split('-')[1] not in ['WM', 'ventricule', 'choroide plexus', 'not in a freesurfer parcel']:
-                pairs_to_keep.append(pair_i)
-
-        for cf_metric in ['ispc', 'wpli']:
-            for band in mat_pairs_allplot[cf_metric].keys():
-                mat_pairs_allplot[cf_metric][band] = mat_pairs_allplot[cf_metric][band][pairs_to_keep, :, :].copy()
-
-        pair_unique_allplot = pair_unique_allplot[pairs_to_keep]
-
-        #### save
-        os.chdir(os.path.join(path_precompute, 'allplot'))
-        data_dfc_allpairs = np.zeros((2, len(band_to_compute), pair_unique_allplot.shape[0], mat_pairs_allplot['ispc']['beta'].shape[1], mat_pairs_allplot['ispc']['beta'].shape[2]))
-        
-        for cf_metric_i, cf_metric in enumerate(['ispc', 'wpli']):
-            for band_i, band in enumerate(mat_pairs_allplot[cf_metric].keys()):
-                data_dfc_allpairs[cf_metric_i, band_i, :, :, :] = mat_pairs_allplot[cf_metric][band]
-
-        dims = ['cf_metric', 'band', 'pairs', 'phase', 'nfrex']
-        coords = [['ispc', 'wpli'], band_to_compute, pair_unique_allplot, ['whole', 'inspi', 'expi'], range(mat_pairs_allplot['ispc']['beta'].shape[2])]
-        xr_dfc_allpairs = xr.DataArray(data_dfc_allpairs, coords=coords, dims=dims)
-
+        os.chdir(os.path.join(path_results, 'allplot', 'FC'))
         if monopol:
-            xr_dfc_allpairs.to_netcdf(f'allcond_dfc_{cond}_allpairs.nc')
+            g.fig.savefig(f"{cf_metric}_FR_CV_dfc.png")
         else:
-            xr_dfc_allpairs.to_netcdf(f'allcond_dfc_{cond}_allpairs_bi.nc')
+            g.fig.savefig(f"{cf_metric}_FR_CV_dfc_bi.png")
 
-    return xr_dfc_allpairs, pair_unique_allplot, roi_in_data_allplot
+        ######## ALLCOND ########
 
-
-
-
-           
-
-
-
-#dfc_data, pairs = mat.loc[cf_metric, band, :, phase, :].data, pair_unique_allplot
-def dfc_pairs_to_mat(dfc_data, pairs, compute_mode, rscore_computation):
-
-    pair_unique, roi_in_data = get_pair_unique_and_roi_unique(pairs)
-    
-    #### mean pairs to mat
-    mat_dfc = np.zeros(( len(roi_in_data), len(roi_in_data) ))
-
-    #x_i, x_name = 0, roi_in_data[0]
-    for x_i, x_name in enumerate(roi_in_data):
-        #y_i, y_name = 2, roi_in_data[2]
-        for y_i, y_name in enumerate(roi_in_data):
-            if x_name == y_name:
-                continue
-
-            pair_to_find = f'{x_name}-{y_name}'
-            pair_to_find_rev = f'{y_name}-{x_name}'
-            
-            x = dfc_data[pairs == pair_to_find, :]
-            x_rev = dfc_data[pairs == pair_to_find_rev, :]
-
-            x_mean = np.vstack([x, x_rev]).mean(axis=0)
-
-            if np.isnan(x_mean).sum() > 1:
-                continue
-
-            if rscore_computation:
-                x_mean_rscore = rscore_mat(x_mean)
-            else:
-                x_mean_rscore = x_mean
-
-            if compute_mode == 'mean':
-                val_to_place = x_mean_rscore.mean()
-            if compute_mode == 'trapz':
-                val_to_place = np.trapz(x_mean_rscore)
-
-            mat_dfc[x_i, y_i] = val_to_place
-
-    return mat_dfc
-    
-
-
-
-
-
-
-
-
-
-#mat, pairs = xr_pairs_allplot, pair_unique_allplot
-def precompute_dfc_mat_allplot_phase(mat, pairs, band_to_compute, baselines, monopol, rscore_computation=False):
-
-    #### define diff and phase to plo
-    phase_list = mat['phase'].data
-
-    srate = get_params(sujet_list[0], monopol)['srate']
-
-    #### initiate containers
-    mat_phase = {}
-
-    #cf_metric_i, cf_metric = 0, 'ispc'
-    for cf_metric_i, cf_metric in enumerate(['ispc', 'wpli']):
-
-        mat_phase[cf_metric] = {}
-
-        #band_prep = 'lf'
-        for band in band_to_compute:
-
-            mat_phase[cf_metric][band] = {}
-
-            #phase = 'pre'
-            for phase in phase_list:
-
-                #### fill mat
-                mat_phase[cf_metric][band][phase] = dfc_pairs_to_mat(mat.loc[cf_metric, band, :, phase, :].data, pairs, 'mean', rscore_computation) - baselines[cf_metric][band][phase]
-
-    return mat_phase
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-########################################
-######## FR_CV BASELINES ########
-########################################
-
-
-
-def precompute_baselines_allplot(band_to_compute, monopol, rscore_computation=False):
-
-    cond = 'FR_CV'
-
-    os.chdir(os.path.join(path_precompute, 'allplot'))
-
-    if monopol and os.path.exists(f'allcond_dfc_FR_CV_allpairs.nc'):
-
-        xr_dfc_allpairs = xr.open_dataarray(f'allcond_dfc_{cond}_allpairs.nc')
-        pair_unique_allplot = xr_dfc_allpairs['pairs']
-        pair_unique_allplot, roi_in_data_allplot = get_pair_unique_and_roi_unique(pair_unique_allplot)
-
-    if monopol == False and os.path.exists(f'allcond_dfc_FR_CV_allpairs_bi.nc'):
-
-        xr_dfc_allpairs = xr.open_dataarray(f'allcond_dfc_{cond}_allpairs_bi.nc')
-        pair_unique_allplot = xr_dfc_allpairs['pairs']
-        pair_unique_allplot, roi_in_data_allplot = get_pair_unique_and_roi_unique(pair_unique_allplot)
-
-    else:
-
-        #### initiate containers
-        mat_pairs_allplot = {}
-
-        #### filter only sujet with correct cond
-        sujet_list_selected = []
-        for sujet_i in sujet_list:
-            prms_i = get_params(sujet_i, monopol)
-            if cond in prms_i['conditions']:
-                sujet_list_selected.append(sujet_i)
-
-        #cf_metric = 'ispc'
-        for cf_metric in ['ispc', 'wpli']:
-
-            mat_pairs_allplot[cf_metric] = {}
-
-            for band in band_to_compute:
-
-                print(cf_metric, band)
-
-                #sujet = sujet_list_selected[0]
-                for sujet_i, sujet in enumerate(sujet_list_selected):
-
-                    #### extract data
-                    os.chdir(os.path.join(path_precompute, sujet, 'FC'))
-
-                    if monopol:
-                        xr_dfc = xr.open_dataarray(f'{sujet}_FC_wpli_ispc_{band}_{cond}_allpairs.nc')
-                    else:
-                        xr_dfc = xr.open_dataarray(f'{sujet}_FC_wpli_ispc_{band}_{cond}_allpairs_bi.nc')
-                    
-                    #### concat pairs name
-                    if sujet_i == 0:
-                        pairs_allplot = xr_dfc['pairs'].data
-                    else:
-                        pairs_allplot = np.concatenate((pairs_allplot, xr_dfc['pairs'].data), axis=0)
-
-                    #### extract data and concat
-                    mat = xr_dfc.loc[cf_metric,:,:,:].data
-
-                    del xr_dfc
-
-                    if sujet_i == 0:
-                        mat_values_allplot = mat
-                    else:
-                        mat_values_allplot = np.concatenate((mat_values_allplot, mat), axis=0)
-
-                    del mat
-
-                    #### mean
-                    pair_unique_allplot, roi_in_data_allplot = get_pair_unique_and_roi_unique(pairs_allplot)
-
-                    dfc_mean_pair = np.zeros(( pair_unique_allplot.shape[0], mat_values_allplot.shape[1], mat_values_allplot.shape[-1] ))
-
-                    #x_i, x_name = 0, roi_in_data[0]
-                    for x_i, x_name in enumerate(roi_in_data_allplot):
-                        #y_i, y_name = 2, roi_in_data[2]
-                        for y_i, y_name in enumerate(roi_in_data_allplot):
-                            if x_name == y_name:
-                                continue
-
-                            pair_to_find = f'{x_name}-{y_name}'
-                            pair_to_find_rev = f'{y_name}-{x_name}'
-                            
-                            x = mat_values_allplot[pairs_allplot == pair_to_find, :, :]
-                            x_rev = mat_values_allplot[pairs_allplot == pair_to_find_rev, :, :]
-
-                            x_mean = np.vstack([x, x_rev]).mean(axis=0)
-
-                            if np.isnan(x_mean).sum() > 1:
-                                continue
-
-                            #### identify pair name mean
-                            try:
-                                pair_position = np.where(pair_unique_allplot == pair_to_find)[0][0]
-                            except:
-                                pair_position = np.where(pair_unique_allplot == pair_to_find_rev)[0][0]
-
-                            dfc_mean_pair[pair_position, :, :] = x_mean
-
-                    mat_pairs_allplot[cf_metric][band] = dfc_mean_pair
-
-                del mat_values_allplot
-                            
-        #### identify missing pairs with clean ROI
-        for ROI_to_clean in ['WM', 'ventricule', 'choroide plexus', 'not in freesurfer parcel']:
-            if ROI_to_clean in roi_in_data_allplot:
-                roi_in_data_allplot = np.delete(roi_in_data_allplot, roi_in_data_allplot==ROI_to_clean)
-
-        mat_verif = np.zeros(( roi_in_data_allplot.shape[0], roi_in_data_allplot.shape[0]))
-        for ROI_row_i, ROI_row_name in enumerate(roi_in_data_allplot):
-            #ROI_col_i, ROI_col_name = 1, ROI_list[1]
-            for ROI_col_i, ROI_col_name in enumerate(roi_in_data_allplot):
-
-                if ROI_row_name == ROI_col_name:
-                    mat_verif[ROI_row_i, ROI_col_i] = 1
-                    continue
-
-                pair_name = f'{ROI_row_name}-{ROI_col_name}'
-                pair_name_rev = f'{ROI_col_name}-{ROI_row_name}'
-
-                if pair_name in pair_unique_allplot:
-                    mat_verif[ROI_row_i, ROI_col_i] = 1
-                if pair_name_rev in pair_unique_allplot:
-                    mat_verif[ROI_row_i, ROI_col_i] = 1
-
-        if debug:
-            plt.matshow(mat_verif)
-            plt.show()
-
-        #### clean pairs
-        pairs_to_keep = []
-        for pair_i, pair in enumerate(pair_unique_allplot):
-            if pair.split('-')[0] not in ['WM', 'ventricule', 'choroide plexus', 'not in a freesurfer parcel'] and pair.split('-')[1] not in ['WM', 'ventricule', 'choroide plexus', 'not in a freesurfer parcel']:
-                pairs_to_keep.append(pair_i)
-
-        for cf_metric in ['ispc', 'wpli']:
-            for band in mat_pairs_allplot[cf_metric].keys():
-                mat_pairs_allplot[cf_metric][band] = mat_pairs_allplot[cf_metric][band][pairs_to_keep, :, :].copy()
-
-        pair_unique_allplot = pair_unique_allplot[pairs_to_keep]
-
-        #### save
-        os.chdir(os.path.join(path_precompute, 'allplot'))
-        data_dfc_allpairs = np.zeros((2, len(band_to_compute), pair_unique_allplot.shape[0], mat_pairs_allplot['ispc']['beta'].shape[1], mat_pairs_allplot['ispc']['beta'].shape[2]))
+        #### extract data
+        os.chdir(os.path.join(path_precompute, 'allplot', 'FC'))
         
-        for cf_metric_i, cf_metric in enumerate(['ispc', 'wpli']):
-            for band_i, band in enumerate(mat_pairs_allplot[cf_metric].keys()):
-                data_dfc_allpairs[cf_metric_i, band_i, :, :] = mat_pairs_allplot[cf_metric][band]
+        xr_list = {}
 
-        dims = ['cf_metric', 'band', 'pairs', 'phase', 'nfrex']
-        coords = [['ispc', 'wpli'], band_to_compute, pair_unique_allplot, ['whole', 'inspi', 'expi'], range(mat_pairs_allplot['ispc']['beta'].shape[2])]
-        xr_dfc_allpairs = xr.DataArray(data_dfc_allpairs, coords=coords, dims=dims)
+        #sujet = sujet_list_dfc_allcond[1]
+        for sujet_i, sujet in enumerate(sujet_list_dfc_allcond):
 
-        if monopol:
-            xr_dfc_allpairs.to_netcdf(f'allcond_dfc_{cond}_allpairs.nc')
-        else:
-            xr_dfc_allpairs.to_netcdf(f'allcond_dfc_{cond}_allpairs_bi.nc')
-
-    #### compute dfc mat
-    mat_baselines = {}
-
-    #cf_metric_i, cf_metric = 0, 'ispc'
-    for cf_metric_i, cf_metric in enumerate(['ispc', 'wpli']):
-
-        mat_baselines[cf_metric] = {}
-
-        for band in band_to_compute:
-
-            mat_baselines[cf_metric][band] = {}
-            
-            #phase = 'whole'
-            for phase in ['whole', 'inspi', 'expi']:
-
-                mat_baselines[cf_metric][band][phase] = dfc_pairs_to_mat(xr_dfc_allpairs.loc[cf_metric, band, :, phase, :].data, pair_unique_allplot, 'mean', rscore_computation)
-
-    return mat_baselines
-
-
-
-
-
-
-
-
-
-
-################################
-######## SAVE FIG ########
-################################
-
-
-
-
-def save_fig_dfc_allplot(mat_phase, cond, band_to_compute, roi_in_data_allplot, monopol, FR_CV_normalized=True, plot_circle_dfc=False):
-
-    #### get params
-    cf_metrics_list = ['ispc', 'wpli']
-    n_band = len(band_to_compute)
-
-    #### define diff and phase to plot
-    phase_list = ['whole', 'inspi', 'expi']
-
-    n_cols_raw = len(phase_list)
-
-    #### put 0 to matrix center
-    for mat_type_i, mat_type in enumerate(cf_metrics_list):
-
-        for phase_list_i in phase_list:
-                    
-                for band in band_to_compute:
-
-                    mat_to_clean = mat_phase[mat_type][band][phase_list_i]
-
-                    for roi_i in range(mat_to_clean.shape[0]):
-
-                        mat_to_clean[roi_i,roi_i] = 0
-
-                    mat_phase[mat_type][band][phase_list_i] = mat_to_clean.copy()
-
-    #### identify scales
-    scales = {}
-
-    for mat_type_i, mat_type in enumerate(cf_metrics_list):
-
-        scales[mat_type] = {'vmin' : np.array([]), 'vmax' : np.array([])}
-
-        for band in band_to_compute:
-            
-            for phase in phase_list:
-
-                mat_scaled = mat_phase[mat_type][band][phase]
-
-                scales[mat_type]['vmin'] = np.append(scales[mat_type]['vmin'], mat_scaled.min())
-                scales[mat_type]['vmax'] = np.append(scales[mat_type]['vmax'], mat_scaled.max())
-
-        scales[mat_type]['vmin'], scales[mat_type]['vmax'] = scales[mat_type]['vmin'].min(), scales[mat_type]['vmax'].max()
-
-    #### identify scales abs
-    scales_abs = {}
-
-    for mat_type_i, mat_type in enumerate(cf_metrics_list):
-
-        scales_abs[mat_type] = {}
-
-        for band in band_to_compute:
-
-            max_list = np.array(())
-
-            for phase in phase_list:
-
-                max_list = np.append(max_list, mat_phase[mat_type][band][phase].max())
-                max_list = np.append(max_list, np.abs(mat_phase[mat_type][band][phase].min()))
-
-            scales_abs[mat_type][band] = max_list.max()
-
-    #### thresh alldata
-    percentile_thresh_up = 99
-    percentile_thresh_down = 1
-
-    mat_dfc_clean = copy.deepcopy(mat_phase)
-
-    for phase in phase_list:
-
-        for mat_type_i, mat_type in enumerate(cf_metrics_list):
-
-            for band in band_to_compute:
-
-                thresh_up = np.percentile(mat_phase[mat_type][band][phase].reshape(-1), percentile_thresh_up)
-                thresh_down = np.percentile(mat_phase[mat_type][band][phase].reshape(-1), percentile_thresh_down)
-
-                for x in range(mat_dfc_clean[mat_type][band][phase].shape[1]):
-                    for y in range(mat_dfc_clean[mat_type][band][phase].shape[1]):
-                        if mat_type_i == 0:
-                            if mat_dfc_clean[mat_type][band][phase][x,y] < thresh_up:
-                                mat_dfc_clean[mat_type][band][phase][x,y] = 0
-                        else:
-                            if (mat_dfc_clean[mat_type][band][phase][x,y] < thresh_up) & (mat_dfc_clean[mat_type][band][phase][x,y] > thresh_down):
-                                mat_dfc_clean[mat_type][band][phase][x,y] = 0
-
-    ######## PLOT #######
-
-    os.chdir(os.path.join(path_results, 'allplot', 'allcond', 'FC', 'allcond'))
-
-    #### RAW
-
-    n_cols_raw = len(phase_list)
-
-    #mat_type_i, mat_type = 0, 'ispc'
-    for mat_type_i, mat_type in enumerate(cf_metrics_list):
-
-        #band_prep = 'lf'
-        for band_prep in band_prep_list:
-
-            ######## NO THRESH ########
-
-            #### mat plot raw
-
-            fig, axs = plt.subplots(nrows=len(freq_band_dict_FC_function[band_prep]), ncols=n_cols_raw, figsize=(15,15))
-
+            print(sujet)
+                
             if monopol:
-                plt.suptitle(f'{cond} {mat_type}')
+                _xr_dfc_allcond = xr.open_dataarray(f'{cf_metric}_{sujet}_stretch_rscore.nc')
             else:
-                plt.suptitle(f'{cond} {mat_type} bi')
-            
-            for r, band in enumerate(freq_band_dict_FC_function[band_prep]):
-                for c, phase in enumerate(phase_list):
+                _xr_dfc_allcond = xr.open_dataarray(f'{cf_metric}_{sujet}_stretch_rscore_bi.nc')
 
-                    ax = axs[r, c]
+            normalized_pairs = ['-'.join(sorted(pair.split('-'))) for pair in _xr_dfc_allcond['pair'].values]
+            _xr_dfc_allcond['pair'] = normalized_pairs
+            xr_list[sujet] = _xr_dfc_allcond
 
-                    if c == 0:
-                        ax.set_ylabel(band)
-                    if r == 0:
-                        ax.set_title(f'{phase}')
-                    
-                    cax = ax.matshow(mat_phase[mat_type][band][phase], vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], cmap=cm.seismic)
-
-                    fig.colorbar(cax, ax=ax)
-
-                    ax.set_yticks(np.arange(roi_in_data_allplot.shape[0]))
-                    ax.set_yticklabels(roi_in_data_allplot)
-            # plt.show()
-
-            if monopol:
-                if FR_CV_normalized:
-                    fig.savefig(f'MAT_{mat_type}_{cond}_norm_{band_prep}.png')
-                else:
-                    fig.savefig(f'MAT_{mat_type}_{cond}_{band_prep}.png')
-            else:
-                if FR_CV_normalized:
-                    fig.savefig(f'MAT_bi_{mat_type}_{cond}_norm_{band_prep}.png')
-                else:
-                    fig.savefig(f'MAT_bi_{mat_type}_{cond}_{band_prep}.png')
-            
-            plt.close('all')
-
-            #### circle plot RAW
-                
-            if plot_circle_dfc:
-                
-                nrows, ncols = len(freq_band_dict_FC_function[band_prep]), n_cols_raw
-                fig, axs = plt.subplots(nrows=nrows, ncols=ncols, subplot_kw=dict(polar=True))
-
-                for r, band in enumerate(freq_band_dict_FC_function[band_prep]):
-
-                    for c, phase in enumerate(phase_list):
-
-                        mne_connectivity.viz.plot_connectivity_circle(mat_phase[mat_type][band][phase], node_names=roi_in_data_allplot, n_lines=None, 
-                                                    title=f'{band} {phase}', show=False, padding=7, ax=axs[r, c],
-                                                    vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], colormap=cm.seismic, facecolor='w', 
-                                                    textcolor='k')
-
-                if monopol:
-                    plt.suptitle(f'{cond}_{mat_type}', color='k')
-                else:
-                    plt.suptitle(f'{cond}_{mat_type}_bi', color='k')
-                
-                fig.set_figheight(10)
-                fig.set_figwidth(12)
-                # fig.show()
-
-                if monopol:
-                    if FR_CV_normalized:
-                        fig.savefig(f'CIRCLE_{mat_type}_{cond}_norm_{band_prep}.png')
-                    else:
-                        fig.savefig(f'CIRCLE_{mat_type}_{cond}_{band_prep}.png')
-                else:
-                    if FR_CV_normalized:
-                        fig.savefig(f'CIRCLE_bi_{mat_type}_{cond}_norm_{band_prep}.png')
-                    else:
-                        fig.savefig(f'CIRCLE_bi_{mat_type}_{cond}_{band_prep}.png')
-
-                plt.close('all')
-
-        ######## THRESH ########
-
-        #cond = 'RD_SV'
-
-        #### mat plot raw 
-
-        fig, axs = plt.subplots(nrows=len(freq_band_dict_FC_function[band_prep]), ncols=n_cols_raw, figsize=(15,15))
-
-        if monopol:
-            plt.suptitle(f'{cond} {mat_type}')
-        else:
-            plt.suptitle(f'{cond} {mat_type} bi')
+        pair_list = []        
         
-        for r, band in enumerate(freq_band_dict_FC_function[band_prep]):
-            for c, phase in enumerate(phase_list):
+        for _sujet in sujet_list_dfc_allcond:
 
-                ax = axs[r, c]
+            pair_list.extend(np.unique(xr_list[_sujet]['pair']))
 
-                if c == 0:
-                    ax.set_ylabel(band)
-                if r == 0:
-                    ax.set_title(f'{phase}')
-                
-                cax = ax.matshow(mat_dfc_clean[mat_type][band][phase], vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], cmap=cm.seismic)
+        pair_list = np.unique(pair_list)
 
-                fig.colorbar(cax, ax=ax)
+        params_pairs = {}
 
-                ax.set_yticks(np.arange(roi_in_data_allplot.shape[0]))
-                ax.set_yticklabels(roi_in_data_allplot)
+        for pair in pair_list:
+
+            params_pairs[pair] = {}
+            _sujet_list_sel = [_sujet for _sujet in sujet_list_dfc_allcond if any(xr_list[_sujet].loc[:,'FR_CV']['pair'] == pair)]
+            params_pairs[pair]['sujet_list'] = _sujet_list_sel
+            params_pairs[pair]['min_count'] = np.array([(xr_list[_sujet].loc[:,'FR_CV']['pair'] == pair).sum() for _sujet in _sujet_list_sel]).min()
+
+        xr_allpairs = []
+
+        for pair in pair_list:
+
+            _xr_pair = []
+                        
+            for _sujet in params_pairs[pair]['sujet_list']:
+
+                _xr = xr_list[_sujet].loc[pair][:params_pairs[pair]['min_count']]
+            
+                _xr_pair.append(_xr)
+
+            _xr_pair = xr.concat(_xr_pair, dim='pair').median('pair')
+            xr_allpairs.append(_xr_pair.expand_dims({'pair': [pair]}))
+
+        xr_allpairs = xr.concat(xr_allpairs, dim='pair')
+
+        #### plot
+        g = xr_allpairs.median('cycle').plot(x='time', hue='cond', col='band', row='pair')
+        g.fig.suptitle(f"c({params_pairs[pair]['min_count']}) s({len(params_pairs[pair]['sujet_list'])})")
+        g.fig.tight_layout()
         # plt.show()
 
+        os.chdir(os.path.join(path_results, 'allplot', 'FC'))
         if monopol:
-            if FR_CV_normalized:
-                fig.savefig(f'THRESH_MAT_{mat_type}_{cond}_norm_{band_prep}.png')
-            else:
-                fig.savefig(f'THRESH_MAT_{mat_type}_{cond}_{band_prep}.png')
+            g.fig.savefig(f"{cf_metric}_ALLCOND_dfc.png")
         else:
-            if FR_CV_normalized:
-                fig.savefig(f'THRESH_MAT_bi_{mat_type}_{cond}_norm_{band_prep}.png')
-            else:
-                fig.savefig(f'THRESH_MAT_bi_{mat_type}_{cond}_{band_prep}.png')
+            g.fig.savefig(f"{cf_metric}_ALLCOND_dfc_bi.png")
+
+
+
+
+def plot_results_stats(monopol):
+
+    percentile_plot_fc = [2.5, 97.5]
+
+    #cf_metric = 'WPLI'
+    for cf_metric in ['ISPC', 'WPLI']:
+
+        print(cf_metric, monopol)
+
+        band_sel = list(freq_band_dict_FC['wb'].keys())
+
+        ######## FR_CV ########
+
+        #### extract data
+        os.chdir(os.path.join(path_precompute, 'allplot', 'FC'))
         
+        xr_list = {}
+
+        #sujet = sujet_list_dfc_FR_CV[1]
+        for sujet_i, sujet in enumerate(sujet_list_dfc_FR_CV):
+
+            print(sujet)
+                
+            if monopol:
+                _xr_dfc_FR_CV = xr.open_dataarray(f'{cf_metric}_{sujet}_stretch_rscore.nc')
+            else:
+                _xr_dfc_FR_CV = xr.open_dataarray(f'{cf_metric}_{sujet}_stretch_rscore_bi.nc')
+
+            _xr_dfc_FR_CV = _xr_dfc_FR_CV.loc[:,'FR_CV']
+            _xr_dfc_FR_CV = _xr_dfc_FR_CV.drop_vars('cond')
+            normalized_pairs = ['-'.join(sorted(pair.split('-'))) for pair in _xr_dfc_FR_CV['pair'].values]
+            _xr_dfc_FR_CV['pair'] = normalized_pairs
+            xr_list[sujet] = _xr_dfc_FR_CV
+
+        pair_list = []        
+        
+        for _sujet in sujet_list_dfc_FR_CV:
+
+            pair_list.extend(np.unique(xr_list[_sujet]['pair']))
+
+        pair_list = np.unique(pair_list)
+
+        params_pairs = {}
+
+        for pair in pair_list:
+
+            params_pairs[pair] = {}
+            _sujet_list_sel = [_sujet for _sujet in sujet_list_dfc_FR_CV if any(xr_list[_sujet]['pair'] == pair)]
+            params_pairs[pair]['sujet_list'] = _sujet_list_sel
+            params_pairs[pair]['min_count'] = np.array([(xr_list[_sujet]['pair'] == pair).sum() for _sujet in _sujet_list_sel]).min()
+
+        #### compute stats
+
+        xr_allpairs_stats = []
+
+        for pair in pair_list:
+
+            print(pair)
+
+            _xr_pair = []
+                        
+            for _sujet in params_pairs[pair]['sujet_list']:
+
+                _xr = xr_list[_sujet].loc[pair][:params_pairs[pair]['min_count']]
+            
+                _xr_pair.append(_xr.median('cycle'))
+
+            data_obs = xr.concat(_xr_pair, dim='pair').values
+            data_surr = np.zeros((n_surr_fc, len(band_sel), stretch_point_FC))
+
+            for surr_i in range(n_surr_fc):
+
+                print_advancement(surr_i, n_surr_fc, [25, 50, 75])
+
+                data_shuffle = np.zeros(data_obs.shape)
+            
+                for band_i, _ in enumerate(band_sel):
+        
+                    for pair_i in range(data_shuffle.shape[0]):
+
+                        data_shuffle[pair_i, band_i] = shuffle_Cxy(data_obs[pair_i, band_i, :])
+
+                data_surr[surr_i] = np.median(data_shuffle, axis=0)
+
+            thresh_dw, thresh_up = np.percentile(data_surr, percentile_plot_fc[0], axis=0), np.percentile(data_surr, percentile_plot_fc[-1], axis=0)
+
+            if debug:
+
+                band_i = 0
+                plt.plot(np.median(data_obs[:,band_i], axis=0))
+                plt.plot(thresh_dw[band_i], color='r')
+                plt.plot(thresh_up[band_i], color='r')
+                plt.show()
+
+            pair_data_export = np.stack([np.median(data_obs, axis=0), thresh_dw, thresh_up], axis=0)
+
+            xr_pair_data_export = xr.DataArray(data=pair_data_export, dims=['data_type', 'band', 'time'],
+                                               coords={'data_type' : ['obs', 'dw', 'up'], 'band' : band_sel, 'time' : np.arange(stretch_point_FC)})
+            
+            xr_allpairs_stats.append(xr_pair_data_export.expand_dims({'pair': [pair]}))
+
+        xr_allpairs_stats = xr.concat(xr_allpairs_stats, dim='pair')
+
+        #### plot
+        
+        fig, axs = plt.subplots(nrows=len(pair_list), ncols=len(band_sel), figsize=(15,15))
+        
+        for row_i, pair in enumerate(pair_list):
+
+            for col_i, band in enumerate(band_sel):
+
+                ax = axs[row_i, col_i]
+                xr_allpairs_stats.loc[pair, 'obs', band].plot(x='time', ax=ax)
+                xr_allpairs_stats.loc[pair, 'dw', band].plot(x='time', ax=ax, color='r', linestyle='--')
+                xr_allpairs_stats.loc[pair, 'up', band].plot(x='time', ax=ax, color='r', linestyle='--')
+
+                if row_i == 0:
+                    ax.set_title(band)   
+                if col_i == 0:
+                    ax.set_ylabel(pair)  
+                if row_i != 0 and col_i == 0:
+                    ax.set_ylabel(pair)  
+                    ax.set_title("") 
+                if row_i != 0 and col_i != 0:
+                    ax.set_title("")   
+
+        plt.suptitle(f"c({params_pairs[pair]['min_count']}) s({len(params_pairs[pair]['sujet_list'])})")
+        plt.tight_layout()
+        # plt.show()
+
+        os.chdir(os.path.join(path_results, 'allplot', 'FC'))
+        if monopol:
+            fig.savefig(f"STATS_{cf_metric}_FR_CV_dfc.png")
+        else:
+            fig.savefig(f"STATS_{cf_metric}_FR_CV_dfc_bi.png")
+
         plt.close('all')
 
-        #### circle plot RAW
-            
-        if plot_circle_dfc:
-            
-            nrows, ncols = len(freq_band_dict_FC_function[band_prep]), n_cols_raw
-            fig, axs = plt.subplots(nrows=nrows, ncols=ncols, subplot_kw=dict(polar=True))
+        ######## ALLCOND ########
 
-            for r, band in enumerate(freq_band_dict_FC_function[band_prep]):
+        #### extract data
+        os.chdir(os.path.join(path_precompute, 'allplot', 'FC'))
+        
+        xr_list = {}
 
-                for c, phase in enumerate(phase_list):
+        #sujet = sujet_list_dfc_allcond[1]
+        for sujet_i, sujet in enumerate(sujet_list_dfc_allcond):
 
-                    mne_connectivity.viz.plot_connectivity_circle(mat_dfc_clean[mat_type][band][phase], node_names=roi_in_data_allplot, n_lines=None, 
-                                                title=f'{band} {phase}', show=False, padding=7, ax=axs[r, c],
-                                                vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], colormap=cm.seismic, facecolor='w', 
-                                                textcolor='k')
-
+            print(sujet)
+                
             if monopol:
-                plt.suptitle(f'{cond}_{mat_type}', color='k')
+                _xr_dfc_allcond = xr.open_dataarray(f'{cf_metric}_{sujet}_stretch_rscore.nc')
             else:
-                plt.suptitle(f'{cond}_{mat_type}_bi', color='k')
-            
-            fig.set_figheight(10)
-            fig.set_figwidth(12)
-            # fig.show()
+                _xr_dfc_allcond = xr.open_dataarray(f'{cf_metric}_{sujet}_stretch_rscore_bi.nc')
 
+            normalized_pairs = ['-'.join(sorted(pair.split('-'))) for pair in _xr_dfc_allcond['pair'].values]
+            _xr_dfc_allcond['pair'] = normalized_pairs
+            xr_list[sujet] = _xr_dfc_allcond
+
+        pair_list = []        
+        
+        for _sujet in sujet_list_dfc_allcond:
+
+            pair_list.extend(np.unique(xr_list[_sujet]['pair']))
+
+        pair_list = np.unique(pair_list)
+
+        params_pairs = {}
+
+        for pair in pair_list:
+
+            params_pairs[pair] = {}
+            _sujet_list_sel = [_sujet for _sujet in sujet_list_dfc_allcond if any(xr_list[_sujet].loc[:,'FR_CV']['pair'] == pair)]
+            params_pairs[pair]['sujet_list'] = _sujet_list_sel
+            params_pairs[pair]['min_count'] = np.array([(xr_list[_sujet].loc[:,'FR_CV']['pair'] == pair).sum() for _sujet in _sujet_list_sel]).min()
+
+        #### compute stats
+        xr_allpairs_stats = []
+
+        for pair in pair_list:
+
+            print(pair)
+
+            _xr_pair = []
+                        
+            for _sujet in params_pairs[pair]['sujet_list']:
+
+                _xr = xr_list[_sujet].loc[pair][:params_pairs[pair]['min_count']]
+            
+                _xr_pair.append(_xr.median('cycle'))
+
+            data_obs = xr.concat(_xr_pair, dim='pair').values
+            data_surr = np.zeros((n_surr_fc, len(conditions), len(band_sel), stretch_point_FC))
+
+            for surr_i in range(n_surr_fc):
+
+                print_advancement(surr_i, n_surr_fc, [25, 50, 75])
+
+                data_shuffle = np.zeros(data_obs.shape)
+
+                for cond_i, _ in enumerate(conditions):
+            
+                    for band_i, _ in enumerate(band_sel):
+            
+                        for pair_i in range(data_shuffle.shape[0]):
+
+                            data_shuffle[pair_i, cond_i, band_i] = shuffle_Cxy(data_obs[pair_i, cond_i ,band_i, :])
+
+                data_surr[surr_i] = np.median(data_shuffle, axis=0)
+
+            thresh_dw, thresh_up = np.percentile(data_surr, percentile_plot_fc[0], axis=0), np.percentile(data_surr, percentile_plot_fc[-1], axis=0)
+
+            if debug:
+
+                cond_i = 1
+                band_i = 0
+                plt.plot(np.median(data_obs[:,cond_i,band_i], axis=0))
+                plt.plot(thresh_dw[cond_i,band_i], color='r')
+                plt.plot(thresh_up[cond_i,band_i], color='r')
+                plt.show()
+
+            pair_data_export = np.stack([np.median(data_obs, axis=0), thresh_dw, thresh_up], axis=0)
+
+            xr_pair_data_export = xr.DataArray(data=pair_data_export, dims=['data_type', 'cond', 'band', 'time'],
+                                               coords={'data_type' : ['obs', 'dw', 'up'], 'cond' : conditions, 'band' : band_sel, 'time' : np.arange(stretch_point_FC)})
+            
+            xr_allpairs_stats.append(xr_pair_data_export.expand_dims({'pair': [pair]}))
+
+        xr_allpairs_stats = xr.concat(xr_allpairs_stats, dim='pair')
+
+        #### plot
+
+        for band in band_sel:
+        
+            fig, axs = plt.subplots(nrows=len(pair_list), ncols=len(conditions), figsize=(15,15))
+            
+            for row_i, pair in enumerate(pair_list):
+
+                for col_i, cond in enumerate(conditions):
+
+                    ax = axs[row_i, col_i]
+                    xr_allpairs_stats.loc[pair, 'obs', cond, band].plot(x='time', ax=ax)
+                    xr_allpairs_stats.loc[pair, 'dw', cond, band].plot(x='time', ax=ax, color='r', linestyle='--')
+                    xr_allpairs_stats.loc[pair, 'up', cond, band].plot(x='time', ax=ax, color='r', linestyle='--')
+
+                    if row_i == 0:
+                        ax.set_title(cond)   
+                    if col_i == 0:
+                        ax.set_ylabel(pair)  
+                    if row_i != 0 and col_i == 0:
+                        ax.set_ylabel(pair)  
+                        ax.set_title("") 
+                    if row_i != 0 and col_i != 0:
+                        ax.set_title("")   
+
+            plt.suptitle(f"{band} c({params_pairs[pair]['min_count']}) s({len(params_pairs[pair]['sujet_list'])})")
+            plt.tight_layout()
+            # plt.show()
+
+            os.chdir(os.path.join(path_results, 'allplot', 'FC'))
             if monopol:
-                if FR_CV_normalized:
-                    fig.savefig(f'THRESH_CIRCLE_{mat_type}_{cond}_norm_{band_prep}.png')
-                else:
-                    fig.savefig(f'THRESH_CIRCLE_{mat_type}_{cond}_{band_prep}.png')
+                fig.savefig(f"STATS_{band}_{cf_metric}_ALLCOND_dfc.png")
             else:
-                if FR_CV_normalized:
-                    fig.savefig(f'THRESH_CIRCLE_bi_{mat_type}_{cond}_norm_{band_prep}.png')
-                else:
-                    fig.savefig(f'THRESH_CIRCLE_bi_{mat_type}_{cond}_{band_prep}.png')
+                fig.savefig(f"STATS_{band}_{cf_metric}_ALLCOND_dfc_bi.png")
 
             plt.close('all')
 
@@ -993,268 +439,156 @@ def save_fig_dfc_allplot(mat_phase, cond, band_to_compute, roi_in_data_allplot, 
 
 
 
+################################
+######## PLOT ########
+################################
 
 
 
+
+def plot_results(monopol):
+    #cf_metric = 'WPLI'
+    for cf_metric in ['ISPC', 'WPLI']:
+
+        print(cf_metric, monopol)
+
+        band_sel = list(freq_band_dict_FC['wb'].keys())
+
+        ######## FR_CV ########
+
+        #### extract data
+        os.chdir(os.path.join(path_precompute, 'allplot', 'FC'))
+        
+        xr_list = {}
+
+        #sujet = sujet_list_dfc_FR_CV[1]
+        for sujet_i, sujet in enumerate(sujet_list_dfc_FR_CV):
+
+            print(sujet)
+                
+            if monopol:
+                _xr_dfc_FR_CV = xr.open_dataarray(f'{cf_metric}_{sujet}_stretch_rscore.nc')
+            else:
+                _xr_dfc_FR_CV = xr.open_dataarray(f'{cf_metric}_{sujet}_stretch_rscore_bi.nc')
+
+            _xr_dfc_FR_CV = _xr_dfc_FR_CV.loc[:,'FR_CV']
+            _xr_dfc_FR_CV = _xr_dfc_FR_CV.drop_vars('cond')
+            normalized_pairs = ['-'.join(sorted(pair.split('-'))) for pair in _xr_dfc_FR_CV['pair'].values]
+            _xr_dfc_FR_CV['pair'] = normalized_pairs
+            xr_list[sujet] = _xr_dfc_FR_CV
+
+        pair_list = []        
+        
+        for _sujet in sujet_list_dfc_FR_CV:
+
+            pair_list.extend(np.unique(xr_list[_sujet]['pair']))
+
+        pair_list = np.unique(pair_list)
+
+        params_pairs = {}
+
+        for pair in pair_list:
+
+            params_pairs[pair] = {}
+            _sujet_list_sel = [_sujet for _sujet in sujet_list_dfc_FR_CV if any(xr_list[_sujet]['pair'] == pair)]
+            params_pairs[pair]['sujet_list'] = _sujet_list_sel
+            params_pairs[pair]['min_count'] = np.array([(xr_list[_sujet]['pair'] == pair).sum() for _sujet in _sujet_list_sel]).min()
+
+        xr_allpairs = []
+
+        for pair in pair_list:
+
+            _xr_pair = []
+                        
+            for _sujet in params_pairs[pair]['sujet_list']:
+
+                _xr = xr_list[_sujet].loc[pair][:params_pairs[pair]['min_count']]
             
-################################
-######## SUMMARY ########
-################################
+                _xr_pair.append(_xr)
 
+            _xr_pair = xr.concat(_xr_pair, dim='pair').median('pair')
+            xr_allpairs.append(_xr_pair.expand_dims({'pair': [pair]}))
 
+        xr_allpairs = xr.concat(xr_allpairs, dim='pair')
 
-def process_dfc_res_summary(mat_phase_allcond, roi_in_data_allplot, cond_to_compute, band_to_compute, monopol, plot_circle_dfc=False):
+        #### plot
+        g = xr_allpairs.median('cycle').plot(x='time', col='band', row='pair')
+        g.fig.suptitle(f"c({params_pairs[pair]['min_count']}) s({len(params_pairs[pair]['sujet_list'])})")
+        g.fig.tight_layout()
+        # plt.show()
+        
+        os.chdir(os.path.join(path_results, 'allplot', 'FC'))
+        if monopol:
+            g.fig.savefig(f"{cf_metric}_FR_CV_dfc.png")
+        else:
+            g.fig.savefig(f"{cf_metric}_FR_CV_dfc_bi.png")
 
-    print(f'######## SUMMARY DFC ########')
+        ######## ALLCOND ########
 
-    #### CONNECTIVITY PLOT ####
-    
-    cf_metrics_list = ['ispc', 'wpli']
+        #### extract data
+        os.chdir(os.path.join(path_precompute, 'allplot', 'FC'))
+        
+        xr_list = {}
 
-    #### load allcond data 
-    allcond_data_thresh = {}
-    allcond_scales_abs = {}
+        #sujet = sujet_list_dfc_allcond[1]
+        for sujet_i, sujet in enumerate(sujet_list_dfc_allcond):
 
-    for cond in cond_to_compute:
-
-        #### load data
-        allcond_data_i = mat_phase_allcond[cond]
-
-        #### define diff and phase to plot
-        phase_list = ['whole', 'inspi', 'expi']
-
-        #### scale abs
-        scales_abs = {}
-
-        for mat_type_i, mat_type in enumerate(cf_metrics_list):
-
-            scales_abs[mat_type] = {}
-
-            for band in band_to_compute:
-
-                max_list = np.array(())
-
-                for phase in phase_list:
-
-                    max_list = np.append(max_list, allcond_data_i[mat_type][band][phase].max())
-                    max_list = np.append(max_list, np.abs(allcond_data_i[mat_type][band][phase].min()))
-
-                scales_abs[mat_type][band] = max_list.max()
-
-        allcond_scales_abs[cond] = scales_abs
-
-        #### thresh
-        percentile_thresh_up = 99
-        percentile_thresh_down = 1
-
-        mat_dfc_clean_i = copy.deepcopy(allcond_data_i)
-
-        #mat_type_i, mat_type = 0, 'ispc'
-        for mat_type_i, mat_type in enumerate(cf_metrics_list):
-
-            for phase in phase_list:
-
-                for band in band_to_compute:
-
-                    thresh_up = np.percentile(allcond_data_i[mat_type][band][phase].reshape(-1), percentile_thresh_up)
-                    thresh_down = np.percentile(allcond_data_i[mat_type][band][phase].reshape(-1), percentile_thresh_down)
-
-                    for x in range(mat_dfc_clean_i[mat_type][band][phase].shape[1]):
-                        for y in range(mat_dfc_clean_i[mat_type][band][phase].shape[1]):
-                            if (mat_dfc_clean_i[mat_type][band][phase][x,y] < thresh_up) & (mat_dfc_clean_i[mat_type][band][phase][x,y] > thresh_down):
-                                mat_dfc_clean_i[mat_type][band][phase][x,y] = 0
-
-        #### fill res containers
-        allcond_data_thresh[cond] = mat_dfc_clean_i
-
-    #### adjust scale
-    scales_abs = {}
-
-    for mat_type_i, mat_type in enumerate(cf_metrics_list):
-
-        scales_abs[mat_type] = {}
-
-        for band in band_to_compute:
-
-            max_list = np.array(())
-
-            for cond in cond_to_compute:
-
-                max_list = np.append(max_list, allcond_scales_abs[cond][mat_type][band])
-
-            scales_abs[mat_type][band] = max_list.max()
-
-    #### plot
-    os.chdir(os.path.join(path_results, 'allplot', 'allcond', 'FC', 'summary'))
-
-    #mat_type_i, mat_type = 0, 'ispc'
-    for mat_type_i, mat_type in enumerate(cf_metrics_list):
-
-        for band_prep in band_prep_list:
-
-            n_cols_raw = len(cond_to_compute)
-
-            ######## NO THRESH ########
-            #phase = 'whole'
-            for phase in phase_list:
-
-                #### mat plot raw 
-                fig, axs = plt.subplots(nrows=len(freq_band_dict_FC_function[band_prep]), ncols=n_cols_raw, figsize=(15,15))
-
-                if monopol:
-                    plt.suptitle(f'{phase} {mat_type}')
-                else:
-                    plt.suptitle(f'{phase} {mat_type} bi')
+            print(sujet)
                 
-                for r, band in enumerate(freq_band_dict_FC_function[band_prep]):
-                    for c, cond in enumerate(cond_to_compute):
+            if monopol:
+                _xr_dfc_allcond = xr.open_dataarray(f'{cf_metric}_{sujet}_stretch_rscore.nc')
+            else:
+                _xr_dfc_allcond = xr.open_dataarray(f'{cf_metric}_{sujet}_stretch_rscore_bi.nc')
 
-                        ax = axs[r, c]
+            normalized_pairs = ['-'.join(sorted(pair.split('-'))) for pair in _xr_dfc_allcond['pair'].values]
+            _xr_dfc_allcond['pair'] = normalized_pairs
+            xr_list[sujet] = _xr_dfc_allcond
 
-                        if c == 0:
-                            ax.set_ylabel(band)
-                        if r == 0:
-                            ax.set_title(cond)
+        pair_list = []        
+        
+        for _sujet in sujet_list_dfc_allcond:
+
+            pair_list.extend(np.unique(xr_list[_sujet]['pair']))
+
+        pair_list = np.unique(pair_list)
+
+        params_pairs = {}
+
+        for pair in pair_list:
+
+            params_pairs[pair] = {}
+            _sujet_list_sel = [_sujet for _sujet in sujet_list_dfc_allcond if any(xr_list[_sujet].loc[:,'FR_CV']['pair'] == pair)]
+            params_pairs[pair]['sujet_list'] = _sujet_list_sel
+            params_pairs[pair]['min_count'] = np.array([(xr_list[_sujet].loc[:,'FR_CV']['pair'] == pair).sum() for _sujet in _sujet_list_sel]).min()
+
+        xr_allpairs = []
+
+        for pair in pair_list:
+
+            _xr_pair = []
                         
-                        cax = ax.matshow(mat_phase_allcond[cond][mat_type][band][phase], vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], cmap=cm.seismic)
+            for _sujet in params_pairs[pair]['sujet_list']:
 
-                        fig.colorbar(cax, ax=ax)
+                _xr = xr_list[_sujet].loc[pair][:params_pairs[pair]['min_count']]
+            
+                _xr_pair.append(_xr)
 
-                        ax.set_yticks(np.arange(roi_in_data_allplot.shape[0]))
-                        ax.set_yticklabels(roi_in_data_allplot)
-                # plt.show()
+            _xr_pair = xr.concat(_xr_pair, dim='pair').median('pair')
+            xr_allpairs.append(_xr_pair.expand_dims({'pair': [pair]}))
 
-                if monopol:
-                    if FR_CV_normalized:
-                        fig.savefig(f'summary_MAT_{mat_type}_{phase}_norm.png')
-                    else:
-                        fig.savefig(f'summary_MAT_{mat_type}_{phase}.png')
-                else:
-                    if FR_CV_normalized:
-                        fig.savefig(f'summary_MAT_bi_{mat_type}_{phase}_norm.png')
-                    else:
-                        fig.savefig(f'summary_MAT_bi_{mat_type}_{phase}.png')
-                
-                plt.close('all')
-                    
-                #### circle plot RAW
+        xr_allpairs = xr.concat(xr_allpairs, dim='pair')
 
-                if plot_circle_dfc:
-                        
-                    nrows, ncols = len(freq_band_dict_FC_function[band_prep]), n_cols_raw
-                    fig, axs = plt.subplots(nrows=nrows, ncols=ncols, subplot_kw=dict(polar=True))
+        #### plot
+        g = xr_allpairs.median('cycle').plot(x='time', hue='cond', col='band', row='pair')
+        g.fig.suptitle(f"c({params_pairs[pair]['min_count']}) s({len(params_pairs[pair]['sujet_list'])})")
+        g.fig.tight_layout()
+        # plt.show()
 
-                    for r, band in enumerate(freq_band_dict_FC_function[band_prep]):
-
-                        for c, cond in enumerate(cond_to_compute):
-
-                            mne_connectivity.viz.plot_connectivity_circle(mat_phase_allcond[cond][mat_type][band][phase], node_names=roi_in_data_allplot, n_lines=None, 
-                                                        title=f'{band} {cond}', show=False, padding=7, ax=axs[r, c],
-                                                        vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], colormap=cm.seismic, facecolor='w', 
-                                                        textcolor='k')
-
-                    if monopol:
-                        plt.suptitle(f'{phase}_{mat_type}', color='k')
-                    else:
-                        plt.suptitle(f'{phase}_{mat_type}_bi', color='k')
-                    
-                    fig.set_figheight(10)
-                    fig.set_figwidth(12)
-                    # fig.show()
-
-                    if monopol:
-                        if FR_CV_normalized:
-                            fig.savefig(f'summary_CIRCLE_{mat_type}_{phase}_norm.png')
-                        else:
-                            fig.savefig(f'summary_CIRCLE_{mat_type}_{phase}.png')
-                    else:
-                        if FR_CV_normalized:
-                            fig.savefig(f'summary_CIRCLE_bi_{mat_type}_{phase}_norm.png')
-                        else:
-                            fig.savefig(f'summary_CIRCLE_bi_{mat_type}_{phase}.png')
-
-                    plt.close('all')
-
-
-                ######## THRESH ########
-
-                #### mat plot raw 
-                fig, axs = plt.subplots(nrows=len(freq_band_dict_FC_function[band_prep]), ncols=n_cols_raw, figsize=(15,15))
-
-                if monopol:
-                    plt.suptitle(f'{phase} {mat_type}')
-                else:
-                    plt.suptitle(f'{phase} {mat_type} bi')
-                
-                for r, band in enumerate(freq_band_dict_FC_function[band_prep]):
-                    for c, cond in enumerate(cond_to_compute):
-
-                        ax = axs[r, c]
-
-                        if c == 0:
-                            ax.set_ylabel(band)
-                        if r == 0:
-                            ax.set_title(f'{phase}')
-                        
-                        cax = ax.matshow(allcond_data_thresh[cond][mat_type][band][phase], vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], cmap=cm.seismic)
-
-                        fig.colorbar(cax, ax=ax)
-
-                        ax.set_yticks(np.arange(roi_in_data_allplot.shape[0]))
-                        ax.set_yticklabels(roi_in_data_allplot)
-                # plt.show()
-
-                if monopol:
-                    if FR_CV_normalized:
-                        fig.savefig(f'summary_THRESH_MAT_{mat_type}_{phase}_norm.png')
-                    else:
-                        fig.savefig(f'summary_THRESH_MAT_{mat_type}_{phase}.png')
-                else:
-                    if FR_CV_normalized:
-                        fig.savefig(f'summary_THRESH_MAT_bi_{mat_type}_{phase}_norm.png')
-                    else:
-                        fig.savefig(f'summary_THRESH_MAT_bi_{mat_type}_{phase}.png')
-                
-                plt.close('all')
-                    
-                #### circle plot RAW
-
-                if plot_circle_dfc:
-                        
-                    nrows, ncols = len(freq_band_dict_FC_function[band_prep]), n_cols_raw
-                    fig, axs = plt.subplots(nrows=nrows, ncols=ncols, subplot_kw=dict(polar=True))
-
-                    for r, band in enumerate(freq_band_dict_FC_function[band_prep]):
-
-                        for c, cond in enumerate(cond_to_compute):
-
-                            mne_connectivity.viz.plot_connectivity_circle(allcond_data_thresh[cond][mat_type][band][phase], node_names=roi_in_data_allplot, n_lines=None, 
-                                                        title=f'{band} {phase}', show=False, padding=7, ax=axs[r, c],
-                                                        vmin=-scales_abs[mat_type][band], vmax=scales_abs[mat_type][band], colormap=cm.seismic, facecolor='w', 
-                                                        textcolor='k')
-
-                    if monopol:
-                        plt.suptitle(f'{phase}_{mat_type}', color='k')
-                    else:
-                        plt.suptitle(f'{phase}_{mat_type}_bi', color='k')
-                    
-                    fig.set_figheight(10)
-                    fig.set_figwidth(12)
-                    # fig.show()
-
-                    if monopol:
-                        if FR_CV_normalized:
-                            fig.savefig(f'summary_THRESH_CIRCLE_{mat_type}_{phase}_norm.png')
-                        else:
-                            fig.savefig(f'summary_THRESH_CIRCLE_{mat_type}_{phase}.png')
-                    else:
-                        if FR_CV_normalized:
-                            fig.savefig(f'summary_THRESH_CIRCLE_bi_{mat_type}_{phase}_norm.png')
-                        else:
-                            fig.savefig(f'summary_THRESH_CIRCLE_bi_{mat_type}_{phase}.png')
-
-                    plt.close('all')
-
+        os.chdir(os.path.join(path_results, 'allplot', 'FC'))
+        if monopol:
+            g.fig.savefig(f"{cf_metric}_ALLCOND_dfc.png")
+        else:
+            g.fig.savefig(f"{cf_metric}_ALLCOND_dfc_bi.png")
 
 
 
@@ -1273,30 +607,9 @@ if __name__ == '__main__':
     #monopol = True
     for monopol in [True, False]:
 
-        FR_CV_normalized = True
+        # plot_results(monopol)
+        plot_results_stats(monopol)
 
-        cond_to_compute = ['RD_CV', 'RD_SV', 'RD_FV']
-        band_to_compute = ['theta', 'alpha', 'beta', 'l_gamma', 'h_gamma']
-
-        #### get baselines
-        baselines = precompute_baselines_allplot(band_to_compute, monopol, rscore_computation=False)
-
-        mat_phase_allcond = {}
-
-        #### save fig
-        #cond = 'RD_CV'
-        for cond in cond_to_compute:
-            
-            print(cond, monopol)
-                
-            xr_pairs_allplot, pair_unique_allplot, roi_in_data_allplot = precompute_dfc_mat_allplot(band_to_compute, cond, monopol)
-            mat_phase = precompute_dfc_mat_allplot_phase(xr_pairs_allplot, pair_unique_allplot, band_to_compute, baselines, monopol, rscore_computation=False)
-
-            save_fig_dfc_allplot(mat_phase, cond, band_to_compute, roi_in_data_allplot, monopol, FR_CV_normalized=True)
-
-            mat_phase_allcond[cond] = mat_phase
-
-        process_dfc_res_summary(mat_phase_allcond, roi_in_data_allplot, cond_to_compute, band_to_compute, monopol)
 
 
 

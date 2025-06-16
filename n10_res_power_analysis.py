@@ -11,8 +11,8 @@ import cv2
 import pickle
 import gc
 
-from n0_config_params import *
-from n0bis_config_analysis_functions import *
+from n00_config_params import *
+from n00bis_config_analysis_functions import *
 
 
 debug = False
@@ -503,11 +503,6 @@ def compilation_compute_TF_ITPC(sujet, monopol):
         chan_list, chan_list_ieeg = get_chanlist(sujet, monopol)
         df_loca = get_loca_df(sujet, monopol)
 
-        if tf_mode == 'TF':
-            os.chdir(os.path.join(path_results, sujet, 'TF', 'summary'))
-        elif tf_mode == 'ITPC':
-            os.chdir(os.path.join(path_results, sujet, 'ITPC', 'summary'))
-
         #### load data
         print('LOAD', flush=True)
         os.chdir(os.path.join(path_precompute, sujet, tf_mode))
@@ -520,6 +515,11 @@ def compilation_compute_TF_ITPC(sujet, monopol):
                 data_allcond[cond] = np.median(np.load(f'{sujet}_{tf_mode.lower()}_conv_{cond}.npy'), axis=1)
             else:
                 data_allcond[cond] = np.median(np.load(f'{sujet}_{tf_mode.lower()}_conv_{cond}_bi.npy'), axis=1)
+
+        if debug:
+
+            plt.pcolormesh(data_allcond[cond][1,:,:])
+            plt.show()
 
         #### scale
         vals = np.array([])

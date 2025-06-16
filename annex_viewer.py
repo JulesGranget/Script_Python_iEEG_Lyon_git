@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 import scipy.signal
 import pandas as pd
 
-from n0_config_params import *
-from n0bis_config_analysis_functions import *
+from n00_config_params import *
+from n00bis_config_analysis_functions import *
 
 
 
@@ -27,7 +27,6 @@ def viewer(sujet, cond, session_i, chan_selection, monopol, filter=False):
     chan_list_mod_list_i = [chan_list_mod[chan_i] for chan_i in chan_list_mod_list_i]
     chan_list_i = [chan_i for chan_i, chan in enumerate(chan_list) if chan in chan_selection]
     chan_list_i.append(-4)
-    chan_list_i.append(-2)
 
     #### load data
     data = load_data_sujet(sujet, 'wb', cond, session_i, monopol)[chan_list_i,:]
@@ -35,7 +34,7 @@ def viewer(sujet, cond, session_i, chan_selection, monopol, filter=False):
     df_loca = get_loca_df(sujet, monopol)
     loca_list = [df_loca.query(f"name == '{chan_i}'")['ROI'].values for chan_i in chan_list_mod_list_i]
 
-    chan_labels = ['respi', 'ecg']
+    chan_labels = ['respi']
     chan_labels.extend([f"{chan} : {loca_list[chan_i]}" for chan_i, chan in enumerate(chan_selection)])
 
     if debug:
@@ -113,7 +112,6 @@ def viewer(sujet, cond, session_i, chan_selection, monopol, filter=False):
     else:
 
         respi = data_resampled[-2,:]
-        ecg = data_resampled[-1,:]
 
         if filter:
 
@@ -137,20 +135,17 @@ def viewer(sujet, cond, session_i, chan_selection, monopol, filter=False):
         fig, ax = plt.subplots()
 
         ax.plot(time_vec_resample, zscore(respi), label=chan_labels[0])
-        ax.plot(time_vec_resample, zscore(ecg)+3, label=chan_labels[1])
 
-        for chan_i, _ in enumerate(chan_list_i[:-2]):
+        for chan_i, _ in enumerate(chan_list_i[:-1]):
         
             x = data_resampled[chan_i,:]
-            ax.plot(time_vec_resample, zscore(x)+3*(chan_i+2), label=chan_labels[chan_i+2])
+            ax.plot(time_vec_resample, zscore(x)+3*(chan_i+1), label=chan_labels[chan_i+1])
 
-        ax.vlines(trig['start'].values, ymin=zscore(respi).min(), ymax=(zscore(x)+3*(chan_i+2)).max(), colors='g', label='start')
-        ax.vlines(trig['stop'].values, ymin=zscore(respi).min(), ymax=(zscore(x)+3*(chan_i+2)).max(), colors='r', label='stop')
+        ax.vlines(trig['start'].values, ymin=zscore(respi).min(), ymax=(zscore(x)+3*(chan_i+1)).max(), colors='g', label='start')
+        ax.vlines(trig['stop'].values, ymin=zscore(respi).min(), ymax=(zscore(x)+3*(chan_i+1)).max(), colors='r', label='stop')
         
         ax.set_title(f"{sujet} {cond} {session_i+1}")
         plt.legend()
-        handles, labels = ax.get_legend_handles_labels()
-        ax.legend(reversed(handles), reversed(labels), loc='upper left')  # reverse to keep order consistent
 
         plt.show()
 
@@ -174,7 +169,7 @@ if __name__ == '__main__':
                     'pat_03146_1608', 'pat_03174_1634'
                     ]
 
-    sujet = 'CHEe'
+    sujet = 'TREt'
 
     cond = 'allcond'
     
@@ -192,7 +187,7 @@ if __name__ == '__main__':
 
     chan_list, chan_list_ieeg = get_chanlist(sujet, monopol)
 
-    chan_selection = ["J' 1", "J' 2", "J' 3", "J' 4", "J' 5", "A' 1", "A' 2", "A' 3"]
+    chan_selection = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10', 'B11', 'B12', 'J1', 'J2']
 
     viewer(sujet, cond, session_i, chan_selection, monopol)
 
