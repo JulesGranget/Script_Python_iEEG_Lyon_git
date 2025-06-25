@@ -154,6 +154,89 @@ def aggregate_df_Pxx(monopol):
 
 
 
+#monopol = True
+def aggregate_df_MI(monopol):
+
+    #### verif computation
+    # if monopol:
+
+    #     if os.path.exists(os.path.join(path_results, 'allplot', 'df', 'df_aggregates', f'df_MI.xlsx')):
+    #         print('MI : ALREADY COMPUTED', flush=True)
+    #         return
+
+    # else:
+
+    #     if os.path.exists(os.path.join(path_results, 'allplot', 'df', 'df_aggregates', f'df_MI_bi.xlsx')):
+    #         print('MI : ALREADY COMPUTED', flush=True)
+    #         return
+
+    
+    df_MI_aggregates = pd.DataFrame()
+
+    for sujet in sujet_list_FR_CV:
+
+        print(sujet)
+
+        os.chdir(os.path.join(path_results, 'allplot', 'df', 'subject_wise'))
+
+        if monopol:
+            _df = pd.read_excel(f'{sujet}_df_MI.xlsx')
+        else:
+            _df = pd.read_excel(f'{sujet}_df_MI_bi.xlsx')
+
+        os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
+
+        if monopol:
+            _xr = xr.open_dataarray(f'xr_MI_{sujet}.nc')
+        else:
+            _xr = xr.open_dataarray(f'xr_MI_{sujet}_bi.nc')
+
+        if sujet[:3] != 'pat' and monopol:
+            _chan_list_modified, _ = modify_name(_xr['chan'].values)
+            _xr['chan'] = _chan_list_modified
+
+        MI_signi = []
+
+        for row_i in _df.iterrows():
+
+            mask_dw = _xr.loc[row_i[1]['cond'], row_i[1]['chan'], 'obs', row_i[1]['band']].values <= _xr.loc[row_i[1]['cond'], row_i[1]['chan'], 'down', row_i[1]['band']].values
+            mask_up = _xr.loc[row_i[1]['cond'], row_i[1]['chan'], 'obs', row_i[1]['band']].values >= _xr.loc[row_i[1]['cond'], row_i[1]['chan'], 'up', row_i[1]['band']].values
+
+            if debug: 
+
+                plt.plot(_xr.loc[row_i[1]['cond'], row_i[1]['chan'], 'obs', row_i[1]['band']].values)
+                plt.plot(_xr.loc[row_i[1]['cond'], row_i[1]['chan'], 'up', row_i[1]['band']].values, color='r')
+                plt.plot(_xr.loc[row_i[1]['cond'], row_i[1]['chan'], 'down', row_i[1]['band']].values, color='r')
+                plt.show()
+
+            if mask_dw.sum() != 0 and mask_dw.sum() != 0:
+                mask_thresh_dw, mask_thresh_up = mask_dw.astype('uint8'), mask_up.astype('uint8')
+                nb_blobs_dw, im_with_separated_blobs_dw, stats_dw, _ = cv2.connectedComponentsWithStats(mask_thresh_dw)
+                nb_blobs_up, im_with_separated_blobs_up, stats_up, _ = cv2.connectedComponentsWithStats(mask_thresh_up)
+                sizes_dw, sizes_up = stats_dw[1:, -1], stats_up[1:, -1]
+                if (sizes_up >= int(stretch_point_TF*0.01)).sum() != 0 and (sizes_dw >= int(stretch_point_TF*0.01)).sum() != 0:
+                    MI_signi.append(True)
+                else:
+                    MI_signi.append(False)
+            else:
+                MI_signi.append(False)
+
+        _df['MI_signi'] = MI_signi
+
+        df_MI_aggregates = pd.concat([df_MI_aggregates, _df])
+
+    #### save
+    os.chdir(os.path.join(path_results, 'allplot', 'df', 'df_aggregates'))
+
+    if monopol:
+        df_MI_aggregates.to_excel(f'df_MI.xlsx')
+    else:
+        df_MI_aggregates.to_excel(f'df_MI_bi.xlsx')
+            
+    print('done', flush=True)
+
+
+
 
 def aggregate_df_Cxy(monopol):
 
@@ -223,8 +306,36 @@ def get_df_aggregates_fc(monopol):
         print(cf_metric, monopol)
 
         phase_i_list = {'EI' : np.arange(stretch_point_FC/4, dtype='int'), 'I' : np.arange(stretch_point_FC/4, stretch_point_FC/2, dtype='int'), 
-                        'IE' : np.arange(stretch_point_FC/2, stretch_point_FC*3/4, dtype='int'), 'E' : np.arange(stretch_point_FC*3/4, stretch_point_FC, dtype='int')}
+                        'IE' : np.arange(stretch_point_FC/2, stretch_point_FC*3/4, dtype='int'), 'E' : np.arange(stretch_point_FC*3/4, stretch_point_FC, dtype='int'),
+                        'W' : np.arange(stretch_point_FC, dtype='int')}
 
+        ######## FR_CV ########
+
+        #### extract respi
+        resp_allsujet = {}
+
+        #sujet = sujet_list_dfc_FR_CV[1]
+        for sujet_i, sujet in enumerate(sujet_list_dfc_FR_CV):
+
+            resp_allsujet[sujet] = {}
+
+            if sujet in sujet_list:
+
+                cond_sel = ['FR_CV', 'RD_CV', 'RD_FV', 'RD_SV']
+
+            else:
+
+                cond_sel = ['FR_CV']
+
+            respfeatures_allcond = load_respfeatures(sujet)
+
+            for cond in cond_sel:
+
+                respi_median = np.array([])
+                for session_i in range(session_count[cond]):
+                    respi_median = np.append(respi_median, respfeatures_allcond[cond][session_i]['cycle_freq'].values)
+                resp_allsujet[sujet][cond] = np.median(respi_median)
+        
         #### extract data
         os.chdir(os.path.join(path_precompute, 'allplot', 'FC'))
 
@@ -291,9 +402,16 @@ def get_df_aggregates_fc(monopol):
             xr_concat_list = [_xr_pair[:,:,:,:,phase_i_list[phase_respi]].median('time') for phase_respi in phase_i_list]
 
             xr_phase = xr.concat(xr_concat_list, dim='phase')
-            xr_phase = xr_phase.assign_coords(phase=['EI', 'I', 'IE', 'E'])
+            xr_phase = xr_phase.assign_coords(phase=['EI', 'I', 'IE', 'E', 'W'])
 
             df_allpairs = pd.concat([df_allpairs, xr_phase.to_dataframe(name='fc').reset_index()])
+
+        resp_vec = []
+        for row_i, row_df in df_allpairs.iterrows():
+
+            resp_vec.append(resp_allsujet[row_df['sujet']]['FR_CV'])
+
+        df_allpairs['resp'] = resp_vec
 
         os.chdir(os.path.join(path_results, 'allplot', 'df', 'df_aggregates'))
         if monopol:
@@ -305,6 +423,31 @@ def get_df_aggregates_fc(monopol):
         ######## ALLCOND ########
 
         print('ALLCOND')
+
+        #### extract respi
+        resp_allsujet = {}
+
+        #sujet = sujet_list_dfc_FR_CV[1]
+        for sujet_i, sujet in enumerate(sujet_list_dfc_allcond):
+
+            resp_allsujet[sujet] = {}
+
+            if sujet in sujet_list:
+
+                cond_sel = ['FR_CV', 'RD_CV', 'RD_FV', 'RD_SV']
+
+            else:
+
+                cond_sel = ['FR_CV']
+
+            respfeatures_allcond = load_respfeatures(sujet)
+
+            for cond in cond_sel:
+
+                respi_median = np.array([])
+                for session_i in range(session_count[cond]):
+                    respi_median = np.append(respi_median, respfeatures_allcond[cond][session_i]['cycle_freq'].values)
+                resp_allsujet[sujet][cond] = np.median(respi_median)
 
         os.chdir(os.path.join(path_precompute, 'allplot', 'FC'))
 
@@ -366,9 +509,16 @@ def get_df_aggregates_fc(monopol):
             xr_concat_list = [_xr_pair[:,:,:,:,:,phase_i_list[phase_respi]].median('time') for phase_respi in phase_i_list]
 
             xr_phase = xr.concat(xr_concat_list, dim='phase')
-            xr_phase = xr_phase.assign_coords(phase=['EI', 'I', 'IE', 'E'])
+            xr_phase = xr_phase.assign_coords(phase=['EI', 'I', 'IE', 'E', 'W'])
 
             df_allpairs = pd.concat([df_allpairs, xr_phase.to_dataframe(name='fc').reset_index()])
+
+        resp_vec = []
+        for row_i, row_df in df_allpairs.iterrows():
+
+            resp_vec.append(resp_allsujet[row_df['sujet']]['FR_CV'])
+
+        df_allpairs['resp'] = resp_vec
 
         os.chdir(os.path.join(path_results, 'allplot', 'df', 'df_aggregates'))
         if monopol:
@@ -383,90 +533,71 @@ def compilation_export_df_allplot_filtered(monopol):
     os.chdir(os.path.join(path_results, 'allplot', 'df', 'df_aggregates'))
 
     if monopol:
-        df_Cxy = pd.read_excel(f'df_Cxy.xlsx')
-        df_Pxx = pd.read_excel(f'df_Pxx.xlsx')
+        df_dict = {}
+        df_dict['Cxy'] = pd.read_excel(f'df_Cxy.xlsx')
+        df_dict['Pxx'] = pd.read_excel(f'df_Pxx.xlsx')
+        df_dict['MI'] = pd.read_excel(f'df_MI.xlsx')
     else:
-        df_Cxy = pd.read_excel(f'df_Cxy_bi.xlsx')
-        df_Pxx = pd.read_excel(f'df_Pxx_bi.xlsx')
+        df_dict = {}
+        df_dict['Cxy'] = pd.read_excel(f'df_Cxy_bi.xlsx')
+        df_dict['Pxx'] = pd.read_excel(f'df_Pxx_bi.xlsx')
+        df_dict['MI'] = pd.read_excel(f'df_MI_bi.xlsx')
 
-    #### Cxy FR_CV
-    df_Cxy_FR_CV = df_Cxy.query(f"cond == 'FR_CV'")
+    #data_type = "MI"
+    for data_type in ['Cxy', 'Pxx', 'MI']:
+
+        #cond = 'ALLCOND'
+        for cond in ['FR_CV', 'ALLCOND']:
+
+            print(data_type, cond, monopol)
+
+            if cond == 'FR_CV':
+                df_export = df_dict[data_type].query(f"cond == 'FR_CV'")
+            elif cond == 'ALLCOND':
+                df_export = df_dict[data_type].query(f"sujet in {sujet_list}")
+
+            if data_type == 'Cxy':
+
+                df_export_count = df_export.query(f"cond == 'FR_CV'")
+
+            elif data_type == 'Pxx':
+
+                df_export_count = df_export.query(f"band == 'theta' and phase == 'whole' and cond == 'FR_CV'")
+
+            elif data_type == 'MI':
+
+                df_export_count = df_export.query(f"band == 'theta' and cond == 'FR_CV'")
+
+            else:
+
+                df_export_count = df_export.copy()
+
+            df_export_filt_plot = pd.DataFrame()
+
+            _thresh_plot = lmm_thresh_filt[cond]['plot']
+            _thresh_sujet = lmm_thresh_filt[cond]['sujet']
+
+            for sujet in df_export['sujet'].unique():
+
+                _ROI_sel_sujet = df_export_count.query(f"sujet == '{sujet}'").groupby(['sujet', 'ROI']).count().query(f"cond >= {_thresh_plot}").reset_index()['ROI'].values
+                _df_filt = df_export.query(f"sujet == '{sujet}' and ROI in {_ROI_sel_sujet.tolist()}")
+                df_export_filt_plot = pd.concat([df_export_filt_plot, _df_filt])
+
+            sujet_list_thresh_sujet = df_export_filt_plot[['ROI', 'sujet', data_type]].groupby(['ROI', 'sujet']).count().reset_index().groupby(['ROI']).count().query(f"sujet >= {_thresh_sujet}").reset_index()['ROI'].unique()
+            df_export_filt_plot_sujet = df_export_filt_plot.query(f"ROI in {sujet_list_thresh_sujet.tolist()}")
+                
+            df_export_filt_plot_sujet = df_export_filt_plot_sujet[[col for col in df_export_filt_plot_sujet.columns.values if col.find('Unnamed') == -1]]
+
+            if debug:
+
+                df_export_filt_plot_sujet.query(f"band == 'theta' and cond == 'FR_CV'").groupby(['sujet', 'ROI']).count()
+
+            if monopol:
+                df_export_filt_plot_sujet.to_excel(f'df_{data_type}_{cond}_filt.xlsx')
+            else:
+                df_export_filt_plot_sujet.to_excel(f'df_{data_type}_{cond}_filt_bi.xlsx')
+
     
-    sujet_list_thresh_sujet = df_Cxy_FR_CV[['sujet', 'ROI', 'Cxy']].groupby(['ROI', 'sujet']).count().reset_index().groupby(['ROI']).count().query(f"sujet >= {thresh_sujet_FR_CV}").reset_index()['ROI'].unique()
-    df_Cxy_FR_CV_filt_sujet = df_Cxy_FR_CV.query(f"ROI in {sujet_list_thresh_sujet.tolist()}")
-    
-    df_Cxy_FR_CV_filt_sujet = df_Cxy_FR_CV_filt_sujet[[col for col in df_Cxy_FR_CV_filt_sujet.columns.values if col.find('Unnamed') == -1]]
-
-    if monopol:
-        df_Cxy_FR_CV_filt_sujet.to_excel('df_Cxy_FR_CV_filt.xlsx')
-    else:
-        df_Cxy_FR_CV_filt_sujet.to_excel('df_Cxy_FR_CV_filt_bi.xlsx')
-
-    #### Cxy ALLCOND
-    df_Cxy_ALLCOND = df_Cxy.query(f"sujet in {sujet_list}")
-
-    sujet_list_thresh_sujet = df_Cxy_ALLCOND[['ROI', 'sujet', 'Cxy']].groupby(['ROI', 'sujet']).count().reset_index().groupby(['ROI']).count().query(f"sujet >= {thresh_sujet_ALLCOND}").reset_index()['ROI'].unique()
-    df_Cxy_ALLCOND_filt_sujet = df_Cxy_ALLCOND.query(f"ROI in {sujet_list_thresh_sujet.tolist()}")
-
-    df_count_plot = df_Cxy_ALLCOND_filt_sujet.groupby(['sujet', 'ROI']).count().query(f"cond >= {thresh_plot_ALLCOND}").query(f"cond >= {thresh_plot_ALLCOND}").reset_index()
-    df_Cxy_ALLCOND_filt_plot_sujet = pd.DataFrame()
-
-    for sujet in df_count_plot['sujet'].unique():
-
-        _ROI_sel_sujet = df_count_plot.query(f"sujet == '{sujet}'")['ROI'].values
-        _df_Cxy_filt = df_Cxy_ALLCOND_filt_sujet.query(f"sujet == '{sujet}' and ROI in {_ROI_sel_sujet.tolist()}")
-        df_Cxy_ALLCOND_filt_plot_sujet = pd.concat([df_Cxy_ALLCOND_filt_plot_sujet, _df_Cxy_filt])
-        
-    df_Cxy_ALLCOND_filt_plot_sujet = df_Cxy_ALLCOND_filt_plot_sujet[[col for col in df_Cxy_ALLCOND_filt_plot_sujet.columns.values if col.find('Unnamed') == -1]]
-
-    if monopol:
-        df_Cxy_ALLCOND_filt_plot_sujet.to_excel('df_Cxy_ALLCOND_filt.xlsx')
-    else:
-        df_Cxy_ALLCOND_filt_plot_sujet.to_excel('df_Cxy_ALLCOND_filt_bi.xlsx')
-
-    #### Pxx FR_CV
-    df_Pxx_FR_CV = df_Pxx.query(f"cond == 'FR_CV'")
-
-    sujet_list_thresh_sujet = df_Pxx_FR_CV[['ROI', 'sujet', 'Pxx']].groupby(['ROI', 'sujet']).count().reset_index().groupby(['ROI']).count().query(f"sujet >= {thresh_sujet_FR_CV}").reset_index()['ROI'].unique()
-    df_Pxx_FR_CV_filt_sujet = df_Pxx_FR_CV.query(f"ROI in {sujet_list_thresh_sujet.tolist()}")
-    
-    df_count_plot = df_Pxx_FR_CV_filt_sujet.groupby(['sujet', 'ROI', 'chan']).count().groupby(['sujet', 'ROI']).count().query(f"cond >= {thresh_plot_ALLCOND}").query(f"cond >= {thresh_plot_ALLCOND}").reset_index()
-    df_Pxx_FR_CV_filt_sujet_plot = pd.DataFrame()
-
-    for sujet in df_count_plot['sujet'].unique():
-
-        _ROI_sel_sujet = df_count_plot.query(f"sujet == '{sujet}'")['ROI'].values
-        _df_Pxx_FR_CV_filt = df_Pxx_FR_CV.query(f"sujet == '{sujet}' and ROI in {_ROI_sel_sujet.tolist()}")
-        df_Pxx_FR_CV_filt_sujet_plot = pd.concat([df_Pxx_FR_CV_filt_sujet_plot, _df_Pxx_FR_CV_filt])
-
-    df_Pxx_FR_CV_filt_sujet_plot = df_Pxx_FR_CV_filt_sujet_plot[[col for col in df_Pxx_FR_CV_filt_sujet_plot.columns.values if col.find('Unnamed') == -1]]
-
-    if monopol:
-        df_Pxx_FR_CV_filt_sujet_plot.to_excel('df_Pxx_FR_CV_filt.xlsx')
-    else:
-        df_Pxx_FR_CV_filt_sujet_plot.to_excel('df_Pxx_FR_CV_filt_bi.xlsx')
-
-    #### Pxx ALLCOND
-    df_Pxx_ALLCOND = df_Pxx.query(f"sujet in {sujet_list}")
-
-    sujet_list_thresh_sujet = df_Pxx_ALLCOND[['ROI', 'sujet', 'Pxx']].groupby(['ROI', 'sujet']).count().reset_index().groupby(['ROI']).count().query(f"sujet >= {thresh_sujet_ALLCOND}").reset_index()['ROI'].unique()
-    df_Pxx_FR_CV_filt_sujet = df_Pxx_ALLCOND.query(f"ROI in {sujet_list_thresh_sujet.tolist()}")
-
-    df_count_plot = df_Pxx_FR_CV_filt_sujet.groupby(['sujet', 'ROI', 'chan']).count().groupby(['sujet', 'ROI']).count().query(f"cond >= {thresh_plot_ALLCOND}").query(f"cond >= {thresh_plot_ALLCOND}").reset_index()
-    df_Pxx_ALLCOND_filt_sujet_plot = pd.DataFrame()
-
-    for sujet in df_count_plot['sujet'].unique():
-
-        _ROI_sel_sujet = df_count_plot.query(f"sujet == '{sujet}'")['ROI'].values
-        _df_Pxx_ALLCOND_filt = df_Pxx_FR_CV_filt_sujet.query(f"sujet == '{sujet}' and ROI in {_ROI_sel_sujet.tolist()}")
-        df_Pxx_ALLCOND_filt_sujet_plot = pd.concat([df_Pxx_ALLCOND_filt_sujet_plot, _df_Pxx_ALLCOND_filt])
-
-    df_Pxx_ALLCOND_filt_sujet_plot = df_Pxx_ALLCOND_filt_sujet_plot[[col for col in df_Pxx_ALLCOND_filt_sujet_plot.columns.values if col.find('Unnamed') == -1]]
-
-    if monopol:
-        df_Pxx_ALLCOND_filt_sujet_plot.to_excel('df_Pxx_ALLCOND_filt.xlsx')
-    else:
-        df_Pxx_ALLCOND_filt_sujet_plot.to_excel('df_Pxx_ALLCOND_filt_bi.xlsx')
 
 
 
@@ -484,7 +615,7 @@ if __name__ == '__main__':
 
         
     #### export df
-    #monopol = True
+    #monopol = False
     for monopol in [True, False]:
 
         # sujet_list = sujet_list_FR_CV
@@ -492,13 +623,13 @@ if __name__ == '__main__':
 
         aggregate_df_Cxy(monopol)
         aggregate_df_Pxx(monopol)
+        aggregate_df_MI(monopol)
 
     for monopol in [True, False]:
         compilation_export_df_allplot_filtered(monopol)
 
     
     for monopol in [True, False]:
-
         get_df_aggregates_fc(monopol)
     
 

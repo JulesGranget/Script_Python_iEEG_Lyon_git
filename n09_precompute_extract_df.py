@@ -370,6 +370,125 @@ def export_Pxx_in_df(sujet, monopol):
 
 
 
+
+def export_MI_in_df(sujet, monopol):
+
+    if sujet in sujet_list:
+
+        conditions = ['FR_CV', 'RD_CV', 'RD_FV', 'RD_SV']
+
+    else:
+
+        conditions = ['FR_CV']
+
+    #### verif computation
+    if monopol:
+
+        if os.path.exists(os.path.join(path_results, 'allplot', 'df', 'subject_wise', f'{sujet}_df_MI.xlsx')):
+            print('Pxx : ALREADY COMPUTED', flush=True)
+            return
+
+    else:
+
+        if os.path.exists(os.path.join(path_results, 'allplot', 'df', 'subject_wise', f'{sujet}_df_MI_bi.xlsx')):
+            print('Pxx : ALREADY COMPUTED', flush=True)
+            return
+
+    #### load data
+    os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
+    chan_list, chan_list_ieeg = get_chanlist(sujet, monopol)
+
+    nwind, nfft, noverlap, hannw = get_params_spectral_analysis(srate)
+    df_loca = get_loca_df(sujet, monopol)
+    respfeatures_allcond = load_respfeatures(sujet)
+
+    #### identify chan params
+    if sujet[:3] != 'pat':
+        if monopol:
+            chan_list, chan_list_keep = modify_name(chan_list_ieeg)
+        else:
+            chan_list = chan_list_ieeg
+    else:
+        chan_list = chan_list_ieeg
+
+    #### prepare df
+    df_export_MI = pd.DataFrame()
+
+    os.chdir(os.path.join(path_precompute, sujet, 'TF'))
+
+    #cond = conditions[0]
+    for cond in conditions:
+
+        print(cond, flush=True)
+            
+        #### Pxx
+        if monopol:
+            tf = np.median(np.load(f'{sujet}_tf_conv_{cond}.npy'), axis=1)
+        else:
+            tf = np.median(np.load(f'{sujet}_tf_conv_{cond}_bi.npy'), axis=1)
+
+        respi_median = np.array([])
+        for session_i in range(session_count[cond]):
+            respi_median = np.append(respi_median, respfeatures_allcond[cond][session_i]['cycle_freq'].values)
+        respi_median = np.median(respi_median)
+
+        if debug:
+
+            band, freq = 'theta', [4,8]
+            frex_sel = (frex >= freq[0]) & (frex <= freq[-1])
+            for cycle_i in range(tf.shape[1]):
+                plt.plot(np.median(tf[0,cycle_i,frex_sel], axis=0))
+            plt.show()
+
+            plt.plot(np.median(np.median(tf[0], axis=0)[frex_sel], axis=0))
+            plt.show()
+
+        #### fill df
+        #chan_i, chan_name = 0, chan_list[0]
+        for chan_i, chan_name in enumerate(chan_list):
+
+            print_advancement(chan_i, len(chan_list), steps=[25, 50, 75])
+
+            ROI_i = df_loca['ROI'][df_loca['name'] == chan_name].values[0]
+            Lobe_i = df_loca['lobes'][df_loca['name'] == chan_name].values[0]
+            if chan_name.find('p') or chan_name.find("'"):
+                side_i = 'l'
+            else:
+                side_i = 'r' 
+
+            tf_chan = tf[chan_i,:,:]
+
+            #band, freq = 'theta', [4,8]
+            for band, freq in freq_band_dict_FC_lmm['wb'].items():
+
+                frex_sel = (frex >= freq[0]) & (frex <= freq[-1])
+                _MI = np.median(tf_chan[frex_sel,:], axis=0).max() - np.median(tf_chan[frex_sel,:], axis=0).min()
+
+
+                data_export_i =   {'sujet' : [sujet], 'cond' : [cond], 'chan' : [chan_name], 
+                                    'ROI' : [ROI_i], 'Lobe' : [Lobe_i], 'side' : [side_i], 
+                                    'MI' : [_MI], 'band' : [band],
+                                    'resp' : [respi_median]}
+                
+                df_export_i = pd.DataFrame.from_dict(data_export_i)
+        
+                df_export_MI = pd.concat([df_export_MI, df_export_i])
+
+    #### save
+    os.chdir(os.path.join(path_results, 'allplot', 'df', 'subject_wise'))
+
+    if monopol:
+        df_export_MI.to_excel(f'{sujet}_df_MI.xlsx')
+    else:
+        df_export_MI.to_excel(f'{sujet}_df_MI_bi.xlsx')
+        
+    print('done', flush=True)
+
+
+
+
+
+
 def export_ITPC_in_df(sujet, respfeatures_allcond, prms, monopol):
 
     #### verif computation
@@ -884,6 +1003,8 @@ def compilation_export_df(sujet, monopol):
 
 if __name__ == '__main__':
 
+
+    ######## Cxy ######## 
     #sujet = sujet_list_FR_CV[3]
     for sujet in sujet_list_FR_CV:
         #monopol = True
@@ -893,8 +1014,7 @@ if __name__ == '__main__':
             export_Cxy_in_df(sujet, monopol)
 
     
-
-
+    ######## Pxx ########
     list_params = []
     for sujet in sujet_list_FR_CV:    
         for monopol in [True, False]:
@@ -904,5 +1024,12 @@ if __name__ == '__main__':
     #sync_folders__push_to_crnldata()
 
 
+    ######## MI ########
+    list_params = []
+    for sujet in sujet_list_FR_CV:    
+        for monopol in [True, False]:
+            list_params.append([sujet, monopol])
 
-        
+    execute_function_in_slurm_bash('n09_precompute_extract_df', 'export_MI_in_df', list_params)
+    #sync_folders__push_to_crnldata()
+

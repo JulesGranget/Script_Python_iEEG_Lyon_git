@@ -61,6 +61,7 @@ condition_diff = [['FV','SV']]
 band_prep_list = ['lf', 'hf']
 freq_band_list = [{'theta' : [2,10], 'alpha' : [8,14], 'beta' : [10,40], 'whole' : [2,50]}, {'l_gamma' : [50, 80], 'h_gamma' : [80, 120]}]
 freq_band_whole = {'theta' : [2,10], 'alpha' : [8,14], 'beta' : [10,40], 'whole' : [2,50], 'l_gamma' : [50, 80], 'h_gamma' : [80, 120]}
+band_list_global = ['theta', 'alpha', 'beta', 'gamma']
 
 freq_band_list_precompute = [{'theta_1' : [2,10], 'theta_2' : [4,8], 'alpha_1' : [8,12], 'alpha_2' : [8,14], 'beta_1' : [12,40], 'beta_2' : [10,40], 'whole_1' : [2,50]}, {'l_gamma_1' : [50, 80], 'h_gamma_1' : [80, 120]}]
 
@@ -423,6 +424,8 @@ cycle_detection_params = {
 
 #### Pxx Cxy
 
+freq_Pxx_spectrum_extract = [0,5]
+
 zero_pad_coeff = 2
 
 def get_params_spectral_analysis(srate):
@@ -453,6 +456,9 @@ percentile_coh = .95
 n_surrogates_cyclefreq = 1000
 percentile_cyclefreq_up = .99
 percentile_cyclefreq_dw = .01
+
+#### MI perc
+percentile_MI = [1, 99]
 
 
 #### n bin for MI computation
@@ -496,10 +502,7 @@ tf_plot_percentile_scale = 1 #for one side
 ######## LMM ANALYSIS ########
 ################################
 
-thresh_plot_ALLCOND = 2 # for having at least 2 measures for nested design for GLMM/LMM -> Cxy, Pxx (also FR_CV for Pxx)
-thresh_sujet_FR_CV = 5 # for spearman FR_CV !5 for 500 perm -> Cxy
-thresh_sujet_ALLCOND = 2 # for having at least 2 measures for LMM random effect -> Cxy
-
+lmm_thresh_filt = {'FR_CV' : {'plot' : 1, 'sujet' : 3}, 'ALLCOND' : {'plot' : 1, 'sujet' : 3}}
 
 ################################
 ######## POWER ANALYSIS ########

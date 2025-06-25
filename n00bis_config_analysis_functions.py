@@ -11,6 +11,7 @@ import stat
 import subprocess
 import physio
 import xarray as xr
+import cv2
 
 
 import neurokit2 as nk

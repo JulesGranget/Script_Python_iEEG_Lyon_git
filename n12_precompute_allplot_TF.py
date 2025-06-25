@@ -60,17 +60,25 @@ def get_ROI_Lobes_list_and_Plots(cond, monopol):
         sujet_list_selected = sujet_list
 
     #### search for ROI & lobe that have been counted
-    #sujet_i = sujet_list_selected[10]
+    #sujet_i = sujet_list_selected[0]
     for sujet_i in sujet_list_selected:
 
         os.chdir(os.path.join(path_anatomy, sujet_i))
 
         if monopol:
+            file_path = f"{sujet_i}_chanlist_ieeg.txt"
             plot_loca_df = pd.read_excel(sujet_i + '_plot_loca.xlsx')
         else:
+            file_path = f"{sujet_i}_chanlist_ieeg_bi.txt"
             plot_loca_df = pd.read_excel(sujet_i + '_plot_loca_bi.xlsx')
 
-        chan_list_ieeg = plot_loca_df['plot'][plot_loca_df['select'] == 1].values
+        with open(file_path, 'r', encoding='utf-8') as file:
+            lines = file.readlines()
+
+        chan_list_ieeg = [line.strip() for line in lines]
+
+        if monopol:
+            chan_list_ieeg, _ = modify_name(chan_list_ieeg)
 
         chan_list_ieeg_csv = chan_list_ieeg
 
@@ -124,67 +132,68 @@ def compilation_allplot_analysis(cond, monopol):
             print(f'ALREADY COMPUTED {cond}', flush=True)
             return
 
-    print(f'COMPUTE {cond}', flush=True)
+    print(f'COMPUTE {cond} {monopol}', flush=True)
 
     #### load anat
     ROI_list, lobe_list, ROI_to_include, lobe_to_include, ROI_dict_plots, lobe_dict_plots = get_ROI_Lobes_list_and_Plots(cond, monopol)
-        
+
     #### identify stretch point
     stretch_point = stretch_point_TF
 
-    #### generate xr
-    os.chdir(path_memmap)
-    ROI_data_xr = np.memmap(f'allsujet_{cond}_ROI_reduction_{monopol}.dat', dtype=np.float32, mode='w+', shape=(len(ROI_to_include), nfrex, stretch_point))
-    
-    #### compute TF & ITPC for ROI
-    #ROI_to_process = ROI_to_include[10]
-    for ROI_to_process in ROI_to_include:
+    #### function to compute one ROI
+    # for ROI_index in range(len(ROI_to_include)):
 
+    def compute_roi(ROI_index):
+
+        ROI_to_process = ROI_to_include[ROI_index]
         print(ROI_to_process, flush=True)
 
-        tf_allplot = np.zeros((len(ROI_dict_plots[ROI_to_process]),nfrex,stretch_point), dtype=np.float32)
+        tf_allplot = np.zeros((len(ROI_dict_plots[ROI_to_process]), nfrex, stretch_point), dtype=np.float32)
 
-        #site_i, (sujet, site) = 40, ROI_dict_plots[ROI_to_process][40]
         for site_i, (sujet, site) in enumerate(ROI_dict_plots[ROI_to_process]):
 
             os.chdir(os.path.join(path_precompute, sujet, 'TF'))
-
             chan_list, chan_list_ieeg = get_chanlist(sujet, monopol)
 
-            #### modify chanlist
             if sujet[:3] != 'pat':
                 if monopol:
                     chan_list_ieeg, chan_list_keep = modify_name(chan_list_ieeg)
 
             if monopol:
-                tf_allplot[site_i,:,:] = np.median(np.load(f'{sujet}_tf_conv_{cond}.npy')[chan_list_ieeg.index(site),:,:,:], axis=0)
+                tf = np.load(f'{sujet}_tf_conv_{cond}.npy')[chan_list_ieeg.index(site), :, :, :]
             else:
-                tf_allplot[site_i,:,:] = np.median(np.load(f'{sujet}_tf_conv_{cond}_bi.npy')[chan_list_ieeg.index(site),:,:,:], axis=0)
+                tf = np.load(f'{sujet}_tf_conv_{cond}_bi.npy')[chan_list_ieeg.index(site), :, :, :]
 
-        ROI_data_xr[ROI_to_include.index(ROI_to_process),:,:] = np.median(tf_allplot, axis=0)
-        
-        del tf_allplot
+            tf_allplot[site_i, :, :] = np.median(tf, axis=0)
 
-        #### verif
+        tf_median = np.median(tf_allplot, axis=0)
+
         if debug:
-
-            vmin, vmax = np.percentile(tf_allplot[1,:,:].reshape(-1), tf_plot_percentile_scale), np.percentile(tf_allplot[1,:,:].reshape(-1), 100-tf_plot_percentile_scale)
-            plt.pcolormesh(tf_allplot[1,:,:], vmin=vmin, vmax=vmax)
+            vmin, vmax = np.percentile(tf_allplot[1, :, :].reshape(-1), tf_plot_percentile_scale), \
+                        np.percentile(tf_allplot[1, :, :].reshape(-1), 100 - tf_plot_percentile_scale)
+            plt.pcolormesh(tf_allplot[1, :, :], vmin=vmin, vmax=vmax)
             plt.show()
+
+        return tf_median
+
+    #### run in parallel
+    res = joblib.Parallel(n_jobs=n_core)(joblib.delayed(compute_roi)(roi_idx) for roi_idx in range(len(ROI_to_include)))
+
+    #### stack into final array
+    ROI_data = np.stack(res, axis=0)  # shape: (n_ROIs, nfrex, stretch_point)
 
     print('SAVE', flush=True)
 
     #### extract & save
     os.chdir(os.path.join(path_precompute, 'allplot', 'TF'))
-    dict_xr = {'roi' : ROI_to_include, 'nfrex' : np.arange(0, nfrex), 'times' : np.arange(0, stretch_point)}
-    xr_export = xr.DataArray(ROI_data_xr, coords=dict_xr.values(), dims=dict_xr.keys())
+    dict_xr = {'roi': ROI_to_include, 'nfrex': np.arange(0, nfrex), 'times': np.arange(0, stretch_point)}
+    xr_export = xr.DataArray(ROI_data, coords=dict_xr.values(), dims=dict_xr.keys())
+
     if monopol:
         xr_export.to_netcdf(f'allsujet_{cond}_ROI.nc')
     else:
         xr_export.to_netcdf(f'allsujet_{cond}_ROI_bi.nc')
 
-    os.chdir(path_memmap)
-    os.remove(f'allsujet_{cond}_ROI_reduction_{monopol}.dat')
 
 
 
@@ -202,15 +211,21 @@ def compilation_allplot_analysis(cond, monopol):
 
 if __name__ == '__main__':
 
-    #monopol = True
+
+    list_params = []
+    for monopol in [True, False]:
+        for cond in ['FR_CV', 'RD_CV', 'RD_SV', 'RD_FV']:
+            list_params.append([monopol, cond])
+
+    execute_function_in_slurm_bash('n12_precompute_allplot_TF', 'compilation_allplot_analysis', list_params)
+    #sync_folders__push_to_crnldata()
+
+
     for monopol in [True, False]:
 
-        #cond = 'RD_CV'
         for cond in ['FR_CV', 'RD_CV', 'RD_SV', 'RD_FV']:
 
             compilation_allplot_analysis(cond, monopol)
-            # execute_function_in_slurm_bash_mem_choice('n12_precompute_allplot_TF', 'compilation_allplot_analysis', [cond, monopol], '20G')
-    
 
 
 

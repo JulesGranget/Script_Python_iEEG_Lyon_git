@@ -24,7 +24,7 @@ outputdir_fig = "/home/jules/smb4k/CRNLDATA/crnldata/cmo/Projets/IntraEEG_Respi_
 outputdir_df_lmm = "/home/jules/smb4k/CRNLDATA/crnldata/cmo/Projets/IntraEEG_Respi_Cardiaque/NBuonviso201810_ieeg_respi_jules_valentin/iEEG_Lyon_VJ/Analyses/results/allplot/LMM/Cxy/df_lmm"
 
 # Load the Excel data
-df_raw <- read_excel(paste(root, "df_Cxy_FR_CV_filt.xlsx", sep  = "/"))
+df_raw <- read_excel(paste(root, "df_Cxy_FR_CV_filt_bi.xlsx", sep  = "/"))
 df_raw$chan <- paste0(df_raw$sujet, "_", df_raw$chan)
 
 ROI_list <- unique(df_raw$ROI)
@@ -65,7 +65,7 @@ for (ROI_sel in ROI_list) {
     
     p
     
-    file_boxplot_subjectwise = paste("FR_CV_boxplot", ROI_sel, "Cxy_subjectwise.png", sep = "_")
+    file_boxplot_subjectwise = paste("FR_CV_boxplot", ROI_sel, "Cxy_subjectwise_bi.png", sep = "_")
     # then explicitly:
     ggsave(paste(outputdir_fig, file_boxplot_subjectwise, sep = "/"), plot = p, width = 8, height = 5)
     
@@ -110,7 +110,7 @@ for (ROI_sel in ROI_list) {
     summary(model)
     
     #### FIG 2
-    filename_hist = paste("FR_CV_histogram", ROI_sel, "Cxy.png", sep = "_")
+    filename_hist = paste("FR_CV_histogram", ROI_sel, "Cxy_bi.png", sep = "_")
     
     skew_chan = round(skewness(df$Cxy), 2)
     kurt_chan = round(kurtosis(df$Cxy), 2)
@@ -143,7 +143,7 @@ for (ROI_sel in ROI_list) {
     dev.off()
     
     #### FIG 3
-    filename_qqplot = paste("FR_CV_qqplot", ROI_sel, "Cxy.png", sep = "_")
+    filename_qqplot = paste("FR_CV_qqplot", ROI_sel, "Cxy_bi.png", sep = "_")
     
     png(
       filename = paste(outputdir_fig, filename_qqplot, sep = "/"),
@@ -170,7 +170,7 @@ for (ROI_sel in ROI_list) {
     
     model_df <- broom.mixed::tidy(model, effects = "fixed", conf.int = TRUE)
     
-    filesxlsx_ROI = paste("FR_CV_Cxy_lmm", ROI_sel, "res.xlsx", sep = "_")
+    filesxlsx_ROI = paste("FR_CV_Cxy_lmm", ROI_sel, "res_bi.xlsx", sep = "_")
     writexl::write_xlsx(model_df, paste(outputdir_df_lmm, filesxlsx_ROI, sep = "/"))
     
   }, warning = function(w) {
@@ -189,7 +189,7 @@ outputdir_fig = "/home/jules/smb4k/CRNLDATA/crnldata/cmo/Projets/IntraEEG_Respi_
 outputdir_df_lmm = "/home/jules/smb4k/CRNLDATA/crnldata/cmo/Projets/IntraEEG_Respi_Cardiaque/NBuonviso201810_ieeg_respi_jules_valentin/iEEG_Lyon_VJ/Analyses/results/allplot/LMM/Cxy/df_lmm"
 
 # Load the Excel data
-df_raw <- read_excel(paste(root, "df_Cxy_ALLCOND_filt.xlsx", sep  = "/"))
+df_raw <- read_excel(paste(root, "df_Cxy_ALLCOND_filt_bi.xlsx", sep  = "/"))
 df_raw$chan <- paste0(df_raw$sujet, "_", df_raw$chan)
 
 df_raw <- subset(df_raw, cond %in% c('FR_CV', 'RD_CV'))
@@ -232,7 +232,7 @@ for (ROI_sel in ROI_list) {
     
     p
     
-    file_boxplot_subjectwise = paste("FR_CV_ATTENTION_boxplot", ROI_sel, "Cxy_subjectwise.png", sep = "_")
+    file_boxplot_subjectwise = paste("FR_CV_ATTENTION_boxplot", ROI_sel, "Cxy_subjectwise_bi.png", sep = "_")
     # then explicitly:
     ggsave(paste(outputdir_fig, file_boxplot_subjectwise, sep = "/"), plot = p, width = 8, height = 5)
     
@@ -277,7 +277,7 @@ for (ROI_sel in ROI_list) {
     summary(model)
     
     #### FIG 2
-    filename_hist = paste("FR_CV_ATTENTION_histogram", ROI_sel, "Cxy.png", sep = "_")
+    filename_hist = paste("FR_CV_ATTENTION_histogram", ROI_sel, "Cxy_bi.png", sep = "_")
     
     skew_chan = round(skewness(df$Cxy), 2)
     kurt_chan = round(kurtosis(df$Cxy), 2)
@@ -310,7 +310,7 @@ for (ROI_sel in ROI_list) {
     dev.off()
     
     #### FIG 3
-    filename_qqplot = paste("FR_CV_ATTENTION_qqplot", ROI_sel, "Cxy.png", sep = "_")
+    filename_qqplot = paste("FR_CV_ATTENTION_qqplot", ROI_sel, "Cxy_bi.png", sep = "_")
     
     png(
       filename = paste(outputdir_fig, filename_qqplot, sep = "/"),
@@ -337,7 +337,7 @@ for (ROI_sel in ROI_list) {
     
     model_df <- broom.mixed::tidy(model, effects = "fixed", conf.int = TRUE)
     
-    filesxlsx_ROI = paste("ALLCOND_ATTENTION_Cxy_lmm", ROI_sel, "res.xlsx", sep = "_")
+    filesxlsx_ROI = paste("ALLCOND_ATTENTION_Cxy_lmm", ROI_sel, "res_bi.xlsx", sep = "_")
     writexl::write_xlsx(model_df, paste(outputdir_df_lmm, filesxlsx_ROI, sep = "/"))
     
   }, warning = function(w) {
@@ -356,7 +356,7 @@ outputdir_fig = "/home/jules/smb4k/CRNLDATA/crnldata/cmo/Projets/IntraEEG_Respi_
 outputdir_df_lmm = "/home/jules/smb4k/CRNLDATA/crnldata/cmo/Projets/IntraEEG_Respi_Cardiaque/NBuonviso201810_ieeg_respi_jules_valentin/iEEG_Lyon_VJ/Analyses/results/allplot/LMM/Cxy/df_lmm"
 
 # Load the Excel data
-df_raw <- read_excel(paste(root, "df_Cxy_ALLCOND_filt.xlsx", sep  = "/"))
+df_raw <- read_excel(paste(root, "df_Cxy_ALLCOND_filt_bi.xlsx", sep  = "/"))
 df_raw$chan <- paste0(df_raw$sujet, "_", df_raw$chan)
 
 df_raw <- subset(df_raw, cond %in% c('FR_CV', 'RD_CV'))
@@ -399,7 +399,7 @@ for (ROI_sel in ROI_list) {
     
     p
     
-    file_boxplot_subjectwise = paste("RD_CV_boxplot", ROI_sel, "Cxy_subjectwise.png", sep = "_")
+    file_boxplot_subjectwise = paste("RD_CV_boxplot", ROI_sel, "Cxy_subjectwise_bi.png", sep = "_")
     # then explicitly:
     ggsave(paste(outputdir_fig, file_boxplot_subjectwise, sep = "/"), plot = p, width = 8, height = 5)
     
@@ -444,7 +444,7 @@ for (ROI_sel in ROI_list) {
     summary(model)
     
     #### FIG 2
-    filename_hist = paste("RD_CV_histogram", ROI_sel, "Cxy.png", sep = "_")
+    filename_hist = paste("RD_CV_histogram", ROI_sel, "Cxy_bi.png", sep = "_")
     
     skew_chan = round(skewness(df$Cxy), 2)
     kurt_chan = round(kurtosis(df$Cxy), 2)
@@ -477,7 +477,7 @@ for (ROI_sel in ROI_list) {
     dev.off()
     
     #### FIG 3
-    filename_qqplot = paste("RD_CV_qqplot", ROI_sel, "Cxy.png", sep = "_")
+    filename_qqplot = paste("RD_CV_qqplot", ROI_sel, "Cxy_bi.png", sep = "_")
     
     png(
       filename = paste(outputdir_fig, filename_qqplot, sep = "/"),
@@ -504,7 +504,7 @@ for (ROI_sel in ROI_list) {
     
     model_df <- broom.mixed::tidy(model, effects = "fixed", conf.int = TRUE)
     
-    filesxlsx_ROI = paste("RD_CV_Cxy_lmm", ROI_sel, "res.xlsx", sep = "_")
+    filesxlsx_ROI = paste("RD_CV_Cxy_lmm", ROI_sel, "res_bi.xlsx", sep = "_")
     writexl::write_xlsx(model_df, paste(outputdir_df_lmm, filesxlsx_ROI, sep = "/"))
     
   }, warning = function(w) {
@@ -527,7 +527,7 @@ outputdir_df_lmm = "/home/jules/smb4k/CRNLDATA/crnldata/cmo/Projets/IntraEEG_Res
 
 
 # Load the Excel data
-df_raw <- read_excel(paste(root, "df_Cxy_ALLCOND_filt.xlsx", sep  = "/"))
+df_raw <- read_excel(paste(root, "df_Cxy_ALLCOND_filt_bi.xlsx", sep  = "/"))
 df_raw <- df_raw %>%
   mutate(chan = paste0(sujet, "_", chan))
 
@@ -570,7 +570,7 @@ for (ROI_sel in ROI_list) {
     
     p
     
-    file_boxplot_subjectwise = paste("ALLCOND_boxplot", ROI_sel, "Cxy_subjectwise.png", sep = "_")
+    file_boxplot_subjectwise = paste("ALLCOND_boxplot", ROI_sel, "Cxy_subjectwise_bi.png", sep = "_")
     # then explicitly:
     ggsave(paste(outputdir_fig, file_boxplot_subjectwise, sep = "/"), plot = p, width = 8, height = 5)
     
@@ -615,7 +615,7 @@ for (ROI_sel in ROI_list) {
     summary(model)
     
     #### FIG 2
-    filename_hist = paste("ALLCOND_histogram", ROI_sel, "Cxy.png", sep = "_")
+    filename_hist = paste("ALLCOND_histogram", ROI_sel, "Cxy_bi.png", sep = "_")
     
     skew_chan = round(skewness(df$Cxy), 2)
     kurt_chan = round(kurtosis(df$Cxy), 2)
@@ -648,7 +648,7 @@ for (ROI_sel in ROI_list) {
     dev.off()
     
     #### FIG 3
-    filename_qqplot = paste("ALLCOND_qqplot", ROI_sel, "Cxy.png", sep = "_")
+    filename_qqplot = paste("ALLCOND_qqplot", ROI_sel, "Cxy_bi.png", sep = "_")
     
     png(
       filename = paste(outputdir_fig, filename_qqplot, sep = "/"),
@@ -675,7 +675,7 @@ for (ROI_sel in ROI_list) {
     
     model_df <- broom.mixed::tidy(model, effects = "fixed", conf.int = TRUE)
     
-    filesxlsx_ROI = paste("ALLCOND_Cxy_lmm", ROI_sel, "res.xlsx", sep = "_")
+    filesxlsx_ROI = paste("ALLCOND_Cxy_lmm", ROI_sel, "res_bi.xlsx", sep = "_")
     writexl::write_xlsx(model_df, paste(outputdir_df_lmm, filesxlsx_ROI, sep = "/"))
     
   }, warning = function(w) {
@@ -703,7 +703,7 @@ outputdir_df_lmm = "/home/jules/smb4k/CRNLDATA/crnldata/cmo/Projets/IntraEEG_Res
 
 
 # Load the Excel data
-df_raw <- read_excel(paste(root, "df_Pxx_FR_CV_filt.xlsx", sep  = "/"))
+df_raw <- read_excel(paste(root, "df_Pxx_FR_CV_filt_bi.xlsx", sep  = "/"))
 df_raw <- df_raw %>%
   mutate(chan = paste0(sujet, "_", chan))
 df_raw <- subset(df_raw, phase == 'whole')
@@ -749,7 +749,7 @@ for (ROI_sel in ROI_list) {
       
       p
       
-      file_boxplot_subjectwise = paste("FR_CV_WHOLE_boxplot", ROI_sel, band_sel, "Pxx_subjectwise.png", sep = "_")
+      file_boxplot_subjectwise = paste("FR_CV_WHOLE_boxplot", ROI_sel, band_sel, "Pxx_subjectwise_bi.png", sep = "_")
       # then explicitly:
       ggsave(paste(outputdir_fig, file_boxplot_subjectwise, sep = "/"), plot = p, width = 8, height = 5)
       
@@ -793,7 +793,7 @@ for (ROI_sel in ROI_list) {
       summary(model)
       
       #### FIG 2
-      filename_hist = paste("FR_CV_WHOLE_histogram", ROI_sel, band_sel, "Pxx.png", sep = "_")
+      filename_hist = paste("FR_CV_WHOLE_histogram", ROI_sel, band_sel, "Pxx_bi.png", sep = "_")
       
       skew_chan = round(skewness(df$Pxx), 2)
       kurt_chan = round(kurtosis(df$Pxx), 2)
@@ -826,7 +826,7 @@ for (ROI_sel in ROI_list) {
       dev.off()
       
       #### FIG 3
-      filename_qqplot = paste("FR_CV_WHOLE_qqplot", ROI_sel, band_sel, "Pxx.png", sep = "_")
+      filename_qqplot = paste("FR_CV_WHOLE_qqplot", ROI_sel, band_sel, "Pxx_bi.png", sep = "_")
       
       png(
         filename = paste(outputdir_fig, filename_qqplot, sep = "/"),
@@ -853,7 +853,7 @@ for (ROI_sel in ROI_list) {
       
       model_df <- broom.mixed::tidy(model, effects = "fixed", conf.int = TRUE)
       
-      filesxlsx_ROI = paste("FR_CV_WHOLE_Pxx_lmm", ROI_sel, band_sel, "res.xlsx", sep = "_")
+      filesxlsx_ROI = paste("FR_CV_WHOLE_Pxx_lmm", ROI_sel, band_sel, "res_bi.xlsx", sep = "_")
       writexl::write_xlsx(model_df, paste(outputdir_df_lmm, filesxlsx_ROI, sep = "/"))
       
     }, warning = function(w) {
@@ -869,13 +869,12 @@ for (ROI_sel in ROI_list) {
 
 
 # Load the Excel data
-df_raw <- read_excel(paste(root, "df_Pxx_FR_CV_filt.xlsx", sep  = "/"))
+df_raw <- read_excel(paste(root, "df_Pxx_FR_CV_filt_bi.xlsx", sep  = "/"))
 df_raw <- df_raw %>%
   mutate(chan = paste0(sujet, "_", chan))
 
 ROI_list <- unique(df_raw$ROI)
 band_list <- c('theta', 'alpha', 'beta', 'gamma')
-phase_list <- c('inspi', 'expi')
 
 band_sel = 'theta'
 ROI_sel = ROI_list[1]
@@ -891,7 +890,7 @@ for (ROI_sel in ROI_list) {
       
       df_oneROI <- subset(df_raw, ROI == ROI_sel & band == band_sel & phase %in% phase_list)
       
-      print(subset(df_oneROI, phase == 'inspi') %>% count(sujet))
+      print(subset(df_oneROI, phase == phase_sel) %>% count(sujet))
       
       df <- df_oneROI[c("sujet", "chan", "Pxx", "phase")]
       
@@ -918,7 +917,7 @@ for (ROI_sel in ROI_list) {
       
       p
       
-      file_boxplot_subjectwise = paste("FR_CV_boxplot", ROI_sel, band_sel, "Pxx_subjectwise.png", sep = "_")
+      file_boxplot_subjectwise = paste("FR_CV_boxplot", ROI_sel, band_sel, "Pxx_subjectwise_bi.png", sep = "_")
       # then explicitly:
       ggsave(paste(outputdir_fig, file_boxplot_subjectwise, sep = "/"), plot = p, width = 8, height = 5)
       
@@ -962,7 +961,7 @@ for (ROI_sel in ROI_list) {
       summary(model)
       
       #### FIG 2
-      filename_hist = paste("FR_CV_histogram", ROI_sel, band_sel, "Pxx.png", sep = "_")
+      filename_hist = paste("FR_CV_histogram", ROI_sel, band_sel, "Pxx_bi.png", sep = "_")
       
       skew_chan = round(skewness(df$Pxx), 2)
       kurt_chan = round(kurtosis(df$Pxx), 2)
@@ -995,7 +994,7 @@ for (ROI_sel in ROI_list) {
       dev.off()
       
       #### FIG 3
-      filename_qqplot = paste("FR_CV_qqplot", ROI_sel, band_sel, "Pxx.png", sep = "_")
+      filename_qqplot = paste("FR_CV_qqplot", ROI_sel, band_sel, "Pxx_bi.png", sep = "_")
       
       png(
         filename = paste(outputdir_fig, filename_qqplot, sep = "/"),
@@ -1022,7 +1021,7 @@ for (ROI_sel in ROI_list) {
       
       model_df <- broom.mixed::tidy(model, effects = "fixed", conf.int = TRUE)
       
-      filesxlsx_ROI = paste("FR_CV_Pxx_lmm", ROI_sel, band_sel, "res.xlsx", sep = "_")
+      filesxlsx_ROI = paste("FR_CV_Pxx_lmm", ROI_sel, band_sel, "res_bi.xlsx", sep = "_")
       writexl::write_xlsx(model_df, paste(outputdir_df_lmm, filesxlsx_ROI, sep = "/"))
       
     }, warning = function(w) {
@@ -1039,7 +1038,7 @@ for (ROI_sel in ROI_list) {
 
 
 # Load the Excel data
-df_raw <- read_excel(paste(root, "df_Pxx_ALLCOND_filt.xlsx", sep  = "/"))
+df_raw <- read_excel(paste(root, "df_Pxx_ALLCOND_filt_bi.xlsx", sep  = "/"))
 df_raw <- df_raw %>%
   mutate(chan = paste0(sujet, "_", chan))
 
@@ -1089,7 +1088,7 @@ for (ROI_sel in ROI_list) {
       
       p
       
-      file_boxplot_subjectwise = paste("ALLCOND_WHOLE_boxplot", ROI_sel, band_sel, "Pxx_subjectwise.png", sep = "_")
+      file_boxplot_subjectwise = paste("ALLCOND_WHOLE_boxplot", ROI_sel, band_sel, "Pxx_subjectwise_bi.png", sep = "_")
       # then explicitly:
       ggsave(paste(outputdir_fig, file_boxplot_subjectwise, sep = "/"), plot = p, width = 8, height = 5)
       
@@ -1133,7 +1132,7 @@ for (ROI_sel in ROI_list) {
       summary(model)
       
       #### FIG 2
-      filename_hist = paste("ALLCOND_histogram", ROI_sel, band_sel, "Pxx.png", sep = "_")
+      filename_hist = paste("ALLCOND_histogram", ROI_sel, band_sel, "Pxx_bi.png", sep = "_")
       
       skew_chan = round(skewness(df$Pxx), 2)
       kurt_chan = round(kurtosis(df$Pxx), 2)
@@ -1166,7 +1165,7 @@ for (ROI_sel in ROI_list) {
       dev.off()
       
       #### FIG 3
-      filename_qqplot = paste("ALLCOND_qqplot", ROI_sel, band_sel, "Pxx.png", sep = "_")
+      filename_qqplot = paste("ALLCOND_qqplot", ROI_sel, band_sel, "Pxx_bi.png", sep = "_")
       
       png(
         filename = paste(outputdir_fig, filename_qqplot, sep = "/"),
@@ -1193,7 +1192,7 @@ for (ROI_sel in ROI_list) {
       
       model_df <- broom.mixed::tidy(model, effects = "fixed", conf.int = TRUE)
       
-      filesxlsx_ROI = paste("ALLCOND_Pxx_lmm", ROI_sel, band_sel, "res.xlsx", sep = "_")
+      filesxlsx_ROI = paste("ALLCOND_Pxx_lmm", ROI_sel, band_sel, "res_bi.xlsx", sep = "_")
       writexl::write_xlsx(model_df, paste(outputdir_df_lmm, filesxlsx_ROI, sep = "/"))
       
     }, warning = function(w) {
@@ -1210,7 +1209,7 @@ for (ROI_sel in ROI_list) {
 
 
 # Load the Excel data
-df_raw <- read_excel(paste(root, "df_Pxx_ALLCOND_filt.xlsx", sep  = "/"))
+df_raw <- read_excel(paste(root, "df_Pxx_ALLCOND_filt_bi.xlsx", sep  = "/"))
 df_raw <- df_raw %>%
   mutate(chan = paste0(sujet, "_", chan))
 
@@ -1260,7 +1259,7 @@ for (ROI_sel in ROI_list) {
       
       p
       
-      file_boxplot_subjectwise = paste("ALLCOND_IE_boxplot", ROI_sel, band_sel, "Pxx_subjectwise.png", sep = "_")
+      file_boxplot_subjectwise = paste("ALLCOND_IE_boxplot", ROI_sel, band_sel, "Pxx_subjectwise_bi.png", sep = "_")
       # then explicitly:
       ggsave(paste(outputdir_fig, file_boxplot_subjectwise, sep = "/"), plot = p, width = 8, height = 5)
       
@@ -1304,7 +1303,7 @@ for (ROI_sel in ROI_list) {
       summary(model)
       
       #### FIG 2
-      filename_hist = paste("ALLCOND_IE_histogram", ROI_sel, band_sel, "Pxx.png", sep = "_")
+      filename_hist = paste("ALLCOND_IE_histogram", ROI_sel, band_sel, "Pxx_bi.png", sep = "_")
       
       skew_chan = round(skewness(df$Pxx), 2)
       kurt_chan = round(kurtosis(df$Pxx), 2)
@@ -1337,7 +1336,7 @@ for (ROI_sel in ROI_list) {
       dev.off()
       
       #### FIG 3
-      filename_qqplot = paste("ALLCOND_IE_qqplot", ROI_sel, band_sel, "Pxx.png", sep = "_")
+      filename_qqplot = paste("ALLCOND_IE_qqplot", ROI_sel, band_sel, "Pxx_bi.png", sep = "_")
       
       png(
         filename = paste(outputdir_fig, filename_qqplot, sep = "/"),
@@ -1364,7 +1363,7 @@ for (ROI_sel in ROI_list) {
       
       model_df <- broom.mixed::tidy(model, effects = "fixed", conf.int = TRUE)
       
-      filesxlsx_ROI = paste("ALLCOND_IE_Pxx_lmm", ROI_sel, band_sel, "res.xlsx", sep = "_")
+      filesxlsx_ROI = paste("ALLCOND_IE_Pxx_lmm", ROI_sel, band_sel, "res_bi.xlsx", sep = "_")
       writexl::write_xlsx(model_df, paste(outputdir_df_lmm, filesxlsx_ROI, sep = "/"))
       
     }, warning = function(w) {
@@ -1391,7 +1390,7 @@ outputdir_df_lmm = "/home/jules/smb4k/CRNLDATA/crnldata/cmo/Projets/IntraEEG_Res
 
 
 # Load the Excel data
-df_raw <- read_excel(paste(root, "df_MI_FR_CV_filt.xlsx", sep  = "/"))
+df_raw <- read_excel(paste(root, "df_MI_FR_CV_filt_bi.xlsx", sep  = "/"))
 df_raw <- df_raw %>%
   mutate(chan = paste0(sujet, "_", chan))
 
@@ -1436,7 +1435,7 @@ for (ROI_sel in ROI_list) {
       
       p
       
-      file_boxplot_subjectwise = paste("FR_CV_WHOLE_boxplot", ROI_sel, band_sel, "MI_subjectwise.png", sep = "_")
+      file_boxplot_subjectwise = paste("FR_CV_WHOLE_boxplot", ROI_sel, band_sel, "MI_subjectwise_bi.png", sep = "_")
       # then explicitly:
       ggsave(paste(outputdir_fig, file_boxplot_subjectwise, sep = "/"), plot = p, width = 8, height = 5)
       
@@ -1480,7 +1479,7 @@ for (ROI_sel in ROI_list) {
       summary(model)
       
       #### FIG 2
-      filename_hist = paste("FR_CV_WHOLE_histogram", ROI_sel, band_sel, "MI.png", sep = "_")
+      filename_hist = paste("FR_CV_WHOLE_histogram", ROI_sel, band_sel, "MI_bi.png", sep = "_")
       
       skew_chan = round(skewness(df$MI), 2)
       kurt_chan = round(kurtosis(df$MI), 2)
@@ -1513,7 +1512,7 @@ for (ROI_sel in ROI_list) {
       dev.off()
       
       #### FIG 3
-      filename_qqplot = paste("FR_CV_WHOLE_qqplot", ROI_sel, band_sel, "MI.png", sep = "_")
+      filename_qqplot = paste("FR_CV_WHOLE_qqplot", ROI_sel, band_sel, "MI_bi.png", sep = "_")
       
       png(
         filename = paste(outputdir_fig, filename_qqplot, sep = "/"),
@@ -1540,7 +1539,7 @@ for (ROI_sel in ROI_list) {
       
       model_df <- broom.mixed::tidy(model, effects = "fixed", conf.int = TRUE)
       
-      filesxlsx_ROI = paste("FR_CV_WHOLE_MI_lmm", ROI_sel, band_sel, "res.xlsx", sep = "_")
+      filesxlsx_ROI = paste("FR_CV_WHOLE_MI_lmm", ROI_sel, band_sel, "res_bi.xlsx", sep = "_")
       writexl::write_xlsx(model_df, paste(outputdir_df_lmm, filesxlsx_ROI, sep = "/"))
       
     }, warning = function(w) {
@@ -1558,7 +1557,7 @@ for (ROI_sel in ROI_list) {
 
 
 # Load the Excel data
-df_raw <- read_excel(paste(root, "df_MI_ALLCOND_filt.xlsx", sep  = "/"))
+df_raw <- read_excel(paste(root, "df_MI_ALLCOND_filt_bi.xlsx", sep  = "/"))
 df_raw <- df_raw %>%
   mutate(chan = paste0(sujet, "_", chan))
 df_raw <- subset(df_raw, cond %in% c('RD_CV', 'RD_SV', 'RD_FV'))
@@ -1607,7 +1606,7 @@ for (ROI_sel in ROI_list) {
       
       p
       
-      file_boxplot_subjectwise = paste("ALLCOND_WHOLE_boxplot", ROI_sel, band_sel, "MI_subjectwise.png", sep = "_")
+      file_boxplot_subjectwise = paste("ALLCOND_WHOLE_boxplot", ROI_sel, band_sel, "MI_subjectwise_bi.png", sep = "_")
       # then explicitly:
       ggsave(paste(outputdir_fig, file_boxplot_subjectwise, sep = "/"), plot = p, width = 8, height = 5)
       
@@ -1651,7 +1650,7 @@ for (ROI_sel in ROI_list) {
       summary(model)
       
       #### FIG 2
-      filename_hist = paste("ALLCOND_histogram", ROI_sel, band_sel, "MI.png", sep = "_")
+      filename_hist = paste("ALLCOND_histogram", ROI_sel, band_sel, "MI_bi.png", sep = "_")
       
       skew_chan = round(skewness(df$MI), 2)
       kurt_chan = round(kurtosis(df$MI), 2)
@@ -1684,7 +1683,7 @@ for (ROI_sel in ROI_list) {
       dev.off()
       
       #### FIG 3
-      filename_qqplot = paste("ALLCOND_qqplot", ROI_sel, band_sel, "MI.png", sep = "_")
+      filename_qqplot = paste("ALLCOND_qqplot", ROI_sel, band_sel, "MI_bi.png", sep = "_")
       
       png(
         filename = paste(outputdir_fig, filename_qqplot, sep = "/"),
@@ -1711,7 +1710,7 @@ for (ROI_sel in ROI_list) {
       
       model_df <- broom.mixed::tidy(model, effects = "fixed", conf.int = TRUE)
       
-      filesxlsx_ROI = paste("ALLCOND_MI_lmm", ROI_sel, band_sel, "res.xlsx", sep = "_")
+      filesxlsx_ROI = paste("ALLCOND_MI_lmm", ROI_sel, band_sel, "res_bi.xlsx", sep = "_")
       writexl::write_xlsx(model_df, paste(outputdir_df_lmm, filesxlsx_ROI, sep = "/"))
       
     }, warning = function(w) {

@@ -7,6 +7,9 @@ import pandas as pd
 import joblib
 import pickle
 import cv2
+from fooof import FOOOF
+from fooof.sim.gen import gen_aperiodic
+
 
 import pickle
 import gc
@@ -16,6 +19,7 @@ from n00bis_config_analysis_functions import *
 
 
 debug = False
+
 
 
 
@@ -681,6 +685,281 @@ def compilation_compute_TF_ITPC(sujet, monopol):
     print('done', flush=True)
 
 
+################################
+######## PXX RESPI ########
+################################
+
+
+
+def plot_Pxx_whole_spectrum():
+
+    #monopol = False
+    for monopol in [True, False]:
+
+        #sujet = sujet_list[1]
+        for sujet in sujet_list_FR_CV:
+
+            os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
+
+            print(sujet, monopol)
+
+            if monopol:
+                xr_Pxx = xr.load_dataarray(f'{sujet}_Pxx_spectrum.nc')
+            else:
+                xr_Pxx = xr.load_dataarray(f'{sujet}_Pxx_spectrum_bi.nc')
+
+            respfeatures = load_respfeatures(sujet)
+
+            if sujet not in sujet_list:
+
+                cond_sel = ['FR_CV']
+                cond_color = {'FR_CV' : 'tab:blue'}
+                cond_sel_attention = ['FR_CV']
+
+            else:
+
+                cond_sel = conditions
+                cond_color = {'FR_CV' : 'tab:blue', 'RD_CV' : 'tab:green', 'RD_SV' : 'tab:red', 'RD_FV' : 'tab:orange'}
+                cond_sel_attention = ['FR_CV', 'RD_CV']
+
+            resp_freq_cond = {}
+
+            for cond in cond_sel:
+
+                _resp_median = []
+                
+                for session_i in range(session_count[cond]):
+                    _resp_median.append(np.median(respfeatures[cond][session_i]['cycle_freq'].values))
+
+                resp_freq_cond[cond] = np.median(_resp_median)
+
+            freq_sel_fooof = [0.1, 0.65]
+            mask_sel_fooof = xr_Pxx['freq'].values > 0.1
+            fm = FOOOF()
+            fm.fit(xr_Pxx['freq'].values[mask_sel_fooof], xr_Pxx.loc['FR_CV'].median('chan').values[mask_sel_fooof], freq_sel_fooof)
+            freq_fooof = fm.freqs
+
+            data_plot = np.zeros((len(cond_sel), freq_fooof.size))
+
+            for cond_i, cond in enumerate(cond_sel):
+
+                fm = FOOOF()
+                fm.fit(xr_Pxx['freq'].values[mask_sel_fooof], xr_Pxx.loc[cond].median('chan').values[mask_sel_fooof], freq_sel_fooof)
+                init_ap_fit = gen_aperiodic(fm.freqs, fm._robust_ap_fit(fm.freqs, fm.power_spectrum))
+
+                if debug:
+                    from fooof.plts.spectra import plot_spectra
+                    _, ax = plt.subplots(figsize=(12, 10))
+                    plot_spectra(fm.freqs, fm.power_spectrum, False,
+                                label='Original Power Spectrum', color='black', ax=ax)
+                    plot_spectra(fm.freqs, init_ap_fit, False, label='Initial Aperiodic Fit',
+                                color='blue', alpha=0.5, linestyle='dashed', ax=ax)
+                    plt.show()
+                    
+                    init_flat_spec = fm.power_spectrum - init_ap_fit
+
+                    # Plot the flattened the power spectrum
+                    plot_spectra(fm.freqs, init_flat_spec, False,
+                                label='Flattened Spectrum', color='black')
+                    plt.show()
+
+                    plot_spectra(fm.freqs, fm._peak_fit, False, color='green', label='Final Periodic Fit')
+                    plt.show()
+
+                data_plot[cond_i] = fm.power_spectrum - init_ap_fit
+
+            ### full
+            fig, ax = plt.subplots()
+
+            for cond_i, cond in enumerate(cond_sel):
+
+                ax.plot(freq_fooof, data_plot[cond_i], color=cond_color[cond], label=cond)
+                ax.vlines(resp_freq_cond[cond], ymin=data_plot.min(), ymax=data_plot.max(), color=cond_color[cond])
+
+            plt.title(f"{sujet} {monopol}")
+            plt.legend()
+            # plt.show()
+
+            os.chdir(os.path.join(path_results, 'allplot', 'Pxx_respi'))
+            fig.savefig(f"{monopol}_{sujet}_whole.png")
+
+            plt.close('all')
+
+            fig, ax = plt.subplots()
+
+            for cond_i, cond in enumerate(cond_sel_attention):
+
+                ax.plot(freq_fooof, data_plot[cond_i], color=cond_color[cond], label=cond)
+                ax.vlines(resp_freq_cond[cond], ymin=data_plot.min(), ymax=data_plot.max(), color=cond_color[cond])
+
+            plt.title(f"{sujet} {monopol}")
+            plt.legend()
+            # plt.show()
+
+            os.chdir(os.path.join(path_results, 'allplot', 'Pxx_respi'))
+            fig.savefig(f"{monopol}_{sujet}_attention.png")
+
+            plt.close('all')
+
+
+
+            # def remove_1f_polyfit(power, freq, freq_min=0.07):
+            #     """Remove 1/f trend using polyfit in log-log space."""
+            #     mask = freq > freq_min
+            #     log_freq = freq[mask]
+            #     log_power = np.log10(power[..., mask])
+
+            #     # Fit line
+            #     coeffs = np.polyfit(log_freq, log_power, deg=10)
+            #     fit_line = np.polyval(coeffs, log_freq)
+
+            #     # Subtract and return to linear scale
+            #     log_flattened = log_power - fit_line
+            #     flattened = 10 ** log_flattened
+
+            #     # Pad result to full freq length (with NaNs or zeros if needed)
+            #     result = np.full_like(power, np.nan)
+            #     result[..., mask] = flattened
+            #     return result
+
+            # # Apply across xarray
+            # freq = xr_Pxx['freq'].values
+
+            # xr_Pxx_flat = xr.apply_ufunc(
+            #     remove_1f_polyfit,
+            #     xr_Pxx,
+            #     kwargs={'freq': freq},
+            #     input_core_dims=[['freq']],
+            #     output_core_dims=[['freq']],
+            #     vectorize=True,
+            #     dask='parallelized',
+            #     output_dtypes=[xr_Pxx.dtype]
+            # )
+
+            # data_plot = xr_Pxx_flat.median('chan').values
+
+
+            # ### full
+            # fig, ax = plt.subplots()
+
+            # for cond_i, cond in enumerate(cond_sel):
+
+            #     ax.plot(xr_Pxx_flat['freq'].values, data_plot[cond_i], color=cond_color[cond], label=cond)
+            #     ax.vlines(resp_freq_cond[cond], ymin=data_plot.min(), ymax=data_plot.max(), color=cond_color[cond])
+
+            # plt.title(f"{sujet} {monopol}")
+            # plt.semilogy()
+            # plt.legend()
+            # # plt.show()
+
+            # os.chdir(os.path.join(path_results, 'allplot', 'Pxx_respi'))
+            # fig.savefig(f"{monopol}_{sujet}_whole.png")
+
+            # plt.close('all')
+
+
+    #monopol = False
+    for monopol in [True, False]:
+
+        #sujet = sujet_list[1]
+        for sujet_i, sujet in enumerate(sujet_list):
+
+            os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
+
+            print(sujet, monopol)
+
+            if monopol:
+                xr_Pxx = xr.load_dataarray(f'{sujet}_Pxx_spectrum.nc')
+            else:
+                xr_Pxx = xr.load_dataarray(f'{sujet}_Pxx_spectrum_bi.nc')
+
+            if sujet_i == 0:
+
+                xr_Pxx = xr_Pxx.expand_dims(sujet=[sujet])
+                xr_Pxx = xr_Pxx.median('chan')
+                xr_Pxx_allsujet = xr_Pxx
+
+            else:
+
+                xr_Pxx = xr_Pxx.expand_dims(sujet=[sujet])
+                xr_Pxx = xr_Pxx.median('chan')
+                xr_Pxx_allsujet = xr.concat([xr_Pxx_allsujet, xr_Pxx], dim='sujet')
+
+        # xr_Pxx_allsujet.median('sujet').plot(x='freq', hue='cond')
+        # plt.show()
+
+            
+        cond_sel = ['RD_SV', 'RD_FV']
+        cond_color = {'RD_SV' : 'tab:red', 'RD_FV' : 'tab:orange'}
+
+        resp_freq_cond = {}
+
+        for cond in cond_sel:
+
+            _resp_median = []
+
+            for sujet in sujet_list:
+
+                respfeatures = load_respfeatures(sujet)
+
+                for session_i in range(session_count[cond]):
+                    _resp_median.append(np.median(respfeatures[cond][session_i]['cycle_freq'].values))
+
+            resp_freq_cond[cond] = np.median(_resp_median)
+
+        freq_sel_fooof = [0.1, 0.65]
+        mask_sel_fooof = xr_Pxx_allsujet['freq'].values > 0.1
+        fm = FOOOF()
+        fm.fit(xr_Pxx_allsujet['freq'].values[mask_sel_fooof], xr_Pxx_allsujet.loc[:,'FR_CV'].median('sujet').values[mask_sel_fooof], freq_sel_fooof)
+        freq_fooof = fm.freqs
+
+        data_plot = np.zeros((len(cond_sel), freq_fooof.size))
+
+        for cond_i, cond in enumerate(cond_sel):
+
+            fm = FOOOF()
+            fm.fit(xr_Pxx_allsujet['freq'].values[mask_sel_fooof], xr_Pxx_allsujet.loc[:,cond].median('sujet').values[mask_sel_fooof], freq_sel_fooof)
+            init_ap_fit = gen_aperiodic(fm.freqs, fm._robust_ap_fit(fm.freqs, fm.power_spectrum))
+
+            if debug:
+                from fooof.plts.spectra import plot_spectra
+                _, ax = plt.subplots(figsize=(12, 10))
+                plot_spectra(fm.freqs, fm.power_spectrum, False,
+                            label='Original Power Spectrum', color='black', ax=ax)
+                plot_spectra(fm.freqs, init_ap_fit, False, label='Initial Aperiodic Fit',
+                            color='blue', alpha=0.5, linestyle='dashed', ax=ax)
+                plt.show()
+                
+                init_flat_spec = fm.power_spectrum - init_ap_fit
+
+                # Plot the flattened the power spectrum
+                plot_spectra(fm.freqs, init_flat_spec, False,
+                            label='Flattened Spectrum', color='black')
+                plt.show()
+
+                plot_spectra(fm.freqs, fm._peak_fit, False, color='green', label='Final Periodic Fit')
+                plt.show()
+
+            data_plot[cond_i] = fm.power_spectrum - init_ap_fit
+
+        ### full
+        fig, ax = plt.subplots()
+
+        for cond_i, cond in enumerate(cond_sel):
+
+            ax.plot(freq_fooof, data_plot[cond_i], color=cond_color[cond], label=cond)
+            ax.vlines(resp_freq_cond[cond], ymin=data_plot.min(), ymax=data_plot.max(), color=cond_color[cond])
+
+        plt.title(f"monopol:{monopol}")
+        plt.legend()
+        # plt.show()
+
+        os.chdir(os.path.join(path_results, 'allplot', 'Pxx_respi'))
+        fig.savefig(f"{monopol}_allsujet_whole.png")
+
+        plt.close('all')
+
+
 
 
 
@@ -706,3 +985,6 @@ if __name__ == '__main__':
             #### TF & ITPC
             compilation_compute_TF_ITPC(sujet, monopol)
             # execute_function_in_slurm_bash_mem_choice('n10_res_power_analysis', 'compilation_compute_TF_ITPC', [sujet, monopol], '15G')
+
+
+    plot_Pxx_whole_spectrum()

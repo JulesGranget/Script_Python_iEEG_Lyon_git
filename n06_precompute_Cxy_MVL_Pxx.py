@@ -14,6 +14,176 @@ import joblib
 debug = False
 
 
+########################
+######## PXX ######## 
+########################
+
+
+#sujet, monopol = sujet_list[0], True
+def precompute_whole_Pxx_spectrum(sujet, monopol):
+    
+    os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
+
+    print(sujet, monopol)
+
+    band_prep = 'wb'
+    
+    chan_list, chan_list_ieeg = get_chanlist(sujet, monopol)
+    nwind, nfft, noverlap, hannw = get_params_spectral_analysis(srate)
+
+    # if monopol:
+    #     if os.path.exists(f'{sujet}_Pxx_spectrum.nc') == True :
+    #         print('ALREADY COMPUTED', flush=True)
+    #         return
+    # else:
+    #     if os.path.exists(f'{sujet}_Pxx_spectrum_bi.nc') == True :
+    #         print('ALREADY COMPUTED', flush=True)
+    #         return
+
+    hzPxx = np.linspace(0,srate/2,int(nfft/2+1))
+    mask_hzPxx = (hzPxx>=freq_Pxx_spectrum_extract[0]) & (hzPxx<freq_Pxx_spectrum_extract[1])
+    hzPxx = hzPxx[mask_hzPxx]
+
+    Pxx_vec = np.zeros((len(chan_list_ieeg), hzPxx.size))
+
+    data_xr_Pxx_spectrum = np.zeros((len(conditions), len(chan_list_ieeg), hzPxx.size))
+
+    if sujet not in sujet_list:
+
+        cond_sel = ['FR_CV']
+
+    else:
+
+        cond_sel = conditions
+
+    for cond_i, cond in enumerate(cond_sel):
+
+        print(cond)
+
+        #### generate whole sig vec
+        time_chunk = []
+
+        for session_i in range(session_count[cond]):
+
+            if session_i == 0:
+
+                data_allsession = load_data_sujet(sujet, band_prep, cond, session_i, monopol)
+                time_chunk.append(data_allsession.shape[-1])
+
+            else:
+
+                _data = load_data_sujet(sujet, band_prep, cond, session_i, monopol)
+                data_allsession = np.append(data_allsession, _data, axis=1)
+                time_chunk.append(_data.shape[-1])
+
+        time_chunk = np.cumsum(np.array(time_chunk))
+
+        if debug:
+
+            chan_i = 0
+            plt.plot(data_allsession[chan_i,:])
+            plt.vlines(time_chunk, ymin=data_allsession[chan_i,:].min(), ymax=data_allsession[chan_i,:].max(), color='r')
+            plt.show()
+
+        #### correct session suite
+        #sig = data_allsession[0,:]
+        def correct_sig_cut(sig, time_chunk, fade_duration_sec=1):
+
+            fade_len = int(fade_duration_sec * srate)
+            corrected_sig = sig.copy()
+
+            for cut_i in time_chunk:
+
+                # Skip if the window goes out of bounds
+                if cut_i - fade_len < 0 or cut_i + fade_len > len(sig):
+                    continue
+
+                # Extract fade-out and fade-in regions
+                fade_out = corrected_sig[cut_i - fade_len : cut_i]
+                fade_in  = corrected_sig[cut_i : cut_i + fade_len]
+
+                # pad reflect to match whole sig size
+                fade_out = np.concatenate([fade_out, fade_out[::-1]])
+                fade_in = np.concatenate([fade_in, fade_in[::-1]])
+
+                if debug:
+                    
+                    plt.plot(np.concatenate([fade_out, fade_out[::-1]]))
+                    plt.show()
+
+                # Create ramps
+                ramp = np.linspace(0, 1, fade_len*2)
+                fade_out_weighted = fade_out * (1 - ramp)
+                fade_in_weighted  = fade_in * ramp
+
+                if debug:
+
+                    plt.plot(fade_out_weighted)
+                    plt.plot(fade_in_weighted)
+                    plt.plot(fade_out_weighted + fade_in_weighted)
+                    plt.show()
+
+                # Blended region
+                blended = fade_out_weighted + fade_in_weighted
+
+                # Insert the blend into the signal
+                corrected_sig[cut_i - fade_len : cut_i + fade_len] = blended
+
+            if debug:
+
+                plt.plot(sig, label='sig')
+                plt.plot(corrected_sig, label='corrected_sig')
+                plt.vlines(time_chunk, ymin=data_allsession[chan_i,:].min(), ymax=data_allsession[chan_i,:].max(), color='r')
+                plt.legend()
+                plt.show()
+
+            return corrected_sig
+
+        for chan_i, _ in enumerate(chan_list):
+
+            data_allsession[chan_i,:] = correct_sig_cut(data_allsession[chan_i,:], time_chunk, fade_duration_sec = 1)
+
+        if debug:
+
+            for chunk_i in time_chunk:
+
+                pre_i, post_i = chunk_i - srate*1, chunk_i + srate*1    
+                plt.plot(data_allsession[:,pre_i:post_i], label='corrected_sig')
+                plt.vlines(chunk_i, ymin=data_allsession[:,pre_i:post_i].min(), ymax=data_allsession[:,pre_i:post_i].max(), color='r')
+                plt.legend()
+                plt.show()
+
+        for chan_i, _ in enumerate(chan_list_ieeg):
+
+            x = data_allsession[chan_i,:]
+            # x = rscore(x)
+            hzPxx_tmp, Pxx_spectrum = scipy.signal.welch(x, fs=srate, window=hannw, nperseg=nwind, noverlap=noverlap, nfft=nfft)
+            Pxx_vec[chan_i,:] = Pxx_spectrum[mask_hzPxx]
+
+            if debug:
+
+                plt.plot(hzPxx_tmp, Pxx_spectrum)
+                plt.semilogy()
+                plt.show()
+
+        data_xr_Pxx_spectrum[cond_i,:,:] = Pxx_vec
+
+    xr_Pxx_spectrum = xr.DataArray(data=data_xr_Pxx_spectrum, dims=['cond', 'chan', 'freq'], coords={'cond':conditions, 'chan':chan_list_ieeg, 'freq':hzPxx})
+
+    if debug:
+
+        xr_Pxx_spectrum.median('chan').plot(x='freq', hue='cond')
+        plt.show()
+
+    os.chdir(os.path.join(path_precompute, sujet, 'PSD_Coh'))
+
+    if monopol:
+        xr_Pxx_spectrum.to_netcdf(f'{sujet}_Pxx_spectrum.nc')
+    else:
+        xr_Pxx_spectrum.to_netcdf(f'{sujet}_Pxx_spectrum_bi.nc')
+
+    print('done', flush=True)
+
 
 
 
@@ -520,7 +690,7 @@ def precompute_MVL(sujet, band_prep, cond, monopol):
 
 if __name__ == '__main__':
 
-
+    ######## CLUSTER ########
     list_params = []
     for sujet in sujet_list_FR_CV:    
         if sujet in sujet_list:
@@ -532,9 +702,18 @@ if __name__ == '__main__':
             for cond in conditions:
                 list_params.append([sujet, band_prep, cond, monopol])
 
-    execute_function_in_slurm_bash('n06_precompute_Cxy_MVL', 'precompute_surrogates_coh', list_params)
+    execute_function_in_slurm_bash('n06_precompute_Cxy_MVL_Pxx', 'precompute_surrogates_coh', list_params)
     #sync_folders__push_to_crnldata()
 
+    list_params = []
+    for sujet in sujet_list_FR_CV:    
+        for monopol in [True, False]:
+            list_params.append([sujet, monopol])
+
+    execute_function_in_slurm_bash('n06_precompute_Cxy_MVL_Pxx', 'precompute_whole_Pxx_spectrum', list_params)
+    #sync_folders__push_to_crnldata()
+
+    ######## MANUEL COMPUTATION ########
     #sujet = sujet_list_FR_CV[10]
     for sujet in sujet_list_FR_CV:    
         if sujet in sujet_list:
@@ -545,6 +724,12 @@ if __name__ == '__main__':
             band_prep = 'wb'
             for cond in conditions:
                 precompute_surrogates_coh(sujet, band_prep, cond, monopol)
+
+    list_params = []
+    for sujet in sujet_list_FR_CV:    
+        for monopol in [True, False]:
+            precompute_whole_Pxx_spectrum(sujet, monopol)
+
 
 
 
