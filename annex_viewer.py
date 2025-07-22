@@ -18,14 +18,14 @@ from n00bis_config_analysis_functions import *
 ########################
 
 
-def viewer(sujet, cond, session_i, chan_selection, monopol, filter=False):
+def viewer(sujet, cond, session_i=session_i, chan_selection=chan_selection, monopol=monopol, filter=False):
 
     #### params
     chan_list, chan_list_ieeg = get_chanlist(sujet, monopol)
     chan_list_mod, chan_list_keep = modify_name(chan_list_ieeg)
-    chan_list_mod_list_i = [chan_list_keep.index(chan) for chan in chan_selection]
+    chan_list_mod_list_i = [chan_list_mod.index(chan) for chan in chan_selection]
     chan_list_mod_list_i = [chan_list_mod[chan_i] for chan_i in chan_list_mod_list_i]
-    chan_list_i = [chan_i for chan_i, chan in enumerate(chan_list) if chan in chan_selection]
+    chan_list_i = [chan_i for chan_i, chan in enumerate(chan_list_mod) if chan in chan_selection]
     chan_list_i.append(-4)
 
     #### load data
@@ -34,16 +34,16 @@ def viewer(sujet, cond, session_i, chan_selection, monopol, filter=False):
     df_loca = get_loca_df(sujet, monopol)
     loca_list = [df_loca.query(f"name == '{chan_i}'")['ROI'].values for chan_i in chan_list_mod_list_i]
 
-    chan_labels = ['respi']
-    chan_labels.extend([f"{chan} : {loca_list[chan_i]}" for chan_i, chan in enumerate(chan_selection)])
+    chan_labels = [f"{chan} : {loca_list[chan_i]}" for chan_i, chan in enumerate(chan_selection)]
+    chan_labels.extend(['respi'])
 
     if debug:
 
-        plt.plot(data[0,:])
+        plt.plot(data[-1,:])
         plt.show()
 
     #### downsample
-    srate_downsample = 50
+    srate_downsample = 10
 
     time_vec = np.linspace(0,data.shape[-1],data.shape[-1])/srate
     time_vec_resample = np.linspace(0,data.shape[-1],int(data.shape[-1] * (srate_downsample / srate)))/srate
@@ -66,8 +66,7 @@ def viewer(sujet, cond, session_i, chan_selection, monopol, filter=False):
     #### for one chan
     if len(chan_selection) == 1:
 
-        respi = data_resampled[-2,:]
-        ecg = data_resampled[-1,:]
+        respi = data_resampled[-1,:]
 
         if filter:
 
@@ -92,26 +91,25 @@ def viewer(sujet, cond, session_i, chan_selection, monopol, filter=False):
 
         fig, ax = plt.subplots()
 
-        ax.plot(time_vec_resample, zscore(respi), label=chan_labels[0])
-        ax.plot(time_vec_resample, zscore(ecg)+3, label=chan_labels[1])
+        ax.plot(time_vec_resample, zscore(respi), label=chan_labels[-1])
     
         x = data_resampled[chan_i,:]
-        ax.plot(time_vec_resample, zscore(x)+3*(chan_i+2), label=chan_labels[chan_i+2])
+        ax.plot(time_vec_resample, zscore(x)+3*(chan_i+2), label=chan_labels[chan_i])
 
-        ax.vlines(trig['start'].values, ymin=zscore(respi).min(), ymax=(zscore(x)+3*(chan_i+2)).max(), colors='g', label='start')
-        ax.vlines(trig['stop'].values, ymin=zscore(respi).min(), ymax=(zscore(x)+3*(chan_i+2)).max(), colors='r', label='stop')
+        if cond == 'allcond':
+
+            ax.vlines(trig['start'].values, ymin=zscore(respi).min(), ymax=(zscore(x)+3*(chan_i+2)).max(), colors='g', label='start')
+            ax.vlines(trig['stop'].values, ymin=zscore(respi).min(), ymax=(zscore(x)+3*(chan_i+2)).max(), colors='r', label='stop')
         
         ax.set_title(f"{sujet} {cond} {session_i+1}")
         plt.legend()
-        handles, labels = ax.get_legend_handles_labels()
-        ax.legend(reversed(handles), reversed(labels), loc='upper left')  # reverse to keep order consistent
 
         plt.show()
 
     #### for several chan
     else:
 
-        respi = data_resampled[-2,:]
+        respi = data_resampled[-1,:]
 
         if filter:
 
@@ -141,8 +139,10 @@ def viewer(sujet, cond, session_i, chan_selection, monopol, filter=False):
             x = data_resampled[chan_i,:]
             ax.plot(time_vec_resample, zscore(x)+3*(chan_i+1), label=chan_labels[chan_i+1])
 
-        ax.vlines(trig['start'].values, ymin=zscore(respi).min(), ymax=(zscore(x)+3*(chan_i+1)).max(), colors='g', label='start')
-        ax.vlines(trig['stop'].values, ymin=zscore(respi).min(), ymax=(zscore(x)+3*(chan_i+1)).max(), colors='r', label='stop')
+        if cond == 'allcond':
+
+            ax.vlines(trig['start'].values, ymin=zscore(respi).min(), ymax=(zscore(x)+3*(chan_i+1)).max(), colors='g', label='start')
+            ax.vlines(trig['stop'].values, ymin=zscore(respi).min(), ymax=(zscore(x)+3*(chan_i+1)).max(), colors='r', label='stop')
         
         ax.set_title(f"{sujet} {cond} {session_i+1}")
         plt.legend()
@@ -162,14 +162,16 @@ def viewer(sujet, cond, session_i, chan_selection, monopol, filter=False):
 
 if __name__ == '__main__':
 
+    ### Good plot for plotting : MAZm : B01, DUCa : H04 / Y10
+
     
-    sujet_list = ['CHEe', 'GOBc', 'MAZm', 'TREt', 'POTm', 'BANc', 'KOFs', 'LEMl', 'MUGa',
+    sujet_list = ['CHEe', 'GOBc', 'MAZm', 'TREt', 'POTm', 'VERj', 'DUCa', 'CARv', 'BOUt', 'FLAb'
                     'pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949',
                     'pat_03083_1527', 'pat_03105_1551', 'pat_03128_1591', 'pat_03138_1601',
                     'pat_03146_1608', 'pat_03174_1634'
                     ]
 
-    sujet = 'TREt'
+    sujet = 'MAZm'
 
     cond = 'allcond'
     
@@ -186,10 +188,26 @@ if __name__ == '__main__':
     monopol = False
 
     chan_list, chan_list_ieeg = get_chanlist(sujet, monopol)
+    chan_list_mod, _ = modify_name(chan_list_ieeg)
 
-    chan_selection = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10', 'B11', 'B12', 'J1', 'J2']
+    chan_selection = ['B01']
+    chan_selection = [chan for chan_i, chan in enumerate(chan_list_mod) if chan_i in np.random.randint(low=0, high=len(chan_list_ieeg), size=10)]
 
     viewer(sujet, cond, session_i, chan_selection, monopol)
+
+
+    for sujet in sujet_list:
+
+        chan_list, chan_list_ieeg = get_chanlist(sujet, monopol)
+        chan_list_mod, _ = modify_name(chan_list_ieeg)
+        chan_selection = [chan for chan_i, chan in enumerate(chan_list_mod) if chan_i in np.random.randint(low=0, high=len(chan_list_ieeg), size=10)]
+
+        viewer(sujet, cond, session_i, chan_selection, monopol)
+
+
+
+
+
 
     nchan_to_plot = 10
     chan_selection_list_i = np.arange(len(chan_list_ieeg))[::nchan_to_plot]

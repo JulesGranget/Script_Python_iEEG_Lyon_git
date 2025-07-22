@@ -304,7 +304,7 @@ def compute_for_one_ROI_allcond(ROI_i, ROI, monopol):
 
     vals = np.array([])
 
-    #cond = cond_to_plot[0]
+    #cond = conditions[0]
     for cond in conditions:
 
         vals = np.append(vals, data_allcond[cond].values.reshape(-1))
@@ -316,77 +316,132 @@ def compute_for_one_ROI_allcond(ROI_i, ROI, monopol):
 
     del vals
 
-    #stats_type = 'intra'
-    for stats_type in ['inter', 'intra']:
+    #### plot 
+    fig, axs = plt.subplots(ncols=len(conditions))
 
-        #### plot 
-        fig, axs = plt.subplots(ncols=len(conditions))
+    if monopol:
+        plt.suptitle(f'{ROI}')
+    else:
+        plt.suptitle(f'{ROI}_bi')
 
-        if monopol:
-            plt.suptitle(f'{ROI}, stats:{stats_type}')
-        else:
-            plt.suptitle(f'{ROI}_bi, stats:{stats_type}')
+    if len(conditions) == 1:
 
         fig.set_figheight(5)
-        fig.set_figwidth(15)
+        fig.set_figwidth(8)
 
-        #### for plotting l_gamma down
-        #c, cond = 1, cond_to_plot[1]
-        for c, cond in enumerate(conditions):
+    else:
 
-            if len(conditions) == 1:
-                ax = axs
-            else:
-                ax = axs[c]
+        fig.set_figheight(5)
+        fig.set_figwidth(17)
 
-            if cond == 'FR_CV':
-                ax.set_title(f'{cond}, n:{ROI_count_FR_CV}', fontweight='bold', rotation=0)
-            else:
-                ax.set_title(f'{cond}, n:{ROI_count_allcond}', fontweight='bold', rotation=0)
-                
-            #### generate time vec
-            time_vec = np.arange(stretch_point_TF)
+    #### for plotting l_gamma down
+    #c, cond = 1, conditions[1]
+    for c, cond in enumerate(conditions):
 
-            #### plot
-            ax.pcolormesh(time_vec, frex, data_allcond[cond].values, vmin=vmin, vmax=vmax, shading='gouraud', cmap=plt.get_cmap('seismic'))
-            ax.set_yscale('log')
-
-            #### stats
-            os.chdir(os.path.join(path_precompute, 'allplot', 'TF'))
-            if stats_type == 'inter' and cond != 'FR_CV':
-                if monopol:
-                    pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_inter.npy')
-                else:
-                    pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_inter_bi.npy')
-
-                if get_tf_stats(data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type).sum() != 0:
-                    ax.contour(time_vec, frex, get_tf_stats(data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type), levels=0, colors='g')
-
-            if stats_type == 'intra':
-                if monopol:
-                    pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_intra.npy')
-                else:
-                    pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_intra_bi.npy')
-
-                if get_tf_stats(data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type).sum() != 0:
-                    ax.contour(time_vec, frex, get_tf_stats(data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type), levels=0, colors='g')
-
-            ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=frex[0], ymax=frex[-1], colors='g')
-
-            ax.set_yticks([2,8,10,30,50,100,150], labels=[2,8,10,30,50,100,150])
-
-        #plt.show()
-
-        #### save
-        os.chdir(os.path.join(path_results, 'allplot', 'allcond', 'TF'))
-
-        if monopol:
-            fig.savefig(f'{ROI}_{stats_type}.jpeg', dpi=150)
+        if len(conditions) == 1:
+            ax = axs
         else:
-            fig.savefig(f'{ROI}_{stats_type}_bi.jpeg', dpi=150)
+            ax = axs[c]
 
-        fig.clf()
-        plt.close('all')
+        if cond == 'FR_CV':
+            ax.set_title(f'{cond}, n:{ROI_count_FR_CV}', fontweight='bold', rotation=0)
+        else:
+            ax.set_title(f'{cond}, n:{ROI_count_allcond}', fontweight='bold', rotation=0)
+            
+        #### generate time vec
+        time_vec = np.arange(stretch_point_TF)
+
+        #### plot
+        ax.pcolormesh(time_vec, frex, data_allcond[cond].values, vmin=vmin, vmax=vmax, shading='gouraud', cmap=plt.get_cmap('seismic'))
+        ax.set_yscale('log')
+
+        ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=0, ymax=frex[-1], colors='g')
+
+        ax.set_yticks([2,8,10,30,50,100,150], labels=[2,8,10,30,50,100,150])
+
+    #plt.show()
+
+    #### save
+    os.chdir(os.path.join(path_results, 'allplot', 'allcond', 'TF', 'ROI'))
+
+    if monopol:
+        fig.savefig(f'{ROI}_nostats.jpeg', dpi=150)
+    else:
+        fig.savefig(f'{ROI}_nostats_bi.jpeg', dpi=150)
+
+    fig.clf()
+    plt.close('all')
+
+    # for stats_type in ['inter', 'intra']:
+
+    #     #### plot 
+    #     fig, axs = plt.subplots(ncols=len(conditions))
+
+    #     if monopol:
+    #         plt.suptitle(f'{ROI}, stats:{stats_type}')
+    #     else:
+    #         plt.suptitle(f'{ROI}_bi, stats:{stats_type}')
+
+    #     fig.set_figheight(5)
+    #     fig.set_figwidth(15)
+
+    #     #### for plotting l_gamma down
+    #     #c, cond = 1, cond_to_plot[1]
+    #     for c, cond in enumerate(conditions):
+
+    #         if len(conditions) == 1:
+    #             ax = axs
+    #         else:
+    #             ax = axs[c]
+
+    #         if cond == 'FR_CV':
+    #             ax.set_title(f'{cond}, n:{ROI_count_FR_CV}', fontweight='bold', rotation=0)
+    #         else:
+    #             ax.set_title(f'{cond}, n:{ROI_count_allcond}', fontweight='bold', rotation=0)
+                
+    #         #### generate time vec
+    #         time_vec = np.arange(stretch_point_TF)
+
+    #         #### plot
+    #         ax.pcolormesh(time_vec, frex, data_allcond[cond].values, vmin=vmin, vmax=vmax, shading='gouraud', cmap=plt.get_cmap('seismic'))
+    #         ax.set_yscale('log')
+
+    #         #### stats
+    #         os.chdir(os.path.join(path_precompute, 'allplot', 'TF'))
+    #         if stats_type == 'inter' and cond != 'FR_CV':
+    #             if monopol:
+    #                 pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_inter.npy')
+    #             else:
+    #                 pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_inter_bi.npy')
+
+    #             if get_tf_stats(data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type).sum() != 0:
+    #                 ax.contour(time_vec, frex, get_tf_stats(data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type), levels=0, colors='g')
+
+    #         if stats_type == 'intra':
+    #             if monopol:
+    #                 pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_intra.npy')
+    #             else:
+    #                 pixel_based_distrib = np.load(f'allsujet_{ROI}_tf_STATS_{cond}_intra_bi.npy')
+
+    #             if get_tf_stats(data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type).sum() != 0:
+    #                 ax.contour(time_vec, frex, get_tf_stats(data_allcond[cond].values, pixel_based_distrib, nfrex, stats_type), levels=0, colors='g')
+
+    #         ax.vlines(ratio_stretch_TF*stretch_point_TF, ymin=frex[0], ymax=frex[-1], colors='g')
+
+    #         ax.set_yticks([2,8,10,30,50,100,150], labels=[2,8,10,30,50,100,150])
+
+    #     #plt.show()
+
+    #     #### save
+    #     os.chdir(os.path.join(path_results, 'allplot', 'allcond', 'TF'))
+
+    #     if monopol:
+    #         fig.savefig(f'{ROI}_{stats_type}.jpeg', dpi=150)
+    #     else:
+    #         fig.savefig(f'{ROI}_{stats_type}_bi.jpeg', dpi=150)
+
+    #     fig.clf()
+    #     plt.close('all')
 
 
 
