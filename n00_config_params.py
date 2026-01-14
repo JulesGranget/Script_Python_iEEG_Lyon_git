@@ -168,6 +168,14 @@ elif PC_ID == 'node14':
     path_memmap = '/crnldata/cmo/Projets/IntraEEG_Respi_Cardiaque/NBuonviso201810_ieeg_respi_jules_valentin/iEEG_Lyon_VJ/memmap'
     n_core = 15
 
+elif PC_ID == 'jules-ubuntu1':
+
+    PC_working = 'jules-ubuntu1'
+    path_main_workdir = '/home/jules/Documents/IntraEEG_Respi_Cardiaque/NBuonviso201810_ieeg_respi_jules_valentin/iEEG_Lyon_VJ/Script_Python_iEEG_Lyon_git'
+    path_general = '/home/jules/Documents/IntraEEG_Respi_Cardiaque/NBuonviso201810_ieeg_respi_jules_valentin/iEEG_Lyon_VJ'
+    path_memmap = '/home/jules/Documents/IntraEEG_Respi_Cardiaque/NBuonviso201810_ieeg_respi_jules_valentin/iEEG_Lyon_VJ/memmap'
+    n_core = 15
+
 else:
 
     PC_working = 'node13'
