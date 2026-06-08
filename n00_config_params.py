@@ -49,6 +49,12 @@ sujet_list_FR_CV =  ['CHEe', 'GOBc', 'MAZm', 'TREt', 'POTm',
                     'pat_03146_1608', 'pat_03174_1634'
                     ]
 
+mapping_sujet_paper =  {'pat_03083_1527' : 'A', 'pat_03128_1591' : 'B', 'pat_03146_1608' : 'C', 'pat_03105_1551' : 'D', 'pat_03138_1601' : 'E',
+                        'pat_03174_1634' : 'F', 'pat_02459_0912' : 'G', 'pat_02476_0929' : 'H', 'pat_02495_0949' : 'I', 'CHEe' : 'J', 'GOBc' : 'K',
+                        'MAZm' : 'L', 'TREt' : 'M', 'POTm' : 'N', 'VERj' : 'O', 'DUCa' : 'P', 'CARv' : 'Q', 'BOUt' : 'R', 'FLAb' : 'S', 'BANc' : 'T',
+                        'KOFs' : 'U', 'LEMl' : 'V', 'MUGa' : 'W'}
+
+
 sujet_list_paris_only_FR_CV = ['pat_02459_0912', 'pat_02476_0929', 'pat_02495_0949',
                     'pat_03083_1527', 'pat_03105_1551', 'pat_03128_1591', 'pat_03138_1601',
                     'pat_03146_1608', 'pat_03174_1634']
@@ -83,6 +89,13 @@ freq_band_dict_FC_lmm = {'lf' : {'theta' : [4,8], 'alpha' : [8,12], 'beta' : [10
 
 
 session_count =    {'FR_CV' : 1, 'RD_CV' : 2, 'RD_FV' : 2, 'RD_SV' : 3}
+
+short_list_ROI_MI = ['amygdala', 'cingulaire ant caudal', 'frontal inf', 'frontal med',
+       'frontal sup', 'hippocampus', 'insula ant',
+       'insula post', 'orbitofrontal',
+       'parahippocampique',
+       'pars opercularis', 'pars orbitalis', 'pars triangularis',
+       'postcentral', 'precentral']
 
 
 
@@ -168,6 +181,7 @@ elif PC_ID == 'node14':
     path_memmap = '/crnldata/cmo/Projets/IntraEEG_Respi_Cardiaque/NBuonviso201810_ieeg_respi_jules_valentin/iEEG_Lyon_VJ/memmap'
     n_core = 15
 
+#### JULES NYC
 elif PC_ID == 'jules-ubuntu1':
 
     PC_working = 'jules-ubuntu1'

@@ -283,8 +283,11 @@ if __name__ == '__main__':
     ######## ALLCOND ########
     ################################
 
+    df_respfeatures_allsujet_compact_ano = df_respfeatures_allsujet_compact.copy()
+    df_respfeatures_allsujet_compact_ano['sujet'] = df_respfeatures_allsujet_compact['sujet'].map(mapping_sujet_paper)
+
     fig, ax = plt.subplots(figsize=(8, 6))
-    sns.boxplot(data=df_respfeatures_allsujet_compact.query(f"cond != 'FR_CV'"), x='sujet', y='cycle_freq', hue='cond', hue_order=['RD_SV', 'RD_CV', 'RD_FV'],
+    sns.boxplot(data=df_respfeatures_allsujet_compact_ano.query(f"cond != 'FR_CV'"), x='sujet', y='cycle_freq', hue='cond', hue_order=['RD_SV', 'RD_CV', 'RD_FV'],
                 showfliers=False, ax=ax, palette=['tab:red', 'tab:blue', 'tab:green'])
 
     ax.set_title('respi_allsujet')
